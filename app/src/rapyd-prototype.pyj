@@ -1,0 +1,78 @@
+###############################################
+######  RIPPLE LOGIC
+###############################################
+
+Remote = ripple.Remote
+
+remote = new Remote({
+    trusted:        true,
+    local_signing:  true,
+    local_fee:      true,
+    fee_cushion:    1.5,
+    max_fee:        10,
+    servers: [
+        {
+            host:   '127.0.0.1',
+            port:   6006,
+            secure: false
+        }
+    ]
+})
+
+rootAddr = 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh'
+rootSec = 'snoPBrXtMeMyMHUVTgbuqAfg1SUTb'
+
+remote.connect()
+
+# still requires some form of exception handling
+# root_acct_request = remote.request_account_info(rootAddr)
+# root_acct_info = JSON.stringify(root_acct_request.request()["message"])
+# document.getElementById('acct-info').innerHTML = root_acct_info
+
+###############################################
+# lets practice some txn signing and submitting
+
+def sign_share_tx(secret, senderAddr, destAddr, amount):
+    # cloned from https://ripple.com/wiki/Ripple_JavaScript_library#Using_the_library_in_a_web_page
+    #   and from https://ripple.com/wiki/API_Example_Transactions#Trust_Set
+    tx_JSON = {
+        "TransactionType" :     "TrustSet",
+        "Account" :             senderAddr,
+        "LimitAmount" : {
+            "currency" :        "WFI",
+            "value" :           amount,
+            "issuer" :          destAddr
+        }
+        # Memo : MemoData (coming soon...)
+    }
+
+    tx = new ripple.Transaction()
+    tx.tx_json = tx_JSON
+    tx._secret = secret     # why do we need this line?
+
+    # console.log('before completion: ', tx)
+    tx.complete()
+    # console.log('after completion: ', tx)
+
+    unsigned = tx.serialize().to_hex()
+    tx.sign()
+    # don't need to return yet since we have't submitted it yet, though we could console.log it
+    # console.log(tx.serialize().to_hex())        # i believe this is the tx_blob
+    return tx.serialize().to_hex()
+
+
+# testing the share function
+tx_blob = sign_share_tx(rootSec, rootAddr, "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", 100)
+console.log(tx_blob)
+# share_submit_request = remote.request_submit(tx_blob)
+
+###############################################
+###### FAMOUS STUFF
+###############################################
+
+
+
+
+
+
+

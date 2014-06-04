@@ -1,0 +1,34 @@
+Remote = ripple.Remote
+
+remote = new Remote({
+    trusted:        true,
+    local_signing:  true,
+    local_fee:      true,
+    fee_cushion:    1.5,
+    max_fee:        10,
+    servers: [
+        {
+            host:   '127.0.0.1',
+            port:   6006,
+            secure: false
+        }
+    ]
+})
+
+rootAddr = 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh'
+rootSec = 'snoPBrXtMeMyMHUVTgbuqAfg1SUTb'
+
+remote.connect()
+
+
+
+
+def sign(secret):
+
+
+
+# testing the share function
+tx_blob = sign_share_tx(rootSec, rootAddr, "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", 100)
+console.log(tx_blob)
+# share_submit_request = remote.request_submit(tx_blob)
+
