@@ -25,6 +25,8 @@ rootSec = 'snoPBrXtMeMyMHUVTgbuqAfg1SUTb'
 remote.connect()
 
 # still requires some form of exception handling
+
+#### this code works, a test for getting info from rippled ####
 # root_acct_request = remote.request_account_info(rootAddr)
 # root_acct_info = JSON.stringify(root_acct_request.request()["message"])
 # document.getElementById('acct-info').innerHTML = root_acct_info
@@ -57,7 +59,8 @@ def sign_share_tx(secret, senderAddr, destAddr, amount):
     unsigned = tx.serialize().to_hex()
     tx.sign()
     # don't need to return yet since we have't submitted it yet, though we could console.log it
-    # console.log(tx.serialize().to_hex())        # i believe this is the tx_blob
+    # i believe this is the tx_blob
+    # console.log(tx.serialize().to_hex())
     return tx.serialize().to_hex()
 
 

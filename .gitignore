@@ -14,6 +14,7 @@ node_modules
 dist
 .tmp
 app/lib
+app/src/build
 .yo-rc.json
 
 # other #

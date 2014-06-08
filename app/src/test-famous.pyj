@@ -1,23 +1,27 @@
-Engine = require('famous/core/Engine')
-Surface = require('famous/core/Surface')
-Transform = require('famous/core/Transform')
-StateModifier = require('famous/modifiers/StateModifier')
+define(def(require, exports, module):
 
-mainContext = Engine.createContext()
+    Engine = require('famous/core/Engine')
+    Surface = require('famous/core/Surface')
+    Transform = require('famous/core/Transform')
+    StateModifier = require('famous/modifiers/StateModifier')
 
-surface = new Surface({
-  size: [200, 500],
-  content: 'this is text',
-  properties: {
-    color: 'black',
-    textAlign: 'center',
-    backgroundColor: '#FA5C4F'
-  }
-})
+    mainContext = Engine.createContext()
 
-modifier = new StateModifier({
-  align: [0.5, 0.5],
-  origin: [0.5, 0.5]
-})
+    surface = new Surface({
+        size: [200, 500],
+        content: 'this is my text, bro',
+        properties: {
+            color: 'black',
+            textAlign: 'center',
+            backgroundColor: '#FA5C4F'
+        }
+    })
 
-mainContext.add(modifier).add(surface);
+    modifier = new StateModifier({
+        align: [0.5, 0.5],
+        origin: [0.5, 0.5]
+    })
+
+    mainContext.add(modifier).add(surface)
+
+)

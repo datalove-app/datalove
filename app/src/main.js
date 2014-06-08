@@ -3,6 +3,7 @@ define(function(require, exports, module) {
     'use strict';
 
 
+
     var Engine, Surface, Transform, StateModifier, mainContext, surface, modifier;
     Engine = require("famous/core/Engine");
     Surface = require("famous/core/Surface");
@@ -11,11 +12,11 @@ define(function(require, exports, module) {
     mainContext = Engine.createContext();
     surface = new Surface({
         size: [ 200, 500 ],
-        content: 'this is text',
+        content: "this is my text, bro",
         properties: {
-            textAlign: 'center',
             color: "black",
-            backgroundColor: "#FA5C4F"
+            textAlign: "center",
+            backgroundColor: "#0FFFFF"
         }
     });
     modifier = new StateModifier({
@@ -23,8 +24,6 @@ define(function(require, exports, module) {
         origin: [ .5, .5 ]
     });
     mainContext.add(modifier).add(surface);
-
-
 
 
 
