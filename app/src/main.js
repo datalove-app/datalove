@@ -2,15 +2,15 @@
 define(function(require, exports, module) {
     'use strict';
 
-
-
     var Engine, Surface, Transform, StateModifier, mainContext, surface, modifier;
-    Engine = require("famous/core/Engine");
-    Surface = require("famous/core/Surface");
-    Transform = require("famous/core/Transform");
-    StateModifier = require("famous/modifiers/StateModifier");
+    Engine = 			require("famous/core/Engine");
+    Surface = 			require("famous/core/Surface");
+    Transform = 		require("famous/core/Transform");
+    StateModifier = 	require("famous/modifiers/StateModifier");
+	
     mainContext = Engine.createContext();
-    surface = new Surface({
+    
+	surface = new Surface({
         size: [ 200, 500 ],
         content: "this is my text, bro",
         properties: {
@@ -19,14 +19,13 @@ define(function(require, exports, module) {
             backgroundColor: "#0FFFFF"
         }
     });
+	
     modifier = new StateModifier({
-        align: [ .5, .5 ],
+        align: [ 0.5, 0.5 ],
         origin: [ .5, .5 ]
     });
-    mainContext.add(modifier).add(surface);
-
-
-
+    
+	mainContext.add(modifier).add(surface);
 
 
 });
