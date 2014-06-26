@@ -8,15 +8,16 @@ It is actually quite simple really
 
 First make sure you have node.js installed... without that nothing works!  You can either install it with your favorite package manager or with [the installer](http://nodejs.org/download) found on [nodejs.org](http://nodejs.org).
 
-This project relies on grunt-cli, and bower to do all the heavy lifting for you
+This project relies on grunt-cli, and bower to do all the heavy lifting for you (and famo.us if you haven't installed it yet)
 
 ```
-npm install -g grunt-cli bower
+npm install -g grunt-cli bower generator-famous
 ```
 
 ##Getting Started
 
 ```
+yo famous
 npm install && bower install
 ```
 
