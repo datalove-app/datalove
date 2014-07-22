@@ -37,7 +37,8 @@
     "grunt-jscs-checker": "^0.4.1",
     "load-grunt-config": "^0.9.1",
     "time-grunt": "^0.3.1",
-    "famous-metrics": "0.0.9"
+    "ripple-lib": "0.7.37",
+    "ripple-wallet": "3.0.0"
   },
   "scripts": {
     "test": "grunt test"

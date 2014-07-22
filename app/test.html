@@ -7,16 +7,26 @@
 <body>
 
     <p>This is the root account's info:
-        <div id="acct-info">
+        <div id="root-acct-info" data-rootAddr="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh" data-rootSecret="snoPBrXtMeMyMHUVTgbuqAfg1SUTb"> 
 
         </div>
     </p>
 
 
-    <script src="./node_modules/require.js"></script>
-    <script src="./node_modules/ripple-lib/build/ripple-0.7.36.js"></script>
-    <!-- <script src='//code.famo.us/famous/0.2/famous.min.js'></script> -->
-    <script src="./test-famous.js"></script> -->
+    <script src="./lib/requirejs/require.js"></script>
+    <script src="../node_modules/ripple-lib/build/ripple-0.7.36.js"></script>
+    <!--
+    <script src="../node_modules/ripple-wallet/lib/wallet.js"></script>
+	-->
+    
+    <!-- 
+	<script src='//code.famo.us/famous/0.2/famous.min.js'>
+	</script> 
+	-->
+    
+	<script src="src/ripple-test.js"></script>
+    
+    
 
 </body>
 </html>
