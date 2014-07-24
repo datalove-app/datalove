@@ -5,18 +5,7 @@ ehthumbs.db
 Icon?
 Thumbs.db
 
-# Node Files #
-##############
-node_modules
-
 # Project Files #
 #################
 dist
 .tmp
-app/lib
-app/src/build
-.yo-rc.json
-
-# other #
-#########
-app/src/orig

@@ -47,22 +47,18 @@ function signtx(secret, tx_in) {
 */
 
 
-// var ripple = Meteor.require('ripple-lib');
+rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
+rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
 
-var rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
-var rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
+var Amount = ripple.Amount;
+var Remote = ripple.Remote;
 
-var Amount, Remote, remote;
-
-Amount = ripple.Amount;
-
-Remote = ripple.Remote;
 remote = new Remote({
 	trusted: false,
 	local_signing: true,
 	local_fee: true,
 	fee_cushion: 15,
-	max_fee: 100,
+	max_fee: 150,
 	servers: [ {
 		host: "127.0.0.1",
 		// port: 5006,
@@ -71,47 +67,51 @@ remote = new Remote({
 	} ]
 });
 
-///////////////////////////////////////////////////////
-///////////////////////////////////////////////////////
-// txn stuff
-
-/*
-var rcvrAddr  = 'rPJP6M7BmmxVFRUsRvu1x6vSar46tsnXVH';
-var rcvrSecret = 'ssHQXj2YY5fm5VqbBNdp9o9rKw7RB';
-var test_amount     = Amount.from_human('20000XRP');
-
-remote.set_secret(rootAddr, rootSecret);
-
-var transaction = remote.transaction();
-
-transaction.payment({
-	from: rootAddr, 
-	to: rcvr, 
-	amount: test_amount
+remote.connect(function(err) {
+	console.log('Connecting to the local rippled...');
+	
+	rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
+	rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
+	rcvrAddr  = 'rPJP6M7BmmxVFRUsRvu1x6vSar46tsnXVH';
+	rcvrSecret = 'ssHQXj2YY5fm5VqbBNdp9o9rKw7RB';
+	var test_amount = Amount.from_human('200XRP');
+	
+	remote.set_secret(rootAddr, rootSecret);
+	
+	var tx = remote.transaction();
+	
+	// one of a few types of tx
+	tx.payment({
+		from: rootAddr, 
+		to: rcvrAddr, 
+		amount: test_amount
+	});
+	
+	tx.submit(function(err, res) {
+		if (err) {
+		console.log('error: ' + err.result_message);
+		} else {
+		console.log('success: ' + res);
+		}
+	});
 });
 
-remote.conect(function(err) {
-	if (err) {
-		console.log('there\'s been an error');
-	} else {
-		console.log('Connected to the localhost server...');
-	}
-});
+/* 	SOME FUNCTIONS TO REMEMBER
+
+request_server_info(callback)
+	can tell you the reserve costs
+	they should be in the response obj
+	
+request_account_info(addr, callback)
+	tells you an xrp balance
+	
+since you can't return anything out of a callback, you'll have to call a second function within the callback to do the stuff to the value you would have otherwise returned
 
 
-transaction.submit(function(err, res) {
 
-	if (err) {
-		alert('error: ' + err);
-	} else if (res) {
-		alert('success: ' + res);
-	}
 
-});
 
 */
-
-
 
 /*
 # testing the share function
