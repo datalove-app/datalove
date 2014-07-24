@@ -46,12 +46,11 @@ function signtx(secret, tx_in) {
 
 */
 
-// var wallet = require('ripple-lib');
-// var wallet = require("ripple-wallet");
-// 
 
-var rootSecret = document.getElementById('root-acct-info').getAttribute('data-rootSecret');
-var rootAddr = document.getElementById('root-acct-info').getAttribute('data-rootAddr');
+// var ripple = Meteor.require('ripple-lib');
+
+var rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
+var rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
 
 var Amount, Remote, remote;
 
@@ -74,8 +73,9 @@ remote = new Remote({
 
 ///////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////
-txn stuff
+// txn stuff
 
+/*
 var rcvrAddr  = 'rPJP6M7BmmxVFRUsRvu1x6vSar46tsnXVH';
 var rcvrSecret = 'ssHQXj2YY5fm5VqbBNdp9o9rKw7RB';
 var test_amount     = Amount.from_human('20000XRP');
@@ -90,8 +90,12 @@ transaction.payment({
 	amount: test_amount
 });
 
-remote.conect(function() {
-	console.log('Connected to the localhost server...');
+remote.conect(function(err) {
+	if (err) {
+		console.log('there\'s been an error');
+	} else {
+		console.log('Connected to the localhost server...');
+	}
 });
 
 
@@ -105,7 +109,7 @@ transaction.submit(function(err, res) {
 
 });
 
-
+*/
 
 
 

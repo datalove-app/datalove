@@ -20,7 +20,6 @@
   },
   "devDependencies": {
     "requirejs": "",
-    "ripple-lib": "0.7.37",
-    "ripple-wallet": ""
+    "ripple-lib": ""
   }
 }
