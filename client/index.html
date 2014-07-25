@@ -3,8 +3,30 @@
 </head>
 
 <body>
+	<header class="navbar">
+		<div>
+			<a class="brand" href="/">Wufi Txn Streamer</a>
+		</div>
+	</header>
 	
-	<h1>This is my blank page</h1>
+	{{> txns}}
 	
 
 </body>
+
+<template name="txns">
+	<div class="txns-container">
+		{{#each txnsList}}
+			{{> txn}}
+		{{/each}}
+	</div>
+</template>
+
+<template name="txn">
+	<div class="txn-container">
+		<br>Sender: {{sender}}
+		<br>Recipient: {{reciever}}
+		<br>Amount: {{amount}}
+		<br>Date: {{date}}
+	</div>
+</template>

@@ -61,8 +61,7 @@ remote = new Remote({
 	max_fee: 150,
 	servers: [ {
 		host: "127.0.0.1",
-		// port: 5006,
-		port: 6006,
+		port: 5006,
 		secure: false
 	} ]
 });
@@ -78,7 +77,7 @@ remote.connect(function(err) {
 	
 	remote.set_secret(rootAddr, rootSecret);
 	
-	var tx = remote.transaction();
+	tx = remote.transaction();
 	
 	// one of a few types of tx
 	tx.payment({
@@ -91,9 +90,10 @@ remote.connect(function(err) {
 		if (err) {
 		console.log('error: ' + err.result_message);
 		} else {
-		console.log('success: ' + res);
+		console.log('success!');
 		}
 	});
+	
 });
 
 /* 	SOME FUNCTIONS TO REMEMBER
