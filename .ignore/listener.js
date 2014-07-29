@@ -80,10 +80,10 @@ ws.on('open', function() {
 
 ws.on('message', function(message) {
 	
-	message = JSON.parse(message)
+	msg_json = JSON.parse(message)
 	
-	if (!(message.engine_result == 'undefined')) {
-		var txn = new XRPTransaction(message);
+	if (msg_json.hasOwnProperty('engine_result')) {
+		var txn = new XRPTransaction(msg_json);
 		// console.log(JSON.parse(message));
 		insertTxn(txn);
 	}
@@ -101,8 +101,8 @@ function XRPTransaction(msg) {
 	}
 }
 
-/* this connects to rippled and closes the ledger every 10 seconds */
-(function() {
+/* this connects to rippled and closes the ledger every x seconds */
+(function(interval) {
 	var Remote = ripple.Remote;
 
 	var remote = new Remote({
@@ -121,10 +121,10 @@ function XRPTransaction(msg) {
 
 			remote.ledger_accept();
 			console.log('\n## Closing ledger... ##');
-		}, 10000)
+		}, interval)
 
 	);
-})();
+})(7000);
 
 
 /////////////////////////////////////////////////////

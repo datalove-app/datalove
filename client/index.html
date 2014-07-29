@@ -1,18 +1,23 @@
 <head>
-  <title>My Wufi Page</title>
+  <title>Wufi</title>
 </head>
 
 <body>
 	<header class="navbar">
-		<div>
+		<div class="navbar-inner">
 			<a class="brand" href="/">Wufi Txn Streamer</a>
 		</div>
 	</header>
 	
-	{{> txns}}
-	
+	<div id="main" class="row-fluid">	
+		{{sendTxn}}
+		{{> txns}}
+	</div>
 
 </body>
+
+
+
 
 <template name="txns">
 	<div class="txns-container">
@@ -30,3 +35,14 @@
 		<br>Date: {{date}}
 	</div>
 </template>
+
+<!--
+<template name='sendTxn'>
+	<div class='txn-input-container'>
+		<form>
+			<input value='recipient-addr'>
+			<input value='send-amount'>
+		</form>
+	</div>
+</template>
+-->
