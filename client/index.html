@@ -9,8 +9,8 @@
 		</div>
 	</header>
 	
-	<div id="main" class="row-fluid">	
-		{{sendTxn}}
+	<div id="main" class="row-fluid">
+		{{> sendXRP}}
 		{{> txns}}
 	</div>
 
@@ -18,9 +18,9 @@
 
 
 
-
 <template name="txns">
 	<div class="txns-container">
+		<h3>Previous Transactions:</h3>
 		{{#each txnsList}}
 			{{> txn}}
 		{{/each}}
@@ -29,20 +29,23 @@
 
 <template name="txn">
 	<div class="txn-container">
-		<br>Sender: {{sender}}
-		<br>Recipient: {{reciever}}
-		<br>Amount: {{amount}}
-		<br>Date: {{date}}
+		Sender: {{sender}} <br/>
+		Recipient: {{reciever}}	<br/>
+		Amount (in XRP): {{amount}} <br/>
+		Date: {{date}}
 	</div>
 </template>
 
-<!--
-<template name='sendTxn'>
+<template name='sendXRP'>
 	<div class='txn-input-container'>
+		<h3>Send XRP to Another User:</h3>
 		<form>
-			<input value='recipient-addr'>
-			<input value='send-amount'>
+			<label for="recipient-addr"></label>
+				<input id="recipient-addr" type="text" value="Recipient's Address"/>
+			<label for="send-amount"></label>
+				<input id="send-amount" type="text" value="Amount"/>
+			<br><input type="submit" id="submit-txn"/>
 		</form>
 	</div>
 </template>
--->
+

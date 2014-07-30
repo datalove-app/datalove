@@ -47,11 +47,11 @@ function signtx(secret, tx_in) {
 */
 
 Meteor.startup(function() {
-	rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
-	rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
+	Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
+	Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
 
-	var Amount = ripple.Amount;
-	var Remote = ripple.Remote;
+	Amount = ripple.Amount;
+	Remote = ripple.Remote;
 
 	remote = new Remote({
 		trusted: false,
@@ -59,42 +59,23 @@ Meteor.startup(function() {
 		local_fee: true,
 		fee_cushion: 15,
 		max_fee: 150,
-		servers: [ {
-			host: "127.0.0.1",
-			port: 5006,
-			secure: false
-		} ]
-	});
-
-	remote.connect(function(err) {
-		console.log('Connecting to the local rippled...');
-
-		rootAddr = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"; 
-		rootSecret = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb";
-		rcvrAddr  = 'rPJP6M7BmmxVFRUsRvu1x6vSar46tsnXVH';
-		rcvrSecret = 'ssHQXj2YY5fm5VqbBNdp9o9rKw7RB';
-		var test_amount = Amount.from_human('200XRP');
-
-		remote.set_secret(rootAddr, rootSecret);
-
-		tx = remote.transaction();
-
-		// one of a few types of tx
-		tx.payment({
-			from: rootAddr, 
-			to: rcvrAddr, 
-			amount: test_amount
-		});
-
-		tx.submit(function(err, res) {
-			if (err) {
-			console.log('error: ' + err.result_message);
-			} else {
-			console.log('success!');
+		servers: [
+			{
+				host: "127.0.0.1",
+				port: 5006,
+				secure: false
 			}
-		});
-
+		]
 	});
+
+	remote.connect(function (err) {
+		console.log('Connecting to the local rippled...');
+		remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
+	});
+
+});
+
+
 
 	/* 	SOME FUNCTIONS TO REMEMBER
 
@@ -108,9 +89,6 @@ Meteor.startup(function() {
 	since you can't return anything out of a callback, you'll have to call a second function within the callback to do the stuff to the value you would have otherwise returned
 
 
-
-
-
 	*/
 
 	/*
@@ -119,16 +97,3 @@ Meteor.startup(function() {
 	console.log(tx_blob)
 	# share_submit_request = remote.request_submit(tx_blob)
 	*/
-});
-
-
-
-
-
-
-
-
-
-
-
-
