@@ -6,6 +6,7 @@ Template.txns.helpers({
 
 Template.txn.helpers({
 	date: convertDate,
+
 	amount: function() {
 		return this.amount/1e6
 	}

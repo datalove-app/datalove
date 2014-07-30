@@ -20,11 +20,13 @@ submitXRPTxn = function(event, template) {
 		amount: amt
 	});
 
+	console.log('sending the txn...')
+
 	tx.submit(function (err, res) {
 		if (err) {
 			console.log('error: ' + err.result_message);
 		} else {
-			console.log('success!');
+			console.log('successful txn submission!');
 		}
 	});
 };

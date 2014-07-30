@@ -19,7 +19,7 @@
 
 
 <template name="txns">
-	<div class="txns-container">
+	<div class="txns-container container">
 		<h3>Previous Transactions:</h3>
 		{{#each txnsList}}
 			{{> txn}}
@@ -28,7 +28,7 @@
 </template>
 
 <template name="txn">
-	<div class="txn-container">
+	<div class="txn-container row">
 		Sender: {{sender}} <br/>
 		Recipient: {{reciever}}	<br/>
 		Amount (in XRP): {{amount}} <br/>
@@ -37,7 +37,7 @@
 </template>
 
 <template name='sendXRP'>
-	<div class='txn-input-container'>
+	<div class='txn-input-container container'>
 		<h3>Send XRP to Another User:</h3>
 		<form>
 			<label for="recipient-addr"></label>

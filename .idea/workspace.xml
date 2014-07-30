@@ -2,11 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="87c2e9cf-c581-4f5c-90b2-f7e61f0e8988" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/client/helpers/helpers.js" afterPath="$PROJECT_DIR$/client/helpers/helpers.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/client/index.html" afterPath="$PROJECT_DIR$/client/index.html" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/client/index.js" afterPath="$PROJECT_DIR$/client/index.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/server/lib/init.js" afterPath="$PROJECT_DIR$/server/lib/init.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.meteor/release" afterPath="$PROJECT_DIR$/.meteor/release" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/client/ripple-test.js" afterPath="$PROJECT_DIR$/client/ripple-test.js" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/server/server.js" afterPath="$PROJECT_DIR$/server/server.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="wufi.iws" />
@@ -32,20 +32,20 @@
     <splitter split-orientation="horizontal" split-proportion="0.49166006">
       <split-first>
         <leaf>
-          <file leaf-file-name="index.html" pinned="false" current="false" current-in-tab="true">
+          <file leaf-file-name="index.html" pinned="false" current="false" current-in-tab="false">
             <entry file="file://$PROJECT_DIR$/client/index.html">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.33497536" vertical-offset="392" max-vertical-offset="1222">
-                  <caret line="33" column="18" selection-start-line="33" selection-start-column="18" selection-end-line="33" selection-end-column="18" />
+                <state vertical-scroll-proportion="-24.96" vertical-offset="0" max-vertical-offset="1222">
+                  <caret line="39" column="42" selection-start-line="39" selection-start-column="42" selection-end-line="39" selection-end-column="42" />
                   <folding />
                 </state>
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="index.css" pinned="false" current="false" current-in-tab="false">
+          <file leaf-file-name="index.css" pinned="false" current="true" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/client/index.css">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="721">
+                <state vertical-scroll-proportion="0.6682135" vertical-offset="0" max-vertical-offset="719">
                   <caret line="18" column="28" selection-start-line="18" selection-start-column="28" selection-end-line="18" selection-end-column="28" />
                   <folding />
                 </state>
@@ -56,10 +56,10 @@
       </split-first>
       <split-second>
         <leaf>
-          <file leaf-file-name="ripple-test.js" pinned="false" current="false" current-in-tab="false">
+          <file leaf-file-name="ripple-test.js" pinned="false" current="false" current-in-tab="true">
             <entry file="file://$PROJECT_DIR$/client/ripple-test.js">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1567">
+                <state vertical-scroll-proportion="2.6411483" vertical-offset="0" max-vertical-offset="1474">
                   <caret line="95" column="47" selection-start-line="95" selection-start-column="47" selection-end-line="95" selection-end-column="47" />
                   <folding>
                     <element signature="e#1608#1791#0" expanded="true" />
@@ -68,26 +68,26 @@
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="index.js" pinned="false" current="true" current-in-tab="true">
-            <entry file="file://$PROJECT_DIR$/client/index.js">
+          <file leaf-file-name="helpers.js" pinned="false" current="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/client/helpers/helpers.js">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.7424594" vertical-offset="0" max-vertical-offset="799">
-                  <caret line="20" column="2" selection-start-line="20" selection-start-column="2" selection-end-line="20" selection-end-column="2" />
+                <state vertical-scroll-proportion="0.0" vertical-offset="96" max-vertical-offset="911">
+                  <caret line="24" column="0" selection-start-line="24" selection-start-column="0" selection-end-line="24" selection-end-column="0" />
                   <folding>
-                    <element signature="e#22#104#0" expanded="true" />
-                    <element signature="e#129#202#0" expanded="true" />
+                    <element signature="e#427#492#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
             </entry>
           </file>
-          <file leaf-file-name="helpers.js" pinned="false" current="false" current-in-tab="false">
-            <entry file="file://$PROJECT_DIR$/client/helpers/helpers.js">
+          <file leaf-file-name="index.js" pinned="false" current="false" current-in-tab="false">
+            <entry file="file://$PROJECT_DIR$/client/index.js">
               <provider selected="true" editor-type-id="text-editor">
-                <state vertical-scroll-proportion="0.0" vertical-offset="48" max-vertical-offset="879">
-                  <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
+                <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="815">
+                  <caret line="17" column="2" selection-start-line="17" selection-start-column="2" selection-end-line="17" selection-end-column="2" />
                   <folding>
-                    <element signature="e#427#492#0" expanded="true" />
+                    <element signature="e#22#104#0" expanded="true" />
+                    <element signature="e#129#203#0" expanded="true" />
                   </folding>
                 </state>
               </provider>
@@ -110,11 +110,14 @@
       <list>
         <option value="$PROJECT_DIR$/public/index.css" />
         <option value="$PROJECT_DIR$/client/index.css" />
-        <option value="$PROJECT_DIR$/server/lib/init.js" />
         <option value="$PROJECT_DIR$/client/ripple-test.js" />
         <option value="$PROJECT_DIR$/client/index.html" />
-        <option value="$PROJECT_DIR$/client/helpers/helpers.js" />
         <option value="$PROJECT_DIR$/client/index.js" />
+        <option value="$PROJECT_DIR$/.ignore/listener.js" />
+        <option value="$PROJECT_DIR$/server/lib/init.js" />
+        <option value="$PROJECT_DIR$/README.md" />
+        <option value="$PROJECT_DIR$/client/helpers/helpers.js" />
+        <option value="$PROJECT_DIR$/server/server.js" />
       </list>
     </option>
   </component>
@@ -123,7 +126,6 @@
     <config-path />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-1280" />
     <option name="y" value="24" />
     <option name="width" value="1280" />
     <option name="height" value="776" />
@@ -438,7 +440,7 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1280" y="24" width="1280" height="776" extended-state="6" />
+    <frame x="0" y="24" width="1280" height="776" extended-state="6" />
     <editor active="false" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32977098" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -512,7 +514,7 @@
           <caret line="9" column="0" selection-start-line="9" selection-start-column="0" selection-end-line="9" selection-end-column="0" />
           <folding>
             <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -541,7 +543,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -570,7 +572,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -599,7 +601,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -628,45 +630,83 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/server/server.js">
+    <entry file="file://$PROJECT_DIR$/client/index.html">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="767">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        <state vertical-scroll-proportion="-24.96" vertical-offset="0" max-vertical-offset="1222">
+          <caret line="39" column="42" selection-start-line="39" selection-start-column="42" selection-end-line="39" selection-end-column="42" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/client/index.css">
+    <entry file="file://$PROJECT_DIR$/client/compatibility/ripple-0.7.36.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="721">
-          <caret line="18" column="28" selection-start-line="18" selection-start-column="28" selection-end-line="18" selection-end-column="28" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="413899">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/server/lib/init.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0369515" vertical-offset="0" max-vertical-offset="433">
-          <caret line="0" column="72" selection-start-line="0" selection-start-column="72" selection-end-line="0" selection-end-column="72" />
+        <state vertical-scroll-proportion="0.3712297" vertical-offset="16" max-vertical-offset="591">
+          <caret line="9" column="1" selection-start-line="9" selection-start-column="1" selection-end-line="9" selection-end-column="1" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/client/index.html">
+    <entry file="file://$PROJECT_DIR$/README.md">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33497536" vertical-offset="392" max-vertical-offset="1222">
-          <caret line="33" column="18" selection-start-line="33" selection-start-column="18" selection-end-line="33" selection-end-column="18" />
+        <state vertical-scroll-proportion="0.11136891" vertical-offset="0" max-vertical-offset="607">
+          <caret line="3" column="26" selection-start-line="3" selection-start-column="26" selection-end-line="3" selection-end-column="26" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/server/server.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.15196079" vertical-offset="2" max-vertical-offset="520">
+          <caret line="4" column="6" selection-start-line="4" selection-start-column="6" selection-end-line="4" selection-end-column="6" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/client/index.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="815">
+          <caret line="17" column="2" selection-start-line="17" selection-start-column="2" selection-end-line="17" selection-end-column="2" />
+          <folding>
+            <element signature="e#22#104#0" expanded="true" />
+            <element signature="e#129#203#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.ignore/listener.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.40835267" vertical-offset="624" max-vertical-offset="2463">
+          <caret line="52" column="26" selection-start-line="52" selection-start-column="26" selection-end-line="52" selection-end-column="26" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/client/helpers/helpers.js">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0" vertical-offset="96" max-vertical-offset="911">
+          <caret line="24" column="0" selection-start-line="24" selection-start-column="0" selection-end-line="24" selection-end-column="0" />
+          <folding>
+            <element signature="e#427#492#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/client/ripple-test.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="816" max-vertical-offset="1567">
+        <state vertical-scroll-proportion="2.6411483" vertical-offset="0" max-vertical-offset="1474">
           <caret line="95" column="47" selection-start-line="95" selection-start-column="47" selection-end-line="95" selection-end-column="47" />
           <folding>
             <element signature="e#1608#1791#0" expanded="true" />
@@ -674,24 +714,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/client/helpers/helpers.js">
+    <entry file="file://$PROJECT_DIR$/client/index.css">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="879">
-          <caret line="8" column="6" selection-start-line="8" selection-start-column="6" selection-end-line="8" selection-end-column="6" />
-          <folding>
-            <element signature="e#427#492#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/client/index.js">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.7424594" vertical-offset="0" max-vertical-offset="799">
-          <caret line="20" column="2" selection-start-line="20" selection-start-column="2" selection-end-line="20" selection-end-column="2" />
-          <folding>
-            <element signature="e#22#104#0" expanded="true" />
-            <element signature="e#129#202#0" expanded="true" />
-          </folding>
+        <state vertical-scroll-proportion="0.6682135" vertical-offset="0" max-vertical-offset="719">
+          <caret line="18" column="28" selection-start-line="18" selection-start-column="28" selection-end-line="18" selection-end-column="28" />
+          <folding />
         </state>
       </provider>
     </entry>
