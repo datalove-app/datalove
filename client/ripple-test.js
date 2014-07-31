@@ -69,7 +69,7 @@ Meteor.startup(function() {
 	});
 
 	remote.connect(function (err) {
-		console.log('Connecting to the local rippled...');
+		console.log('Connecting to rippled...');
 		remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
 	});
 

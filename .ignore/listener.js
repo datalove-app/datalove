@@ -31,7 +31,7 @@ bonus:
 
 var ddpclient = new DDPClient({
 	host: 'localhost',
-	port: 3000,
+	port: 8080,
 	auto_reconnect: true,
 	auto_reconnect_timer: 500,
 	use_ssl: false,

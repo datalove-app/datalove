@@ -6,10 +6,18 @@ convertDate = function() {
 };
 
 submitXRPTxn = function(event, template) {
-	event.preventDefault();
+	// TODO: refactor this as a closure for both xrp and wfi txns
 
-	var rcvrAddr = document.getElementById('recipient-addr').value;
-	var amt = document.getElementById('send-amount').value;
+	event.preventDefault();
+	var btn = $('#submit-txn');
+	btn.button('loading');
+
+	var input_rcvr = template.find('input[id=recipient-addr]');
+	var input_amt = template.find('input[id=send-amount]');
+	var rcvrAddr = input_rcvr.value.trim();
+	var amt = input_amt.value;
+
+	// console.log(rcvrAddr, amt);
 	amt = Amount.from_human(amt + 'XRP');
 
 	var tx = remote.transaction();
@@ -20,13 +28,19 @@ submitXRPTxn = function(event, template) {
 		amount: amt
 	});
 
-	console.log('sending the txn...')
+	console.log('sending the txn...');
 
 	tx.submit(function (err, res) {
 		if (err) {
 			console.log('error: ' + err.result_message);
 		} else {
 			console.log('successful txn submission!');
+			input_rcvr.value = '';
+			input_amt.value = '';
+			btn.button('complete');
+			Meteor.setTimeout(function() {
+				btn.button('original');
+			}, 5000);
 		}
 	});
 };
