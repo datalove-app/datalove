@@ -1,8 +1,20 @@
-.send-xrp-form > input {
+.txn-form > form > input {
     display: block;
 }
 
-.share-wfi-form > input {
-    display: block;
+.txn-form > form > span {
+    display: inline;
 }
 
+.input-xxlarge {
+    width: 300px;
+}
+
+#current-addr {
+    color: #808080;
+    font-style: italic;
+}
+
+ul.list {
+    list-style-type: none;
+}

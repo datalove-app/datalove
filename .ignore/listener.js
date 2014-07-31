@@ -28,10 +28,11 @@ bonus:
 ////////////////////////////////////////////////////////////
 /*	DDP INITIALIZATION STUFF	*/
 ////////////////////////////////////////////////////////////
+var ddpPort = 3000
 
 var ddpclient = new DDPClient({
 	host: 'localhost',
-	port: 8080,
+	port: ddpPort,
 	auto_reconnect: true,
 	auto_reconnect_timer: 500,
 	use_ssl: false,
@@ -42,7 +43,7 @@ ddpclient.connect(function(err) {
 		console.log('There\'s been an error connecting to the Meteor server...');
 		return
 	}
-	console.log('Connecting to the Meteor server...');
+	console.log('Connecting to the Meteor server on port ' + ddpPort + '...');
 });
 
 // define the ddp call to the server

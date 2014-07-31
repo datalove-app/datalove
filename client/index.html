@@ -6,14 +6,14 @@
 <body>
 	<header class="navbar">
 		<div class="navbar-inner">
-			<a class="brand pure-menu-horizontal pure-button" href="/">Wufi Txn Streamer</a>
+			<a class="brand" href="/">Wufi Txn Streamer</a>
 		</div>
 	</header>
-	
-	<div class="pure-g">
-		{{> txnForms}} <!-- soon to be txnForms -->
+
+	<div class="">
+		{{> txnForms}}
 	</div>
-	<div class="pure-g">
+	<div class="">
 		{{> txns}}
 	</div>
 
@@ -22,9 +22,9 @@
 
 
 <template name="txns">
-	<div class="panel panel-primary txns-container">
-		<div class="panel-heading">Previous Transactions:</div>
-		<ul class="list-group">
+	<div class="txns-container">
+		<div class="txn-list-header"><h4>Previous Transactions:</h4></div>
+		<ul class="list">
 			{{#each txnsList}}
 				{{> txn}}
 			{{/each}}
@@ -33,7 +33,7 @@
 </template>
 
 <template name="txn">
-	<li class="list-group-item">
+	<li class="well well-small">
 		Sender: {{sender}} <br/>
 		Recipient: {{reciever}}	<br/>
 		Amount (in XRP): {{amount}} <br/>
@@ -43,37 +43,51 @@
 
 <template name="txnForms">
 	<div class="txn-form-box">
-
 		<div class="txn-form-heading">
 			<ul id="txn-tabs" class="nav nav-tabs" role="tablist">
-				<li class="active"><a href="#sendxrp" data-toggle="tab" role="tab">Send XRP</a></li>
+				<li><a href="#sendxrp" data-toggle="tab" role="tab">Send XRP</a></li>
 				<li><a href="#sharewfi" data-toggle="tab" role="tab">Share WFI</a></li>
+				<li class="active"><a href="#config" data-toggle="tab"
+role="tab">Configuration</a></li>
 			</ul>
 		</div>
 
 		<div class="txn-form-content tab-content">
 			{{> sendXRP}}
 			{{> shareWFI}}
+			{{> config}}
 		</div>
 	</div>
 </template>
 
-<template name='sendXRP'>
-	<div id="sendxrp" class='txn-input-container send-xrp-container tab-pane fade in active'>
+<template name="config">
+	<div id="config" class="txn-form config-container tab-pane fade in active">
+		<h4>Set Your Address and Private Keys</h4>
+		<form class="config-form">
+			<span id="current-addr">Your Current Address: {{myAddr}}</span>
+			<input id="new-addr" type="text" placeholder="Your Address" class="input-xxlarge"/>
+			<input id="new-key" type="password" placeholder="Your Private Key" class="input-xxlarge"/>
+			<input type="submit" id="submit-config" class="btn btn-primary" data-loading-text="Updating..." data-complete-text="Complete!" data-original-text="Submit"/>
+		</form>
+	</div>
+</template>
+
+<template name="sendXRP">
+	<div id="sendxrp" class='txn-form send-xrp-container tab-pane fade'>
 		<h4>Send XRP to Another User:</h4>
 		<form class="send-xrp-form">
-			<input id="recipient-addr" type="text" placeholder="Recipient's Address" class=""/>
+			<input id="recipient-addr" type="text" placeholder="Recipient's Address" class="input-xxlarge"/>
 			<input id="send-amount" type="text" placeholder="Amount (in XRP)" class=""/>
 			<input type="submit" id="submit-txn" class="btn btn-primary" data-loading-text="Sending..." data-complete-text="Complete!" data-original-text="Submit"/>
 		</form>
 	</div>
 </template>
 
-<template name='shareWFI'>
-	<div id="sharewfi" class='txn-input-container share-wfi-container tab-pane fade'>
+<template name="shareWFI">
+	<div id="sharewfi" class='txn-form share-wfi-container tab-pane fade'>
 		<h4>Share Wufi with Another User:</h4>
 		<form class="share-wfi-form">
-			<input id="recipient-addr" type="text" placeholder="Recipient's Address" class=""/>
+			<input id="recipient-addr" type="text" placeholder="Recipient's Address" class="input-xxlarge"/>
 			<input id="send-amount" type="text" placeholder="Amount (in Wufi)" class=""/>
 			<input type="submit" id="submit-txn" class="btn btn-primary" data-loading-text="Sending..." data-complete-text="Complete!" data-original-text="Submit"/>
 		</form>

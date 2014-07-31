@@ -44,3 +44,18 @@ submitXRPTxn = function(event, template) {
 		}
 	});
 };
+
+updateConfig = function(event, template) {
+	event.preventDefault();
+
+	var input_addr = template.find('input[id=new-addr]');
+	var input_key = template.find('input[id=new-key]');
+
+	Session.set('myAddr', input_addr.value.trim());
+	Session.set('mySecret', input_key.value);
+
+	remote.set_secret(input_addr.value.trim(), input_key.value);
+
+	input_addr.value = '';
+	input_key.value = '';
+}
