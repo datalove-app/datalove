@@ -67,11 +67,11 @@ function insertTxn(t) {
 ////////////////////////////////////////////////////////////
 /* THE GOOD STUFF */
 ////////////////////////////////////////////////////////////
-var ws = new Websocket('ws://localhost:5006');
-// var ws = new Websocket('ws://s1.stellar.com:443');
+// var ws = new Websocket('ws://localhost:5006');
+var ws = new Websocket('ws://live.stellar.org:9001');
 
 ws.on('open', function() {
-	console.log('Connecting to the rippled server using ws...');
+	console.log('Connecting to the stellard server using ws...');
 	
 	// subscribes us to ledger close events
 	// ws.send('{"command": "subscribe", "id": 0, "streams": ["ledger"]}');
@@ -86,7 +86,7 @@ ws.on('message', function(message) {
 	
 	if (msg_json.hasOwnProperty('engine_result')) {
 		var txn = new STRTransaction(msg_json);
-		// console.log(JSON.parse(message));
+		console.log(msg_json);
 		insertTxn(txn);
 	}
 });

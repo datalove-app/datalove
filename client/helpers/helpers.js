@@ -5,7 +5,7 @@ convertDate = function() {
 	return date;
 };
 
-submitXRPTxn = function(event, template) {
+submitSTRTxn = function(event, template) {
 	// TODO: refactor this as a closure for both xrp and wfi txns
 
 	event.preventDefault();

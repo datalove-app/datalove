@@ -12,8 +12,8 @@ Template.txn.helpers({
 	}
 });
 
-Template.sendXRP.events({
-	'click input#submit-txn': submitXRPTxn
+Template.sendSTR.events({
+	'click input#submit-txn': submitSTRTxn
 });
 
 Template.config.helpers({

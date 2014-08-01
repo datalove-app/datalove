@@ -10,3 +10,5 @@ Thumbs.db
 dist
 .tmp
 .lock
+packages/polymer
+public/elements
