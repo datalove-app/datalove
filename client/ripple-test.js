@@ -50,8 +50,8 @@ Meteor.startup(function() {
 	Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
 	Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
 
-	Amount = ripple.Amount;
-	Remote = ripple.Remote;
+	Amount = stellar.Amount;
+	Remote = stellar.Remote;
 
 	remote = new Remote({
 		trusted: false,
@@ -69,7 +69,7 @@ Meteor.startup(function() {
 	});
 
 	remote.connect(function (err) {
-		console.log('Connecting to rippled...');
+		console.log('Connecting to stellard...');
 		remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
 	});
 

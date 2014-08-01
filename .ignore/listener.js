@@ -1,10 +1,10 @@
-var ripple = require('ripple-lib');
+var stellar = require('stellar-lib');
 var Websocket = require('ws');
 var DDPClient = require('ddp');
 
 /*
 NEED TO:
-	1. connect to rippled using websockets
+	1. connect to stellard using websockets
 			[COMPLETE]
 	2. use the right rpc command to listen to the right txns (or all of them)
 			[COMPLETE]
@@ -68,6 +68,7 @@ function insertTxn(t) {
 /* THE GOOD STUFF */
 ////////////////////////////////////////////////////////////
 var ws = new Websocket('ws://localhost:5006');
+// var ws = new Websocket('ws://s1.stellar.com:443');
 
 ws.on('open', function() {
 	console.log('Connecting to the rippled server using ws...');
@@ -84,14 +85,14 @@ ws.on('message', function(message) {
 	msg_json = JSON.parse(message)
 	
 	if (msg_json.hasOwnProperty('engine_result')) {
-		var txn = new XRPTransaction(msg_json);
+		var txn = new STRTransaction(msg_json);
 		// console.log(JSON.parse(message));
 		insertTxn(txn);
 	}
 });
 
 /* class for relevant XRP transaction data */
-function XRPTransaction(msg) {
+function STRTransaction(msg) {
 	// msg = JSON.parse(msg);
 	if (msg.engine_result == 'tesSUCCESS' && msg.transaction.TransactionType == 'Payment') {
 		this.sender = msg.transaction.Account;
@@ -103,8 +104,9 @@ function XRPTransaction(msg) {
 }
 
 /* this connects to rippled and closes the ledger every x seconds */
+/*
 (function(interval) {
-	var Remote = ripple.Remote;
+	var Remote = stellar.Remote;
 
 	var remote = new Remote({
 		servers: [{
@@ -127,6 +129,7 @@ function XRPTransaction(msg) {
 	);
 })(7000);
 
+*/
 
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
