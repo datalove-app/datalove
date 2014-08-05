@@ -47,11 +47,20 @@ function signtx(secret, tx_in) {
 */
 
 Meteor.startup(function() {
+
+	if (typeof stellar !== 'undefined') {
+		cryptolib = stellar;
+		lib_name = 'Stellar';
+	} else {
+		cryptolib = ripple;
+		lib_name = 'Ripple';
+	}
+
 	Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
 	Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
 
-	Amount = stellar.Amount;
-	Remote = stellar.Remote;
+	Amount = cryptolib.Amount;
+	Remote = cryptolib.Remote;
 
 	remote = new Remote({
 		trusted: false,

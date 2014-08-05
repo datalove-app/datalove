@@ -5,7 +5,9 @@ Template.txns.helpers({
 });
 
 Template.txn.helpers({
-	date: convertDate,
+	age: function() {
+		return convertDate
+	},
 
 	amount: function() {
 		return this.amount/1e6

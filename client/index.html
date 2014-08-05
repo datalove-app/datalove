@@ -24,7 +24,7 @@
 
 <template name="txns">
 	<div class="txns-container">
-		<div class="txn-list-header"><h4>Live Transactions:</h4></div>
+		<div class="txn-list-header"><h4>Live Transactions on the Stellar network:</h4></div>
 		<ul class="list">
 			{{#each txnsList}}
 				{{> txn}}
@@ -38,7 +38,7 @@
 		Sender: {{sender}} <br/>
 		Recipient: {{reciever}}	<br/>
 		Amount (in STR): {{amount}} <br/>
-		Date: {{date}}
+		{{age}}
 	</li>
 </template>
 

@@ -1,3 +1,4 @@
+// var ripple = require('ripple-lib')
 var stellar = require('stellar-lib');
 var Websocket = require('ws');
 var DDPClient = require('ddp');
@@ -28,8 +29,9 @@ bonus:
 ////////////////////////////////////////////////////////////
 /*	DDP INITIALIZATION STUFF	*/
 ////////////////////////////////////////////////////////////
+// when publishing to meteor's site, update this info accordingly
+// since it will have to be run locally
 var ddpPort = 3000
-
 var ddpclient = new DDPClient({
 	host: 'localhost',
 	port: ddpPort,
@@ -38,6 +40,7 @@ var ddpclient = new DDPClient({
 	use_ssl: false,
 	maintain_collections: false
 });
+
 ddpclient.connect(function(err) {
 	if (err) {
 		console.log('There\'s been an error connecting to the Meteor server...');
