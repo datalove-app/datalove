@@ -1,3 +1,14 @@
+/* for famo.us */
+html {
+    overflow: visible;
+    position: static;
+}
+body {
+    overflow: auto;
+    position: static;
+}
+/*              */
+
 .txn-form > form > input {
     display: block;
 }
