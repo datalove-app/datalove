@@ -46,6 +46,9 @@ function signtx(secret, tx_in) {
 
 */
 
+// famous.polyfills;
+// famous.core.famous;
+
 Meteor.startup(function() {
 
 	if (typeof stellar !== 'undefined') {
@@ -81,6 +84,13 @@ Meteor.startup(function() {
 		console.log('Connecting to stellard...');
 		remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
 	});
+
+
+	//////////////////////////////////////////////////////////////////
+	// FAMOUS STUFF //////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////
+
+
 
 });
 

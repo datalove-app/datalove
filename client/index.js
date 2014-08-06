@@ -14,6 +14,29 @@ Template.txn.helpers({
 	}
 });
 
+Template.fam.rendered = function() {
+	var Engine = require("famous/core/Engine");
+	var Surface = require("famous/core/Surface");
+	var View = require("famous/core/View");
+
+	var mainContext = Engine.createContext();
+	// var renderController = new View.RenderController();
+	var surface = new Surface({
+		content: 'Hello, meteor-famous!',
+		size: [100, 100],
+		properties: {
+			color: 'white',
+			textAlign: 'center',
+			fontSize: '20px'
+		}
+	})
+
+	// renderController.show(surface);
+
+	mainContext.add(surface);
+
+}
+
 Template.sendSTR.events({
 	'click input#submit-txn': submitSTRTxn
 });
