@@ -4,25 +4,23 @@
 </head>
 
 <body>
+
 	<header class="navbar">
 		<div class="navbar-inner">
 			<a class="brand" href="/">Stellar Txn Streamer</a>
 		</div>
 	</header>
-<!--
+
 	<div class="">
 		{{> txnForms}}
 	</div>
+
+<!--
+	{{> fam}}
+	{{> fav}}
 -->
 
-	<div>
-		{{> fam}}
-	</div>
-
-	<div class="">
-		{{> txns}}
-	</div>
-
+	{{> txns}}
 </body>
 
 
@@ -43,7 +41,7 @@
 		Sender: {{sender}} <br/>
 		Recipient: {{reciever}}	<br/>
 		Amount (in STR): {{amount}} <br/>
-		{{age}}
+		Sent: {{age}}
 	</li>
 </template>
 
@@ -100,4 +98,7 @@ role="tab">Configuration</a></li>
 	</div>
 </template>
 
+
 <template name="fam"></template>
+
+<template name="fav"></template>

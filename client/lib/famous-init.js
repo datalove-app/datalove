@@ -9,11 +9,11 @@ Meteor.startup(function() {
 	window.Engine = require('famous/core/Engine');
 
 	window.View = require('famous/core/View');
-	// window.Deck = require('famous/views/Deck');
-	// window.Group = require('famous/core/Group');
 	window.Surface = require('famous/core/Surface');
 	window.Modifier = require('famous/core/Modifier');
 	window.Transform = require('famous/core/Transform');
+	// window.Deck = require('famous/views/Deck');
+	// window.Group = require('famous/core/Group');
 	// window.Utility = require('famous/utilities/Utility');
 	// window.Draggable = require('famous/modifiers/Draggable');
 	// window.StateModifier = require('famous/modifiers/StateModifier');

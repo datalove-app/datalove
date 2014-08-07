@@ -28,4 +28,5 @@ body {
 
 ul.list {
     list-style-type: none;
+    list-style-position: outside;
 }

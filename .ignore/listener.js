@@ -31,7 +31,7 @@ bonus:
 ////////////////////////////////////////////////////////////
 // when publishing to meteor's site, update this info accordingly
 // since it will have to be run locally
-var ddpPort = 3000
+var ddpPort = 8080;
 var ddpclient = new DDPClient({
 	host: 'localhost',
 	port: ddpPort,
@@ -70,11 +70,15 @@ function insertTxn(t) {
 ////////////////////////////////////////////////////////////
 /* THE GOOD STUFF */
 ////////////////////////////////////////////////////////////
-// var ws = new Websocket('ws://localhost:5006');
-var ws = new Websocket('ws://live.stellar.org:9001');
+var network = process.argv[2];
+if (network === 'rippled') {
+	var ws = new Websocket('ws://localhost:5006');
+} else if (network === 'stellard') {
+	var ws = new Websocket('ws://live.stellar.org:9001');
+}
 
 ws.on('open', function() {
-	console.log('Connecting to the stellard server using ws...');
+	console.log('Connecting to the ' + network + ' server using ws...');
 	
 	// subscribes us to ledger close events
 	// ws.send('{"command": "subscribe", "id": 0, "streams": ["ledger"]}');
@@ -89,7 +93,7 @@ ws.on('message', function(message) {
 	
 	if (msg_json.hasOwnProperty('engine_result')) {
 		var txn = new STRTransaction(msg_json);
-		console.log(msg_json);
+		// console.log(msg_json);
 		insertTxn(txn);
 	}
 });

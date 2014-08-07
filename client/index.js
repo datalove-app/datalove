@@ -5,9 +5,7 @@ Template.txns.helpers({
 });
 
 Template.txn.helpers({
-	age: function() {
-		return convertDate
-	},
+	age: ageString,
 
 	amount: function() {
 		return this.amount/1e6
@@ -16,28 +14,65 @@ Template.txn.helpers({
 
 Template.fam.rendered = function() {
 
-	// require("famous-polyfills"); // Add polyfills
-	// require("famous/core/famous"); // Add the default css file
-	// var Engine = require("famous/core/Engine");
-	// var Surface = require("famous/core/Surface");
-	// var View = require("famous/core/View");
-
 	var mainContext = Engine.createContext();
 	var surface = new Surface({
-		content: 'Hello, meteor-famous!',
-		size: [100, 100],
+		content: '<ul>' +
+			'<li>item1</li>' +
+			'<li>item2</li>' +
+			'</ul>',
+		size: [75, 75],
 		properties: {
-			color: 'white',
+			color: 'black',
 			textAlign: 'center',
-			fontSize: '20px',
+			fontSize: '10px',
 			backgroundColor: 'orange'
 		}
 	});
 
-	mainContext.add(surface);
+	var modifier = new Modifier({
+		origin: [0, 0]
+	})
 
+	mainContext.add(modifier).add(surface);
 };
 
+Template.fav.rendered = function() {
+
+	var mainContext = Engine.createContext();
+	var surface = new Surface({
+		content: '<ul>' +
+			'<li>item3</li>' +
+			'<li>item4</li>' +
+			'</ul>',
+		size: [50, undefined],
+		properties: {
+			color: 'white',
+			textAlign: 'center',
+			fontSize: '25px',
+			backgroundColor: 'lightblue'
+		}
+	});
+
+	var sizeModifier = new Modifier({
+		size: [100, 100]
+	});
+
+	var modifier = new Modifier({
+		origin: [0, 0],
+		align: [1, 1],
+		transform: Transform.translate(0, -100, 0)
+	});
+
+	mainContext.add(sizeModifier).add(modifier).add(surface);
+};
+
+Template.fav.helpers({
+	name: function() {
+		return 'handlebars';
+	}
+})
+
+/////////////////////////////////////////////////////////
 Template.sendSTR.events({
 	'click input#submit-txn': submitSTRTxn
 });

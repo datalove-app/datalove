@@ -5,6 +5,25 @@ convertDate = function() {
 	return date;
 };
 
+ageString = function() {
+	var day_zero = 946684800;
+	var date = day_zero + this.date;
+	var diff = (Date.now()/1000) - date;
+	if (diff < 60) {
+		return '< 1 minute ago';
+	} else if (diff < 3600) {
+		return Math.floor(diff/60) + ' minutes ago';
+	} else if (diff < 86400) {
+		if (diff < 7200) {
+			return '1 hour ago'
+		} else {
+			return Math.floor(diff / 3600) + ' hours ago';
+		}
+	} else {
+		return 'some time ago';
+	}
+},
+
 submitSTRTxn = function(event, template) {
 	// TODO: refactor this as a closure for both xrp and wfi txns
 

@@ -46,9 +46,6 @@ function signtx(secret, tx_in) {
 
 */
 
-// famous.polyfills;
-// famous.core.famous;
-
 Meteor.startup(function() {
 
 	if (typeof stellar !== 'undefined') {
@@ -59,8 +56,13 @@ Meteor.startup(function() {
 		lib_name = 'Ripple';
 	}
 
-	Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
-	Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
+	if (lib_name == "Ripple") {
+		Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
+		Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
+	} else {
+		Session.set('myAddr', "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
+		Session.set('mySecret', "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
+	}
 
 	Amount = cryptolib.Amount;
 	Remote = cryptolib.Remote;
