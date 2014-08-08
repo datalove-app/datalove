@@ -12,6 +12,24 @@ Template.txn.helpers({
 	}
 });
 
+Template.sendSTR.events({
+	'click input#submit-txn': submitSTRTxn
+});
+
+Template.config.helpers({
+	myAddr: function() {
+		return Session.get('myAddr')
+	}
+});
+
+Template.config.events({
+	'click input#submit-config' : updateConfig
+});
+
+//////////////////////////////////////////////////////////
+/////////////////// FAMO.US RELATED //////////////////////
+//////////////////////////////////////////////////////////
+
 Template.fam.rendered = function() {
 
 	var mainContext = Engine.createContext();
@@ -73,20 +91,5 @@ Template.fav.helpers({
 })
 
 /////////////////////////////////////////////////////////
-Template.sendSTR.events({
-	'click input#submit-txn': submitSTRTxn
-});
 
-Template.config.helpers({
-	myAddr: function() {
-		return Session.get('myAddr')
-	}
-});
 
-Template.config.events({
-	'click input#submit-config' : updateConfig
-});
-
-Template.txnForms.events({
-
-});
