@@ -6,10 +6,14 @@ Thumbs.db
 
 # Node Files #
 ##############
-node_modules
+.gulp/node_modules
 
 # Project Files #
 #################
+
+# Gulp-built files #
+####################
+lib/deps.js
 
 # other #
 #########

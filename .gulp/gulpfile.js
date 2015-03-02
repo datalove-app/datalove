@@ -7,9 +7,9 @@ var reactify = require('reactify');
 var path = {
   MINIFIED_OUT: 'deps.min.js',
   OUT: 'deps.js',
-  DEST: '../client',
-  DEST_SRC: '../client',
-  DEST_BUILD: '../client/lib',
+  DEST: '../',
+  DEST_SRC: '../',
+  DEST_BUILD: '../lib',
   ENTRY_POINT: './deps.js'
 };
 
@@ -25,4 +25,4 @@ gulp.task('build', function(){
     .pipe(gulp.dest(path.DEST_BUILD));
 });
 
-gulp.task('build-deps', ['build']);
+gulp.task('default', ['build']);

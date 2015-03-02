@@ -2,11 +2,7 @@ SignUp = React.createClass({
   mixins: [ReactMeteor.Mixin],
 
   getMeteorState: function() {
-    return {
-      username: '',
-      password1: '',
-      password2: ''
-    };
+
   },
 
   openModal: function() {
