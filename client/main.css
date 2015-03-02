@@ -1,0 +1,14 @@
+body {
+    background-color: #37474f;
+    height: auto;
+    /*display: flex;*/
+    /*flex-direction: column;*/
+    /*min-height: 100vh;*/
+}
+
+#footer {
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    width: 100%;
+}

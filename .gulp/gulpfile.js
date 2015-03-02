@@ -9,7 +9,7 @@ var path = {
   OUT: 'deps.js',
   DEST: '../client',
   DEST_SRC: '../client',
-  DEST_BUILD: '../client/compatibility',
+  DEST_BUILD: '../client/lib',
   ENTRY_POINT: './deps.js'
 };
 

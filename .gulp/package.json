@@ -18,6 +18,7 @@
   "homepage": "https://github.com/sunny-g/wufi",
   "dependencies": {
     "material-ui": "^0.7.0",
+    "react-router": "^0.12.4",
     "react-tap-event-plugin": "^0.1.4"
   },
   "devDependencies": {

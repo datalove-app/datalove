@@ -8,3 +8,7 @@ meteor-platform
 autopublish
 insecure
 hipertracker:reactjs
+materialize:materialize
+less
+iron:router
+accounts-password
