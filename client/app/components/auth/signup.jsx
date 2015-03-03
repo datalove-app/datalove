@@ -13,25 +13,14 @@ SignUp = React.createClass({
     $('#signupModal').closeModal();
   },
 
-  /* from the docs, might be overkill if we dont need realtime updates
-  handleChange: function(event) {
-    console.log(event.target.value);
-    this.setState({
-      username: event.target.value
-    })
-  },
-   */
-
   signupUser: function(event) {
     event.preventDefault();
-    console.log('signed up', event);
 
     var username = this.refs.username.getDOMNode().value;
     var password1Node = this.refs.password1.getDOMNode();
     var password2Node = this.refs.password2.getDOMNode();
     var password1 = password1Node.value;
     var password2 = password2Node.value;
-    console.log(password1, password2);
 
     if (password1 !== password2) {
       return;
@@ -42,7 +31,7 @@ SignUp = React.createClass({
       username: username,
       password: password1
     }, function(err) {
-      console.log('error:', err);
+      if (err) { console.log('error in creating user:', err); }
     });
   },
 
@@ -90,3 +79,4 @@ SignUp = React.createClass({
     );
   }
 });
+

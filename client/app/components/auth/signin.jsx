@@ -15,7 +15,6 @@ SignIn = React.createClass({
 
   signinUser: function(event) {
     event.preventDefault();
-    console.log('signed in', event);
 
     var username = this.refs.username.getDOMNode().value;
     var passwordNode = this.refs.password.getDOMNode();

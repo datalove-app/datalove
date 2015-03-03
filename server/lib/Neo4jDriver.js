@@ -1,0 +1,1 @@
+this.N4JDB = new Meteor.Neo4j();

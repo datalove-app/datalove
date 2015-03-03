@@ -12,3 +12,4 @@ materialize:materialize
 less
 iron:router
 accounts-password
+ostrio:neo4jreactivity
