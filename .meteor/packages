@@ -13,3 +13,7 @@ less
 iron:router
 accounts-password
 ostrio:neo4jreactivity
+meteorhacks:npm
+
+
+npm-container
