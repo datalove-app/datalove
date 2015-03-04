@@ -18,12 +18,7 @@ Accounts.onCreateUser(demoRegistrationHook);
  */
 
 var postSync = Async.wrap(request.post);
-var createQueryString = function(user) {
-  return 'CREATE (:User {_id:"' + user._id +
-      '",' + 'username:"' + user.username +
-      '",' + 'address:"' + user.profile.stellar.account_id +
-      '",' + 'secret:"' + user.profile.stellar.master_seed + '"})';
-};
+var getSync = Async.wrap(request.get);
 
 function demoRegistrationHook(options, user) {
   console.log('running registration hook');
@@ -32,6 +27,8 @@ function demoRegistrationHook(options, user) {
 
   var stellarAccount = JSON.parse(res.body).result;
   delete stellarAccount.status;
+
+  getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id});
 
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
@@ -47,4 +44,11 @@ function demoRegistrationHook(options, user) {
   });
 
   return user;
+}
+
+function createQueryString(user) {
+  return 'CREATE (:User {_id:"' + user._id +
+    '",' + 'username:"' + user.username +
+    '",' + 'address:"' + user.profile.stellar.account_id +
+    '",' + 'secret:"' + user.profile.stellar.master_seed + '"})';
 }
