@@ -1,3 +1,5 @@
+var request = Meteor.npmRequire('request');
+
 Accounts.onCreateUser(demoRegistrationHook);
 
 /*
@@ -15,14 +17,28 @@ Accounts.onCreateUser(demoRegistrationHook);
  memo in a transaction sent immediately on signup.
  */
 
+var postSync = Async.wrap(request.post);
+var createQueryString = function(user) {
+  return 'CREATE (:User {_id:"' + user._id +
+      '",' + 'username:"' + user.username +
+      '",' + 'address:"' + user.profile.stellar.account_id +
+      '",' + 'secret:"' + user.profile.stellar.master_seed + '"})';
+};
+
 function demoRegistrationHook(options, user) {
   console.log('running registration hook');
-  var stellar = 'stellar props go here';
+
+  var res = postSync({url: 'https://test.stellar.org:9002', form: JSON.stringify({"method": "create_keys"})});
+
+  var stellarAccount = JSON.parse(res.body).result;
+  delete stellarAccount.status;
 
   user.profile = options.profile || {};
-  user.profile.stellar = stellar;
+  user.profile.stellar = stellarAccount;
 
-  Meteor.N4JDB.query('CREATE (:User {_id:"' + user._id + '"})', null, function(err, res) {
+  // should save address and mongoId
+  var queryString = createQueryString(user);
+  Meteor.N4JDB.query(queryString, null, function(err, res) {
     if (err) {
       console.log('error in creating user in neo4j');
     } else {
