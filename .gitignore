@@ -11,6 +11,7 @@ Thumbs.db
 # Project Files #
 #################
 packages/
+server/.processor/
 
 # Gulp-built files #
 ####################

@@ -30,7 +30,7 @@ function demoRegistrationHook(options, user) {
   delete stellarAccount.status;
 
   // get free testnet stellar from SDF
-  getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id});
+  var getRes = getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id});
 
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
