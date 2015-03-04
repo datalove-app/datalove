@@ -10,7 +10,7 @@ Thumbs.db
 
 # Project Files #
 #################
-packages/
+packages/.npm/
 server/.processor/
 
 # Gulp-built files #
