@@ -11,7 +11,32 @@ Meteor.startup(function () {
 
   // Render the main app react component into the document body.
   // For more details see: https://facebook.github.io/react/docs/top-level-api.html#react.render
-  //React.render(<App />, document.body);
   React.render(<App />, document.body);
 
+  // Stellar Setup
+  Amount = stellar.Amount;
+  Remote = stellar.Remote;
+  utils = stellar.utils;
+
+  remote = new Remote({
+    trusted: false,
+    local_signing: true,
+    local_fee: true,
+    fee_cushion: 1.5,
+    max_fee: 15,
+    servers: [
+      {
+        host: stellardCxn.host,
+        port: stellardCxn.port,
+        secure: stellardCxn.secure
+      }
+    ]
+  });
+
+  if (Meteor.userId()) {
+    remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
+  }
+
+  // TODO: does this need to be run on interval?
+  remote.connect();
 });

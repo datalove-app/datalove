@@ -31,7 +31,11 @@ SignUp = React.createClass({
       username: username,
       password: password1
     }, function(err) {
-      if (err) { console.log('error in creating user:', err); }
+      if (err) {
+        console.log('error in creating user:', err);
+      } else {
+        setStellarSession();
+      }
     });
   },
 

@@ -12,24 +12,10 @@ bonus:
 	7. store and read memodata to and from db
 */
 
-var network_name = 'test';
-var stellarUrl = '';
-
-if (network_name === 'local') {
-	stellarUrl = 'ws://localhost:5006';  // untrusted access
-} else if (network_name === 'test') {
-  stellarUrl = 'ws://test.stellar.org:9001';  // SSL?
-} else if (network_name === 'live') {
-	stellarUrl = 'ws://live.stellar.org:9001';  // SSL?
-} else {
-	console.log('Incorrect usage');
-}
-console.log(network_name, stellarUrl);
-console.log(WebSocket);
-ws = new WebSocket(stellarUrl);
+ws = new WebSocket(stellardCxn.url);
 
 ws.on('open', function() {
-	console.log('Connecting to the ' + network_name + ' stellard using ws...');
+	console.log('Connecting to the ' + stellardCxn.name + ' stellard using ws...');
 	
 	// subscribes us to ledger close events
 	// ws.send('{"command": "subscribe", "id": 0, "streams": ["ledger"]}');
@@ -46,35 +32,25 @@ this is where we'll receive the msgs from the ledger
 ////////////////////////////////////////////////////////////
 
 ws.on('message', function(msg) {
+  console.log('message from txn network:', msg);
 	
 	var msg_json = JSON.parse(msg);
   if (!isValidTxn(msg_json)) {
     return;
   }
 
-  var memoObj = new memoStore.Memo(msg_json);
-  if (memoObj.memoType !== 'wufi') {
-    return;
-  }
+  //var memoObj = new TxnMemo(msg_json);
+  //if (memoObj.memoType !== 'wufi') {
+  //  return;
+  //}
 
-  // console.log('its of memotype wufi');
-  // console.log('memoobj looks like this: ' + JSON.stringify(memoObj));
-  /*
   // if this is a basic STR txn... (this will go away later)
-
+  /*
   if (msg_json.transaction.TransactionType === 'Payment') {
     var txn = new classes.BasicSTRTransaction(msg_json);
     insertTxn(txn);
   }
    */
-
-  ////////////////////////////
-  // if this is a UserInfo txn...
-  // if (memoObj.memodata.type === 'user')
-    // if Users.find({ _id: msg_json.transaction.Account })
-      // FOLLOW UPDATE PROTOCOL":
-    // else
-      // FOLLOW CREATE PROTOCOL:
 
   // USERINFO implementation
   /*
@@ -117,7 +93,7 @@ function isValidTxn(msg_json) {
 
 // closes the local stellard ledger every `timeout` ms
 var timeout = 15000;
-if (network_name === 'local') {
+if (stellardCxn.name === 'local') {
 	(function (interval) {
 		var Remote = stellar.Remote;
 
@@ -143,3 +119,24 @@ if (network_name === 'local') {
 
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
+
+function BasicSTRTransaction(msg) {
+  // this is a basic class for storing simple STRTransactions from ledger
+  // the main changes you'll see will be additions to the Memo obj of the Memos array
+  // msg == json of the ledger txn msg
+
+  var day_zero = 946684800;
+
+  this.type = 'BasicSTRTransaction';    // ??? why ???
+
+  this._id = msg.transaction.hash;
+  this.sender = msg.transaction.Account;
+  this.receiver = msg.transaction.Destination;
+  this.amount = msg.transaction.Amount;
+  this.ledger = msg.ledger_index;
+  this.date = new Date((day_zero + msg.transaction.date) * 1000);
+
+  var memoObj = new Memo(msg);
+  this.memotype = memoObj.memotype;
+  this.memodata = memoObj.memodata;
+}

@@ -25,6 +25,7 @@ SignIn = React.createClass({
 
       } else {
         this.closeModal();
+        setStellarSession();
       }
     }.bind(this));
   },

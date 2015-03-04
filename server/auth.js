@@ -23,17 +23,18 @@ var getSync = Async.wrap(request.get);
 function demoRegistrationHook(options, user) {
   console.log('running registration hook');
 
+  // have stellard create us a wallet full of stellar keys and seeds
   var res = postSync({url: 'https://test.stellar.org:9002', form: JSON.stringify({"method": "create_keys"})});
 
   var stellarAccount = JSON.parse(res.body).result;
   delete stellarAccount.status;
 
+  // get free testnet stellar from SDF
   getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id});
 
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
 
-  // should save address and mongoId
   var queryString = createQueryString(user);
   Meteor.N4JDB.query(queryString, null, function(err, res) {
     if (err) {
@@ -46,6 +47,9 @@ function demoRegistrationHook(options, user) {
   return user;
 }
 
+// saves:
+  // user.id and username
+  // stellar address and secret key
 function createQueryString(user) {
   return 'CREATE (:User {_id:"' + user._id +
     '",' + 'username:"' + user.username +
