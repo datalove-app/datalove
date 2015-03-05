@@ -1,4 +1,4 @@
-[woofie]() — the reputation cryptocurrency
+[whuffie]() — the reputation cryptocurrency
 ==================================================
 <!--
 Contribution Guides
@@ -18,7 +18,7 @@ Environments in which to use jQuery
 - To use jQuery in Node, browser extensions, and other non-browser environments, use only master branch releases given the name "jquery" rather than "jquery-compat". The compat branch does not support these environments.
 -->
 
-How to build your own Woofie
+How to build your own Whuffie
 --------------------------------------
 
 In order to build Woofie, you need to have Meteor installed, which you can do by running this command: 
@@ -28,7 +28,7 @@ curl https://install.meteor.com | /bin/sh
 
 After installing Meteor, clone down the repo:
 ```bash
-git clone https://github.com/sunny-g/wufi
+git clone https://github.com/sunny-g/whuffie
 ```
 
 Install and build the dependencies:
