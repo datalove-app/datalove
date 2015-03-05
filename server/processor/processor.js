@@ -74,10 +74,10 @@ ws.on('message', function(msg) {
       */
 
   // BEGIN message handlers
-  if (memoObj.memoData.type === 'post') {
-    console.log('msg looks like:', memoObj);
-    //var post = new memoStore.Post(msg, memoObj);
-  }
+  //if (memoObj.memoData.type === 'post') {
+  //  console.log('msg looks like:', memoObj);
+  //  //var post = new memoStore.Post(msg, memoObj);
+  //}
 
 });
 

@@ -19,6 +19,9 @@ Accounts.onCreateUser(demoRegistrationHook);
 
 var postSync = Async.wrap(request.post);
 var getSync = Async.wrap(request.get);
+var getTestStellar = function(stellarAccount) {
+  return getFreeStellar ? getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id}) : null;
+};
 
 function demoRegistrationHook(options, user) {
   console.log('running registration hook');
@@ -30,12 +33,12 @@ function demoRegistrationHook(options, user) {
   delete stellarAccount.status;
 
   // get free testnet stellar from SDF
-  var getRes = getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id});
+  var getRes = getTestStellar(stellarAccount);
 
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
 
-  var queryString = createQueryString(user);
+  var queryString = createCreateQueryString(user);
   Meteor.N4JDB.query(queryString, null, function(err, res) {
     if (err) {
       console.log('error in creating user in neo4j');
@@ -50,7 +53,7 @@ function demoRegistrationHook(options, user) {
 // saves:
   // user.id and username
   // stellar address and secret key
-function createQueryString(user) {
+function createCreateQueryString(user) {
   return 'CREATE (:User {_id:"' + user._id +
     '",' + 'username:"' + user.username +
     '",' + 'address:"' + user.profile.stellar.account_id +
