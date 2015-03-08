@@ -1,7 +1,5 @@
 var WebSocket = Meteor.npmRequire('ws');
 
-var base_fee = 200 * 10e6;
-
 /*
 optional:
 	4. have user only get the txns pertaining to their Session.address
@@ -39,54 +37,23 @@ ws.on('message', function(msg) {
     return;
   }
 
-  //var memoObj = new TxnMemo(msg_json);
-  //if (memoObj.memoType !== 'wufi') {
-  //  return;
-  //}
-
-  // if this is a basic STR txn... (this will go away later)
-  /*
-  if (msg_json.transaction.TransactionType === 'Payment') {
-    var txn = new classes.BasicSTRTransaction(msg_json);
-    insertTxn(txn);
-  }
-   */
-
-  // USERINFO implementation
-  /*
-  if (memoObj.memodata.type === 'user') {
-    // console.log('its of memodata type user');
-
-    var info;
-    var userId = msg_json.transaction.Account;
-    var txAmount = msg.transaction.Amount;
-
-    if (txAmount === 5 * base_fee) {
-      // 5 * base_fee signifies username registration == new public user
-      info = new memoStore.UserInfo(msg_json, memoObj).createUserInfo();
-      ddp.setUserInfo('insertUserInfo', info);
-
-    } else if (txAmount === base_fee * .5) {
-      info = new memoStore.UserInfo(msg_json, memoObj).updateUserInfo();
-
-    // TODO: FINALIZE MEMOS so you can IF TEST the RIGHT METEOR METHODS
-        // if test against the userInfo types (payment, profile, etc)
-      */
-
   // BEGIN message handlers
   //if (memoObj.memoData.type === 'post') {
   //  console.log('msg looks like:', memoObj);
   //  //var post = new memoStore.Post(msg, memoObj);
   //}
 
+  if (msg_json.transaction.TransactionType === 'Payment') {
+    // handle only payment of WFI
+    //messageHandler.paymentHandler(msg_json);
+    return;
+  } else if (msg_json.transaction.TransactionType === 'TrustSet') {
+    // handles only trustSets denominated in WFI
+    messageHandler.trustHandler(msg_json);
+    return;
+  }
+
 });
-
-function isValidTxn(msg_json) {
-  return msg_json.hasOwnProperty('transaction') &&
-    // msg_json.status === 'closed' &&   // msg_json.validated ???
-    msg_json.meta.TransactionResult === 'tesSUCCESS';
-}
-
 
 /////////////////////////////////////////////////////
 /////////////////////////////////////////////////////

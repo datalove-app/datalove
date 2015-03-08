@@ -7,17 +7,10 @@ setStellarSession = function() {
   remote.set_secret(addr, skey);
 };
 
-submitGenericTransaction = function(currencyCode, txnType) {
+submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, callback) {
   // first three args are currencyCode and txnType
     // these are passed into bind
   // next are rcvrAddr, options (like amount), callback
-  console.log(arguments);
-  var amt = arguments[2],
-    rcvrAddr = arguments[3],
-    options = arguments[4],
-    callback = arguments[5];
-
-
   if (typeof amt !== 'number' ||
     currencyCode.length > 3) {
     return;
@@ -32,24 +25,29 @@ submitGenericTransaction = function(currencyCode, txnType) {
   txOptions.from = Session.get('myAddr');
   txOptions.to = rcvrAddr;
 
-  if (txnType === 'payment') {
-    txOptions.amount = amtNum;
-  } else if (txnType === 'trustSet') {
-    // TODO: FIX THIS, IT IS VERY WRONG
-    txOptions.limitAmount = {};
-
-  }
-
   tx[txnType](txOptions);
 
+  if (txnType === 'payment') {
+    tx.tx_json.amount = amtNum;
+  } else if (txnType === 'trustSet') {
+    tx.tx_json.LimitAmount = {
+      currency: currencyCode,
+      value: amt.toString(),
+      issuer: rcvrAddr
+    };
+  }
+
   console.log('bout to connect and submit', 'tx:', tx, 'remote:', remote);
-  console.log('connected, bout to submit');
   tx.submit(function (err, res) {
-    if (err) { throw err; }
+    //if (err) { throw err; }
     console.log('submitted');
-    callback(res);
+    callback(err, res);
   });
 
+};
+
+retrieveAccountInfo = function(rcvrAddr, callback) {
+  remote.request_account_info(rcvrAddr, callback);
 };
 
 submitSTRTransaction = submitGenericTransaction.bind(null, 'STR', 'payment');

@@ -10,3 +10,40 @@ Meteor.neo4j.methods({
    */
 
 });
+
+var neoQuery = Meteor.N4JDB.query;
+var neoQuerySync = Async.wrap(Meteor.N4JDB.query);
+
+neoQueries = {
+  createUser: function(user, callback) {
+    // saves:
+    // user.id and username
+    // stellar address and secret key
+    var query = 'CREATE (:User {_id:"' + user._id +
+      '",' + 'username:"' + user.username +
+      '",' + 'address:"' + user.profile.stellar.account_id +
+      '",' + 'secret:"' + user.profile.stellar.master_seed + '"})';
+
+    //return neoQuerySync(query, null);
+
+    neoQuery(query, null, callback);
+  },
+
+  createEdge: function(sourceAddr, targetAddr, limit, callback) {
+    // handle simple trustSet (that is, create/overwrite)
+      // TODO: allow users to add or remove trustlines
+    var query = 'MATCH (s {address:"' + sourceAddr +
+      '"}),(t {address:"' + targetAddr + '"})' +
+      'CREATE (s)-[:TRUST {limit:' + limit + '}]->(t)';
+
+    neoQuery(query, null, callback);
+  },
+
+  deleteEdge: function(sourceAddr, targetAddr, callback) {
+    var query = 'MATCH (s {address:"' + sourceAddr +
+      '"})-[limit]->(t {address:"' + targetAddr + '"})' +
+      'CREATE limit';
+
+    neoQuery(query, null, callback)
+  }
+};

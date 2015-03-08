@@ -38,24 +38,6 @@ function demoRegistrationHook(options, user) {
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
 
-  var queryString = createCreateQueryString(user);
-  Meteor.N4JDB.query(queryString, null, function(err, res) {
-    if (err) {
-      console.log('error in creating user in neo4j');
-    } else {
-      console.log('successfully created user in neo4j:', res);
-    }
-  });
-
+  neoQueries.createUser(user);
   return user;
-}
-
-// saves:
-  // user.id and username
-  // stellar address and secret key
-function createCreateQueryString(user) {
-  return 'CREATE (:User {_id:"' + user._id +
-    '",' + 'username:"' + user.username +
-    '",' + 'address:"' + user.profile.stellar.account_id +
-    '",' + 'secret:"' + user.profile.stellar.master_seed + '"})';
 }
