@@ -14,8 +14,6 @@ messageHandler = {
     var targetAddr = msg_json.transaction.LimitAmount.issuer;
     var newLimit = msg_json.transaction.LimitAmount.value;
 
-
-
     newLimit ? neoQueries.createEdge(sourceAddr, targetAddr, newLimit, dbCallback) : neoQueries.deleteEdge(sourceAddr, targetAddr, dbCallback);
   }
 };

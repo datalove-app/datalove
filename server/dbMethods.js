@@ -42,8 +42,92 @@ neoQueries = {
   deleteEdge: function(sourceAddr, targetAddr, callback) {
     var query = 'MATCH (s {address:"' + sourceAddr +
       '"})-[limit]->(t {address:"' + targetAddr + '"})' +
-      'CREATE limit';
+      'DELETE limit';
 
     neoQuery(query, null, callback)
   }
 };
+
+maxFlow = function(sourceAddr, targetAddr, flowLimit, callback) {
+  flowLimit = flowLimit || 2;
+  var query = 'MATCH (:User {address:"' + sourceAddr +
+    '"})-[limit:TRUST*..' + flowLimit + ']->' +
+    '(:User {address:"' + targetAddr +
+    '"}) RETURN limit';
+
+  var res = neoQuerySync(query, null);
+  console.log(res);
+};
+
+var flowGraph = {};
+
+Meteor.methods({
+
+  maxFlowTest: function (sourceAddr, targetAddr, flowLimit, callback) {
+    flowLimit = flowLimit || 2;
+    var query = 'MATCH (:User {key:"' + sourceAddr +
+      '"})-[limit:TRUST*..3]->' +
+      '(:User {key:"' + targetAddr +
+      '"}) RETURN limit';
+
+    var paths = neoQuerySync(query, null);
+    var maxFlow = 0;
+
+    // for each path
+    paths.forEach(function(obj) {
+
+      var path = obj.limit;
+      var pathCapacity = Number.POSITIVE_INFINITY;
+
+      path.forEach(function(edge) {
+        var edgeId = edge._data.metadata.id;
+        var limit = edge._data.data.limit;
+
+        // add edges to flowGraph
+        addToFlowGraph(edgeId, limit);
+      });
+
+      // find lowest limit (capacity)
+      path.forEach(function(edge) {
+        var edgeId = edge._data.metadata.id;
+        console.log(flowGraph[edgeId].capacity, pathCapacity);
+        if (flowGraph[edgeId].capacity < pathCapacity) {
+          pathCapacity = flowGraph[edgeId].capacity;
+        }
+      });
+
+      // subtract capacity from each edge's capacity
+      path.forEach(function(edge) {
+        var edgeId = edge._data.metadata.id;
+        var limit = flowGraph[edgeId].limit;
+        var capacity = flowGraph[edgeId].capacity;
+
+        flowGraph[edgeId].capacity -= pathCapacity;
+      });
+
+      // add capacity to flow
+      console.log(pathCapacity);
+      maxFlow += pathCapacity;
+    });
+
+    resetFlowGraph();
+    return [paths, flowGraph, maxFlow];
+  }
+
+});
+
+function addToFlowGraph(edgeId, limit) {
+  // called on every edge
+  // if edge exist
+    // return
+  // else
+    // set edge to {limit:limit, capacity: limit}
+
+  flowGraph[edgeId] = flowGraph[edgeId] || {
+    limit: limit,
+    capacity: limit
+  }
+}
+
+function resetFlowGraph() {
+}
