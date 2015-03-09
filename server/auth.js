@@ -38,6 +38,6 @@ function demoRegistrationHook(options, user) {
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
 
-  neoQueries.createUser(user);
+  neoOperations.createUser(user);
   return user;
 }
