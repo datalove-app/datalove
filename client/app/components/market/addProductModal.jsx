@@ -9,8 +9,14 @@ AddProductModal = React.createClass({
     event.preventDefault();
     console.log('adding product');
 
-    Products.insert({
-      name: ''
+    var product = {
+      name: this.refs.name.getDOMNode().value,
+      description: this.refs.description.getDOMNode().value,
+      price: parseFloat(this.refs.price.getDOMNode().value)
+    };
+
+    Meteor.call('addProduct', product, function(err, res) {
+      if (err) { console.log('error adding product:', err); }
     });
 
     this.closeModal();
@@ -29,7 +35,7 @@ AddProductModal = React.createClass({
             <input
               placeholder="Product Name"
               type="text"
-              ref="title"
+              ref="name"
             />
             <input
               placeholder="Description"
