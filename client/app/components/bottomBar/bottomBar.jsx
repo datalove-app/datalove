@@ -12,6 +12,7 @@ BottomBar = React.createClass({
           <div className="row">
             <a href="/market" className="">Market</a>
             <a href="/rewards" className="">Rewards</a>
+            <a href="/shopping" className="">Shopping</a>
             <SignOut />
           </div>
         </div>

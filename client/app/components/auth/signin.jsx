@@ -56,9 +56,10 @@ SignIn = React.createClass({
                 type="password"
                 ref="password"
               />
+
               <input
                 type="submit"
-                className="authSubmit"
+                className="hiddenSubmit"
               />
             </form>
           </div>

@@ -54,6 +54,7 @@ SignUp = React.createClass({
         <div id="signupModal" className="modal">
           <div className="modal-content">
             <form
+              action="#"
               onSubmit={this.signupUser}
               onChange={this.handleChange}>
               <h4>Sign Up</h4>
@@ -72,9 +73,10 @@ SignUp = React.createClass({
                 type="password"
                 ref="password2"
               />
+
               <input
                 type="submit"
-                className="authSubmit"
+                className="hiddenSubmit"
               />
             </form>
           </div>

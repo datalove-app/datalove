@@ -12,12 +12,18 @@ Router.route('/rewards', function() {
   React.render(<BottomBar />, document.getElementById('footer'));
 });
 
+Router.route('/shopping', function() {
+  React.render(<Shopping />, document.getElementById('main'));
+  React.render(<BottomBar />, document.getElementById('footer'));
+});
+
 Router.onBeforeAction(function() {
   if (!Meteor.userId()) {
     React.unmountComponentAtNode(document.getElementById('header'));
     React.unmountComponentAtNode(document.getElementById('footer'));
     React.render(<Auth />, document.getElementById('main'));
-  } else {
-    this.next();
+    return;
   }
+
+  this.next();
 });

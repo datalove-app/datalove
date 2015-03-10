@@ -9,7 +9,8 @@ body {
 .bottomButton {
     bottom: 20px;
     right: 50%;
-    -webkit-transform: translate(50%, 25%);
+    /*-webkit-transform: translate(50%, 25%);*/
+    -webkit-transform: translate(50%, 0%);
     position: fixed;
     z-index: 1000;
 }
@@ -19,4 +20,12 @@ body {
     left: 0;
     position: absolute;
     width: 100%;
+}
+
+.hiddenSubmit {
+    position: absolute;
+    height: 0px;
+    width: 0px;
+    border: none;
+    padding: 0px;
 }

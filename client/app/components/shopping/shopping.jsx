@@ -1,4 +1,4 @@
-Rewards = React.createClass({
+Shopping = React.createClass({
   mixins: [ReactMeteor.mixin],
 
   getMeteorState: function() {
@@ -6,9 +6,7 @@ Rewards = React.createClass({
   },
 
   render: function() {
-    // ?? Meteor.users vs Users
     var users = Meteor.users.find();
-    console.log(users);
 
     return (
       <div>
