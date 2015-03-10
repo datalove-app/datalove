@@ -13,7 +13,7 @@ bonus:
 ws = new WebSocket(stellardCxn.url);
 
 ws.on('open', function() {
-	console.log('Connecting to the ' + stellardCxn.name + ' stellard using ws...');
+	console.log('[PROCESSOR] Connecting to the ' + stellardCxn.name + ' stellard using ws...');
 	
 	// subscribes us to ledger close events
 	// ws.send('{"command": "subscribe", "id": 0, "streams": ["ledger"]}');
@@ -30,12 +30,13 @@ this is where we'll receive the msgs from the ledger
 ////////////////////////////////////////////////////////////
 
 ws.on('message', function(msg) {
-  console.log('message from txn network:', msg);
-	
+
 	var msg_json = JSON.parse(msg);
   if (!isValidTxn(msg_json)) {
     return;
   }
+
+  console.log('[PROCESSOR] message from txn network:', msg_json);
 
   // BEGIN message handlers
   //if (memoObj.memoData.type === 'post') {
