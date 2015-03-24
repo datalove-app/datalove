@@ -18,12 +18,13 @@ Environments in which to use jQuery
 - To use jQuery in Node, browser extensions, and other non-browser environments, use only master branch releases given the name "jquery" rather than "jquery-compat". The compat branch does not support these environments.
 -->
 
-How to build your own Whuffie
+Build your own local version of Whuffie on OS X
 --------------------------------------
 
-In order to build Woofie, you need to have Meteor installed, which you can do by running this command: 
+First, you will need to have Meteor and Neo4j installed, which you can do by running these commands (requires [homebrew](http://brew.sh/)):
 ```bash
-curl https://install.meteor.com | /bin/sh
+curl https://install.meteor.com | /bin/sh   # installs Meteor and MongoDB
+brew install neo4j                          # installs neo4j
 ```
 
 After installing Meteor, clone down the repo:
@@ -31,19 +32,24 @@ After installing Meteor, clone down the repo:
 git clone https://github.com/sunny-g/whuffie
 ```
 
-Install and build the dependencies:
+Install and build the dependencies (currently only stellar-lib):
 ```bash
 cd .gulp
 npm install
 gulp
 ```
 
-Go back to the root directory and run Meteor!
+Go back to the root directory and run Neo4j and Meteor!
 ```bash
+neo4j start
 meteor
 ```
 
 ----------------------------
+
+Note: 
+-----
+Whuffie is currently an ugly, pre-alpha WIP to be seen and used by no one.
 
 Questions?
 ----------
