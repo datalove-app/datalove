@@ -11,12 +11,12 @@ submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, option
   // first three args are currencyCode and txnType
     // these are passed into bind
   // next are rcvrAddr, options (like amount), callback
-  if (typeof amt !== 'number' ||
-    currencyCode.length > 3) {
+  if (typeof amt !== 'number' || currencyCode.length > 3) {
     return;
   }
 
-  callback = callback || function() { console.log('args:', arguments); };
+  options = options || null;
+  callback = callback || function() { console.log('running default callback, err/res are:', arguments); };
 
   var amtNum = Amount.from_human(amt + currencyCode);
   var tx = remote.transaction();

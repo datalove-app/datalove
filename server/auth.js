@@ -20,7 +20,7 @@ Accounts.onCreateUser(demoRegistrationHook);
 var postSync = Async.wrap(request.post);
 var getSync = Async.wrap(request.get);
 var getTestStellar = function(stellarAccount) {
-  return getFreeStellar ? getSync({url: 'https://api-stg.stellar.org/friendbot?addr=' + stellarAccount.account_id}) : null;
+  return getFreeStellar ? getSync({url: 'https://api-stg.stellar.org/friendbot?address=' + stellarAccount.account_id}) : null;
 };
 
 function demoRegistrationHook(options, user) {

@@ -13,7 +13,7 @@ BottomButton = React.createClass({
             <a
               className="btn-floating btn-large waves-effect waves-light teal"
               href="#addProductModal"
-              onClick={this.props.onClick}>
+              onClick={this.props.clickHandler}>
               <i className="mdi-content-add"></i>
             </a>
           </div>

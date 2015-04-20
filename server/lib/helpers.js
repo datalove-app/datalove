@@ -1,13 +1,18 @@
+// TODO: rename this file
+
 var edgeMap = {};
 
-maxFlowBetweenAccounts = function (sourceAddr, targetAddr) {
-  var query = 'MATCH (:User {key:"' + sourceAddr +
+var maxFlowBetweenAccounts = function (sourceAddr, targetAddr) {
+  // sourceAddr: the hopeful sender's address
+  // targetAddr: the potential recipient's address
+  
+  var query = 'MATCH (:User {address:"' + targetAddr +
     '"})-[limit:TRUST*..3]->' +
-    '(:User {key:"' + targetAddr +
+    '(:User {address:"' + sourceAddr +
     '"}) RETURN limit';
 
   var paths = neoQuerySync(query, null);
-  console.log(paths);
+  console.log('paths:', paths);
   var maxFlow = 0;
 
   // for each path
@@ -58,4 +63,9 @@ function resetEdgeMap() {
   _.each(edgeMap, function(edge) {
     edge.capacity = edge.limit;
   });
+}
+
+// GLOBALS
+helpers = {
+  maxFlowBetweenAccounts: maxFlowBetweenAccounts
 }
