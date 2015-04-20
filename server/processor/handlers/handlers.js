@@ -15,6 +15,8 @@ messageHandler = {
     var newLimit = msg_json.transaction.LimitAmount.value;
     if (msg_json.transaction.LimitAmount.currency !== 'WFI') { return; }
 
+    // if newLimit is not 0, createEdge with newLimit
+      // else, deleteEdge
     newLimit ? neoOperations.createEdge(sourceAddr, targetAddr, newLimit, dbCallback) : neoOperations.deleteEdge(sourceAddr, targetAddr, dbCallback);
   }
 };

@@ -84,27 +84,3 @@ if (stellardCxn.name === 'local') {
 		);
 	})(timeout);
 }
-
-/////////////////////////////////////////////////////
-/////////////////////////////////////////////////////
-
-function BasicSTRTransaction(msg) {
-  // this is a basic class for storing simple STRTransactions from ledger
-  // the main changes you'll see will be additions to the Memo obj of the Memos array
-  // msg == json of the ledger txn msg
-
-  var day_zero = 946684800;
-
-  this.type = 'BasicSTRTransaction';    // ??? why ???
-
-  this._id = msg.transaction.hash;
-  this.sender = msg.transaction.Account;
-  this.receiver = msg.transaction.Destination;
-  this.amount = msg.transaction.Amount;
-  this.ledger = msg.ledger_index;
-  this.date = new Date((day_zero + msg.transaction.date) * 1000);
-
-  var memoObj = new Memo(msg);
-  this.memotype = memoObj.memotype;
-  this.memodata = memoObj.memodata;
-}
