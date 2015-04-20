@@ -5,6 +5,13 @@ Shopping = React.createClass({
     return {};
   },
 
+  handleClick: function(e) {
+    // switch route to user's shop
+    // trigger maxflow calc
+      // use result for styling productListings
+    console.log('clicked shopping userListItem');
+  },
+
   render: function() {
     var users = Meteor.users.find();
 
@@ -12,8 +19,12 @@ Shopping = React.createClass({
       <div>
         <ul className="users collection">
           {users.map(function(user) {
-            return <UserListItem key={user._id} data={user} />
-          })}
+            return <UserListItem
+              key={user._id}
+              data={user}
+              clickHandler={this.handleClick}
+            />
+          }, this)}
         </ul>
       </div>
     );

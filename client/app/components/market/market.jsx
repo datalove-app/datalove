@@ -1,4 +1,4 @@
-Market = React.createClass({
+YourMarket = React.createClass({
   mixins: [ReactMeteor.mixin],
 
   getMeteorState: function() {
@@ -10,6 +10,7 @@ Market = React.createClass({
   },
 
   render: function() {
+    // finds only products you created based on productIds stored on your user obj...?
     var products = Products.find({});
 
     return (

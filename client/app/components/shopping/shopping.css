@@ -1,0 +1,8 @@
+.product-card {
+    margin: 10 auto;
+}
+
+.product-image {
+    max-height: 280px;
+    max-width: 280px;
+}

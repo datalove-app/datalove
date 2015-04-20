@@ -59,18 +59,18 @@ SignUp = React.createClass({
               onChange={this.handleChange}>
               <h4>Sign Up</h4>
               <input
-                placeholder="username"
                 type="text"
+                placeholder="username"
                 ref="username"
               />
               <input
-                placeholder="password"
                 type="password"
+                placeholder="password"
                 ref="password1"
               />
               <input
-                placeholder="re-type password"
                 type="password"
+                placeholder="re-type password"
                 ref="password2"
               />
 

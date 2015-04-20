@@ -34,7 +34,7 @@ Meteor.startup(function () {
   });
 
   if (Meteor.userId()) {
-    remote.set_secret(Session.get('myAddr'), Session.get('mySecret'));
+    setStellarSession();
   }
 
   // TODO: does this need to be run on interval?

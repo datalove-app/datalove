@@ -7,11 +7,6 @@ App = React.createClass({
     };
   },
 
-  handleClick: function(event) {
-    event.stopPropagation();
-    console.log(event.target);
-  },
-
   render: function() {
     return (
       <div id="bodyWrapper">

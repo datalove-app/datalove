@@ -2,7 +2,7 @@ SignIn = React.createClass({
   mixins: [ReactMeteor.Mixin],
 
   getMeteorState: function () {
-
+    return {};
   },
 
   openModal: function() {
@@ -47,16 +47,16 @@ SignIn = React.createClass({
             <h4>Sign In</h4>
             <form onSubmit={this.signinUser}>
               <input
-                placeholder="username"
                 type="text"
+                placeholder="username"
                 ref="username"
               />
               <input
-                placeholder="password"
                 type="password"
+                placeholder="password"
                 ref="password"
               />
-
+              
               <input
                 type="submit"
                 className="hiddenSubmit"

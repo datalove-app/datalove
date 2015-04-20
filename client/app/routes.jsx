@@ -3,7 +3,7 @@ Router.route('/', function() {
 });
 
 Router.route('/market', function() {
-  React.render(<Market />, document.getElementById('main'));
+  React.render(<YourMarket />, document.getElementById('main'));
   React.render(<BottomBar />, document.getElementById('footer'));
 });
 
