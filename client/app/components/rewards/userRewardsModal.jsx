@@ -6,13 +6,31 @@ UserRewardsModal = React.createClass({
   },
 
   submitTxn: function(event) {
+  	/*
+			get the change in limit amount
+			get currentLimit || 0
+			set amount = Math.max(currentLimit + limitDelta, 0);
+			submit txn
+
+  	 */
+
+  	// TODO: REFACTOR to place neo4j query somewhere else more efficient
+  		// depends on how reactive it is
+
   	event.preventDefault();
 
   	var rcvrAddr = this.props.data.address;
-  	var amount = parseFloat(this.refs.amount.getDOMNode().value);
+  	var limitDelta = parseFloat(this.refs.amount.getDOMNode().value);
 
-  	console.log(rcvrAddr, amount);
-  	submitWFITrustTransaction(amount, rcvrAddr, null);
+  	var currentLimit = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
+			sourceAddr: Session.get('myAddr'),
+			targetAddr: rcvrAddr
+		}).get().limits[0].limit;
+
+  	var newLimit = Math.max(currentLimit + limitDelta, 0);
+  	submitWFITrustTransaction(newLimit, rcvrAddr, function(err, res) {
+  		// do something here
+  	});
   },
 
   render: function() {

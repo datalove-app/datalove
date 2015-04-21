@@ -7,10 +7,7 @@ setStellarSession = function() {
   remote.set_secret(addr, skey);
 };
 
-submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, callback) {
-  // first three args are currencyCode and txnType
-    // these are passed into bind
-  // next are rcvrAddr, options (like amount), callback
+var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, callback) {
   if (typeof amt !== 'number' || currencyCode.length > 3) {
     return;
   }
@@ -37,13 +34,10 @@ submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, option
     };
   }
 
-  console.log('bout to connect and submit', 'tx:', tx, 'remote:', remote);
   tx.submit(function (err, res) {
-    //if (err) { throw err; }
     console.log('submitted');
     callback(err, res);
   });
-
 };
 
 retrieveAccountInfo = function(rcvrAddr, callback) {
