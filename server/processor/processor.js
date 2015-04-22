@@ -36,8 +36,6 @@ ws.on('message', function(msg) {
     return;
   }
 
-  console.log('[PROCESSOR] message from txn network:', msg_json);
-
   // BEGIN message handlers
   //if (memoObj.memoData.type === 'post') {
   //  console.log('msg looks like:', memoObj);
@@ -46,7 +44,7 @@ ws.on('message', function(msg) {
 
   if (msg_json.transaction.TransactionType === 'Payment') {
     // handle only payment of WFI
-    //messageHandler.paymentHandler(msg_json);
+    messageHandler.paymentHandler(msg_json);
     return;
   } else if (msg_json.transaction.TransactionType === 'TrustSet') {
     // handles only trustSets denominated in WFI

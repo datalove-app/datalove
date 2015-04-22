@@ -1,3 +1,5 @@
+var Fiber = Npm.require('fibers');
+
 isValidTxn = function(msg) {
   return msg.hasOwnProperty('transaction') &&
     // msg_json.status === 'closed' &&   // msg_json.validated ???
@@ -6,18 +8,39 @@ isValidTxn = function(msg) {
 
 messageHandler = {
   paymentHandler: function(msg_json) {
-    console.log('paymentHandler:', msg_json);
+    console.log('[PROCESSOR] received [payment] message from txn network');
   },
 
   trustHandler: function(msg_json) {
     var sourceAddr = msg_json.transaction.Account;
     var targetAddr = msg_json.transaction.LimitAmount.issuer;
     var newLimit = msg_json.transaction.LimitAmount.value;
-    if (msg_json.transaction.LimitAmount.currency !== 'WFI') { return; }
+    // var limit = msg_json.transaction.LimitAmount.value;
 
-    // if newLimit is not 0, createEdge with newLimit
-      // else, deleteEdge
-    newLimit ? neoOperations.createEdge(sourceAddr, targetAddr, newLimit, dbCallback) : neoOperations.deleteEdge(sourceAddr, targetAddr, dbCallback);
+    if (msg_json.transaction.LimitAmount.currency !== 'WFI') { return; }
+    console.log('[PROCESSOR] received [gifting] message from txn network');
+
+    // var dbCallback = Meteor.bindEnvironment(function(err, res) {
+    //   if (err) { 
+    //     console.log('err in neoQuery', err);
+    //     return;
+    //   }
+
+    //   var user = Meteor.users.findOne({address: targetAddr});
+    //   console.log(user);
+    // }, function(err) {throw err});
+
+    // var otherCallback = function(err, res) {
+    //   var user = Meteor.users.findOne({address: targetAddr});
+    //   console.log('found user:', user);
+    // }
+    
+    /***************************************************/
+    neoOperations.editEdge(sourceAddr, targetAddr, 
+      newLimit, function(err, res) {
+      // after creating/editing edge, insert txn into User obj
+      mongoOperations.insertTxn(sourceAddr, targetAddr, newLimit, msg_json);
+    });
   }
 };
 

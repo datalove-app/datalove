@@ -1,3 +1,5 @@
+var Fiber = Npm.require('fibers');
+
 Meteor.neo4j.methods({
   /*
   define queries that our clients can run
@@ -10,7 +12,7 @@ Meteor.neo4j.methods({
 
 });
 
-// TODO: REFACTOR to use Meteor.N4JDB.query and opts
+// TODO: REFACTOR to use opts
 
 var createUser = function(user, callback) {
   // saves:
@@ -42,11 +44,36 @@ var deleteEdge = function(sourceAddr, targetAddr, callback) {
     '"})-[limit]->(t {address:"' + targetAddr + '"})' +
     'DELETE limit';
 
-  neoQuery(query, null, callback)
+  neoQuery(query, null, callback);
 };
+
+var editEdge = function(sourceAddr, targetAddr, limit, callback) {
+  var query;
+  if (limit === 0) {
+    query = 'MATCH (s {address:"' + sourceAddr +
+    '"})-[limit]->(t {address:"' + targetAddr + '"})' +
+    'DELETE limit'
+  } else {
+    query = 'MATCH (s {address:"' + sourceAddr +
+    '"}),(t {address:"' + targetAddr + '"})' +
+    'MERGE (s)-[limit:TRUST]->(t)' +
+    ' ON MATCH SET limit.limit = ' + limit +
+    ' ON CREATE SET limit.limit = ' + limit + 
+      ', limit.source = "' + sourceAddr +
+      '", limit.target = "' + targetAddr + '";';
+  }
+
+
+  neoQuery(query, null, function(err, res) {
+    Fiber(function() {
+      callback(err, res);
+    }).run();
+  });
+}
 
 neoOperations = {
   createUser: createUser,
   createEdge: createEdge,
-  deleteEdge: deleteEdge
+  deleteEdge: deleteEdge,
+  editEdge: editEdge
 }

@@ -14,3 +14,4 @@ neo = {
 };
 
 Products = new Meteor.Collection('products');
+Transactions = new Meteor.Collection('transactions');
