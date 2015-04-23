@@ -7,13 +7,19 @@ setStellarSession = function() {
   remote.set_secret(addr, skey);
 };
 
-var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, callback) {
+var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, memoObj, preSubmitCallback, submitCallback) {
   if (typeof amt !== 'number' || currencyCode.length > 3) {
     return;
   }
 
   options = options || null;
-  callback = callback || function() { console.log('running default callback, err/res are:', arguments); };
+  memoObj = memoObj || {};
+  preSubmitCallback = preSubmitCallback || function() {
+    console.log('running default preSubmitCallback');
+  };
+  submitCallback = submitCallback || function(err, res) { 
+    console.log('running default callback, err/res are:', err, res); 
+  };
 
   var amtNum = Amount.from_human(amt + currencyCode);
   var tx = remote.transaction();
@@ -23,7 +29,6 @@ var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, op
   txOptions.to = rcvrAddr;
 
   tx[txnType](txOptions);
-
   if (txnType === 'payment') {
     tx.tx_json.amount = amtNum;
   } else if (txnType === 'trustSet') {
@@ -33,10 +38,11 @@ var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, op
       issuer: rcvrAddr
     };
   }
+  tx.tx_json.Memos = [ { Memo: memoObj } ]
 
+  preSubmitCallback();
   tx.submit(function (err, res) {
-    console.log('submitted');
-    callback(err, res);
+    submitCallback(err, res);
   });
 };
 

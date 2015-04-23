@@ -28,9 +28,13 @@ UserRewardsModal = React.createClass({
 		}).get().limits[0].limit;
 
   	var newLimit = Math.max(currentLimit + limitDelta, 0);
-  	submitWFITrustTransaction(newLimit, rcvrAddr, function(err, res) {
-  		// do something here
-  	});
+
+    var message = this.refs.message.getDOMNode().value;
+    var memoObj = Memo.createMemo('', message);
+
+  	submitWFITrustTransaction(newLimit, rcvrAddr, null, memoObj, null, function(err, res) {
+      $(this.getDOMNode()).closeModal();
+    }.bind(this));
   },
 
   render: function() {
@@ -47,10 +51,16 @@ UserRewardsModal = React.createClass({
           		value={modalUsername}
           	/>
           	<input
+              autofocus
           		type="number"
           		placeholder="0"
           		ref="amount"
           	/>
+            <textarea
+              rows="5"
+              cols="50"
+              ref="message"
+            ></textarea>
           	<input
           		type="submit"
           	/>
