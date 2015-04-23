@@ -24,7 +24,7 @@ messageHandler = {
 
     neoOperations.editEdge(sourceAddr, targetAddr, 
       newLimit, function(err, res) {
-      // after creating/editing edge, insert txn into User obj
+      // after creating/editing edge, insert txn into User obj(s)
       mongoOperations.insertTxn(sourceAddr, targetAddr, newLimit, msg_json);
     });
   }

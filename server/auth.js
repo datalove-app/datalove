@@ -37,6 +37,8 @@ function demoRegistrationHook(options, user) {
 
   user.profile = options.profile || {};
   user.profile.stellar = stellarAccount;
+  user.transactions = [];
+  user.receivedTransactions = [];
 
   neoOperations.createUser(user);
   return user;

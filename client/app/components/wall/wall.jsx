@@ -5,7 +5,7 @@ Wall = React.createClass({
 
   getInitialState: function() {
     return {
-      userWithTxns: Session.get('user')
+      userWithTxns: Session.get('user') || []
     }
   },
 
@@ -32,7 +32,7 @@ Wall = React.createClass({
     }
      */
 
-    var txns = this.state ? this.state.userWithTxns.transactions.reverse() : [];
+    var txns = this.state ? this.state.userWithTxns.receivedTransactions.reverse() : [];
 
     if (!txns.length) { return <div></div> }
 
