@@ -7,7 +7,6 @@
 meteor-platform
 autopublish
 insecure
-hipertracker:reactjs
 materialize:materialize
 less
 iron:router
@@ -18,3 +17,4 @@ meteorhacks:npm
 
 npm-container
 stevezhu:lodash
+hipertracker:reactjs
