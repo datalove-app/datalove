@@ -16,9 +16,9 @@ var insertTransaction = function(sourceAddr, targetAddr, newLimit, msg_json) {
 	var userLimits = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
 			sourceAddr: sourceAddr,
 			targetAddr: targetAddr
-		}).get().limits;
+		}).get() || [];
 
-	var currentLimit = userLimits[0] ? userLimits[0].limit : 0;
+	var currentLimit = userLimits.length ? userLimits.limits[0].limit : 0;
 
 	var sourceUser = Meteor.users.findOne({"profile.stellar.account_id": sourceAddr});
 	var targetUser = Meteor.users.findOne({"profile.stellar.account_id": targetAddr});

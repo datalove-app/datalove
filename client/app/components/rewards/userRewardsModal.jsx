@@ -22,11 +22,12 @@ UserRewardsModal = React.createClass({
   	var rcvrAddr = this.props.data.address;
   	var limitDelta = parseFloat(this.refs.amount.getDOMNode().value);
 
-  	var currentLimit = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
+  	var userLimits = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
 			sourceAddr: Session.get('myAddr'),
 			targetAddr: rcvrAddr
-		}).get().limits[0].limit;
+		}).get() || [];
 
+    var currentLimit = userLimits.length > 0 ? userLimits.limits[0].limit : 0;
   	var newLimit = Math.max(currentLimit + limitDelta, 0);
 
     var message = this.refs.message.getDOMNode().value;

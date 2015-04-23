@@ -1,7 +1,8 @@
 setStellarSession = function() {
-  var user = Meteor.user();
-  var addr = user.profile.stellar.account_id;
-  var skey = user.profile.stellar.master_seed;
+  if (!Meteor.user()) { return; }
+  // var user = Meteor.user();
+  var addr = Meteor.user().profile.stellar.account_id;
+  var skey = Meteor.user().profile.stellar.master_seed;
   Session.set('myAddr', addr);
   Session.set('mySecret', skey);
   remote.set_secret(addr, skey);
@@ -46,8 +47,11 @@ var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, op
   });
 };
 
-retrieveAccountInfo = function(rcvrAddr, callback) {
-  remote.request_account_info(rcvrAddr, callback);
+retrieveAccountInfo = function(addr, callback) {
+  callback = callback || function(err, res) {
+    console.log('default accountInfo callback, err/res are:', err, res);
+  }
+  remote.request_account_info(addr, callback);
 };
 
 submitSTRTransaction = submitGenericTransaction.bind(null, 'STR', 'payment');
