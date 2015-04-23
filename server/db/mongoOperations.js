@@ -5,15 +5,17 @@ Meteor.methods({
 });
 
 function addProduct(product) {
-  Products.insert(product);
+
 }
 
 var insertTransaction = function(sourceAddr, targetAddr, newLimit, msg_json) {
 
-	var currentLimit = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
+	var userLimits = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
 			sourceAddr: sourceAddr,
 			targetAddr: targetAddr
-		}).get().limits[0].limit;
+		}).get().limits;
+
+	var currentLimit = userLimits[0] ? userLimits[0].limit : 0;
 
 	var targetUsername = Meteor.users.findOne({"profile.stellar.account_id": targetAddr}).username;
 

@@ -63,7 +63,6 @@ var editEdge = function(sourceAddr, targetAddr, limit, callback) {
       '", limit.target = "' + targetAddr + '";';
   }
 
-
   neoQuery(query, null, function(err, res) {
     Fiber(function() {
       callback(err, res);

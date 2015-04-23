@@ -14,28 +14,14 @@ messageHandler = {
   trustHandler: function(msg_json) {
     var sourceAddr = msg_json.transaction.Account;
     var targetAddr = msg_json.transaction.LimitAmount.issuer;
-    var newLimit = msg_json.transaction.LimitAmount.value;
-    // var limit = msg_json.transaction.LimitAmount.value;
+    var newLimit = parseFloat(msg_json.transaction.LimitAmount.value);
 
-    if (msg_json.transaction.LimitAmount.currency !== 'WFI') { return; }
+    if (msg_json.transaction.LimitAmount.currency !== 'WFI') { 
+      return; 
+    }
+
     console.log('[PROCESSOR] received [gifting] message from txn network');
 
-    // var dbCallback = Meteor.bindEnvironment(function(err, res) {
-    //   if (err) { 
-    //     console.log('err in neoQuery', err);
-    //     return;
-    //   }
-
-    //   var user = Meteor.users.findOne({address: targetAddr});
-    //   console.log(user);
-    // }, function(err) {throw err});
-
-    // var otherCallback = function(err, res) {
-    //   var user = Meteor.users.findOne({address: targetAddr});
-    //   console.log('found user:', user);
-    // }
-    
-    /***************************************************/
     neoOperations.editEdge(sourceAddr, targetAddr, 
       newLimit, function(err, res) {
       // after creating/editing edge, insert txn into User obj
