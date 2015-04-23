@@ -59,4 +59,13 @@ Meteor.startup(function () {
   Tracker.autorun(function() {
     Meteor.subscribe('userData');
   });
+
+  // everytime Meteor.user changes, do something
+  Tracker.autorun(function() {
+    console.log('autorunning Meteor.user()');
+    var user = Meteor.user();
+    if (user) {
+      Session.set('user', user);
+    }
+  })
 });

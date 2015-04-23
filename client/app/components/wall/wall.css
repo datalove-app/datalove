@@ -1,0 +1,16 @@
+.transaction {
+	position: relative;
+}
+
+.limit {
+	float: right;
+	font-size: 4em;
+}
+
+.limit.gift {
+	color: green;
+}
+
+.limit.nix {
+	color: red;
+}

@@ -2,9 +2,7 @@ App = React.createClass({
   mixins: [ReactMeteor.Mixin],
 
   getMeteorState: function() {
-    return {
-      title: 'chatter'
-    };
+    return {};
   },
 
   render: function() {
