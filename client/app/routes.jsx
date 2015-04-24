@@ -1,20 +1,21 @@
 Router.route('/', function() {
-  Router.go('/rewards');
+  Router.go('/wall');
 });
+
+Router.route('/wall', function() {
+  React.render(<Wall />, document.getElementById('main'))
+})
 
 Router.route('/market', function() {
   React.render(<YourMarket />, document.getElementById('main'));
-  React.render(<BottomBar />, document.getElementById('footer'));
 });
 
 Router.route('/rewards', function() {
   React.render(<Rewards />, document.getElementById('main'));
-  React.render(<BottomBar />, document.getElementById('footer'));
 });
 
 Router.route('/shopping', function() {
   React.render(<Shopping />, document.getElementById('main'));
-  React.render(<BottomBar />, document.getElementById('footer'));
 });
 
 Router.onBeforeAction(function() {
@@ -25,5 +26,6 @@ Router.onBeforeAction(function() {
     return;
   }
 
+  React.render(<BottomBar />, document.getElementById('footer'));
   this.next();
 });

@@ -13,5 +13,5 @@ neo = {
   Limits: Meteor.neo4j.query('MATCH ()-[limits:TRUST]->() RETURN limits')
 };
 
-Products = new Meteor.Collection('products');
-Transactions = new Meteor.Collection('transactions');
+// Products = new Meteor.Collection('products');
+// Transactions = new Meteor.Collection('transactions');

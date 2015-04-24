@@ -21,3 +21,11 @@ lib/deps.js
 #########
 .idea/
 projectFilesBackup/
+
+# test neo4j data #
+###################
+testGraph.json
+
+# extra packages #
+##################
+packages/meteor-reactjs/

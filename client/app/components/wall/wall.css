@@ -2,6 +2,14 @@
 	position: relative;
 }
 
+.username {
+	color: gray;
+}
+
+.message {
+	font-size: 1.25em;
+}
+
 .limit {
 	float: right;
 	font-size: 4em;
