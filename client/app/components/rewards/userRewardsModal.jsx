@@ -6,28 +6,24 @@ UserRewardsModal = React.createClass({
   },
 
   submitTxn: function(event) {
-  	/*
-			get the change in limit amount
-			get currentLimit || 0
-			set amount = Math.max(currentLimit + limitDelta, 0);
-			submit txn
-
-  	 */
-
-  	// TODO: REFACTOR to place neo4j query somewhere else more efficient
-  		// depends on how reactive it is
-
   	event.preventDefault();
+    // TODO: REFACTOR to place neo4j query somewhere else more efficient
+      // depends on how reactive it is
 
   	var rcvrAddr = this.props.data.address;
   	var limitDelta = parseFloat(this.refs.amount.getDOMNode().value);
 
-  	var userLimits = Meteor.neo4j.query('MATCH (s {address:{sourceAddr}})-[limits:TRUST]->(t {address:{targetAddr}}) RETURN limits', {
+    // get current limit amount from neo4j
+  	var userLimit = Meteor.neo4j.query('MATCH (s ' +
+      '{address: {sourceAddr}})-[limit:TRUST]->' + 
+      '(t {address: {targetAddr}}) RETURN limit', 
+    {
 			sourceAddr: Session.get('myAddr'),
 			targetAddr: rcvrAddr
-		}).get() || [];
+		}).get() || {limit: []};
 
-    var currentLimit = userLimits.length > 0 ? userLimits.limits[0].limit : 0;
+    var currentLimit = userLimit.limit.length > 0 ? 
+      parseFloat(userLimit.limit[0].amount) : 0;
   	var newLimit = Math.max(currentLimit + limitDelta, 0);
 
     var message = this.refs.message.getDOMNode().value;

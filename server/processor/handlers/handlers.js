@@ -19,13 +19,12 @@ messageHandler = {
     if (msg_json.transaction.LimitAmount.currency !== 'WFI') { 
       return; 
     }
-
     console.log('[PROCESSOR] received [gifting] message from txn network');
 
-    neoOperations.editEdge(sourceAddr, targetAddr, 
+    neoOperations.upsertEdge(sourceAddr, targetAddr, 
       newLimit, function(err, res) {
-      // after creating/editing edge, insert txn into User obj(s)
-      mongoOperations.insertTxn(sourceAddr, targetAddr, newLimit, msg_json);
+      // console.log('meta.AffectedNodes:', msg_json.meta.AffectedNodes);
+      mongoOperations.insertTxn(sourceAddr, targetAddr, newLimit, res, msg_json);
     });
   }
 };

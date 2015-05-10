@@ -8,6 +8,21 @@ setStellarSession = function() {
   remote.set_secret(addr, skey);
 };
 
+stellardCxnInterval = function() {
+  console.log('stellar heartbeat');
+  // reconnects to stellard if online
+  if (remote.state === 'offline') {
+    console.log('reconnecting to stellard');
+    remote.connect();
+  }
+
+  // guarantees that stellar info stays in Session
+  if (!Session.get('myAddr')) {
+    setStellarSession();
+  }
+};
+
+
 var submitGenericTransaction = function(currencyCode, txnType, amt, rcvrAddr, options, memoObj, preSubmitCallback, submitCallback) {
   if (typeof amt !== 'number' || currencyCode.length > 3) {
     return;

@@ -33,27 +33,11 @@ Meteor.startup(function () {
     ]
   });
 
+  // connect to stellard, sets session vars to Stellar stuff,
+    // keep stellard cxn alive
   remote.connect();
-
-  // sets session vars to Stellar stuff
   setStellarSession();
-
-  // TODO: FIX THIS so it keeps the remote alive;
-  (function() {
-    console.log('stellar heartbeat');
-    Meteor.setInterval(function() {
-      // reconnects to stellard
-      if (remote.state === 'offline') {
-        console.log('reconnecting to stellard');
-        remote.connect();
-      }
-
-      // guarantees that stellar info stays in Session
-      if (!Session.get('myAddr')) {
-        setStellarSession();
-      }
-    }, 15000);
-  })();
+  Meteor.setInterval(stellardCxnInterval, 10000);
 
   // ???
   Tracker.autorun(function() {
@@ -67,5 +51,6 @@ Meteor.startup(function () {
     if (user) {
       Session.set('user', user);
     }
-  })
+  });
+  
 });

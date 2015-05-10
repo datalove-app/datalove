@@ -16,7 +16,7 @@ Rewards = React.createClass({
 
   render: function() {
     // ?? Meteor.users vs Users
-    var users = neo.Users.get().users;
+    var users = neoDB.Users.get().user;
     var selectedUser = this.state ? this.state.selectedUser : null;
 
     return (

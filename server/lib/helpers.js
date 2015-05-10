@@ -6,13 +6,15 @@ var maxFlowBetweenAccounts = function (sourceAddr, targetAddr) {
   // sourceAddr: the hopeful sender's address
   // targetAddr: the potential recipient's address
   
-  var query = 'MATCH (:User {address:"' + targetAddr +
-    '"})-[limit:TRUST*..3]->' +
-    '(:User {address:"' + sourceAddr +
-    '"}) RETURN limit';
+  var query = 'MATCH (:User {address:{targetAddr}})' + 
+    '-[limit:TRUST*..3]->(:User {address:{sourceAddr}}) ' + 
+    'WHERE limit.amount > 0 RETURN limit';
 
-  var paths = neoQuerySync(query, null);
-  console.log('paths:', paths);
+  var paths = neoQuerySync(query, {
+    sourceAddr: sourceAddr,
+    targetAddr: targetAddr
+  });
+  // console.log('paths:', paths);
   var maxFlow = 0;
 
   // for each path

@@ -36,10 +36,11 @@ function demoRegistrationHook(options, user) {
   var getRes = getTestStellar(stellarAccount);
 
   user.profile = options.profile || {};
+  // TODO: encrypt stellar data before storage
   user.profile.stellar = stellarAccount;
   user.transactions = [];
   user.receivedTransactions = [];
 
-  neoOperations.createUser(user);
+  neoOperations.createUser(user, function(){});
   return user;
 }
