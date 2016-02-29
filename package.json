@@ -1,0 +1,25 @@
+{
+  "name": "whuffie",
+  "version": "0.0.1",
+  "description": "[Whuffie]() — the social cryptocurrency ==================================================",
+  "main": "index.js",
+  "dependencies": {
+    "cycle-react": "^4.0.0",
+    "react-native": "^0.20.0",
+    "rx": "^4.0.8"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunny-g/whuffie.git"
+  },
+  "author": "Sunny G <sunny.gonna@gmail.com> (http://blog.sunnyg.io)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sunny-g/whuffie/issues"
+  },
+  "homepage": "https://github.com/sunny-g/whuffie#readme"
+}
