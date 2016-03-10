@@ -1,12 +1,13 @@
 {
   "name": "whuffie",
   "version": "0.0.1",
-  "description": "[Whuffie]() — the social cryptocurrency ==================================================",
+  "description": "whuffie — the social cryptocurrency",
   "main": "index.js",
   "dependencies": {
     "cycle-react": "^4.0.0",
     "react-native": "^0.20.0",
-    "rx": "^4.0.8"
+    "rx": "^4.0.8",
+    "scene-router": "^0.3.5"
   },
   "devDependencies": {},
   "scripts": {
