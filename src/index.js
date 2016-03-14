@@ -1,76 +1,63 @@
 'use strict';
 
 import React, {
+  LinkingIOS,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
 import Cycle from 'cycle-react/native';
-import { Observable } from 'rx';
+import Rx, { Observable } from 'rx';
 import { Scene } from 'scene-router';
 
 /* Need to require all components used to render routes */
+import Home from './Home';
 import Auth from './Auth';
 import Signin from './Auth/Signin';
 import Signup from './Auth/Signup';
 import Feed from './Feed';
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5FCFF',
-  },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 5,
-  }
-});
+const Main = Cycle.component('Main', function mainComputer(_1, props, self, lifecycles, renderScheduler) {
+  /*
+    TODO: create a nav/scene stream that sets up a LinkingIOS listener and pipes paths
+    linkingios stream functionality
+      - receives a URL
+      - checks auth, emits a route change object
+    auth stream functionality:
+      - checks some session storage
+      - emits auth object based on auth status
+    nav stream functionality:
+      - should receive an object of:
+        - desired path (so it can be processed for props)
+        - props (to be merged with any global props to be passed to rendered component)
+      - "subscribe" to the subject in the Main component
+        - trigger scene change and pass props
 
-const Home = Cycle.component('Home', function homeComputer(interactions, props) {
-  const scene$ = props.get('scene');
+    // something like this...
+    const scene = new Rx.Subject();
+    scene
+      .combineLatest(auth$, (transition, auth) => {
+        return transitionAction
+      })
+      .subscribe((action) => {
+        
+      })
+      
+    })
+   */
+  const scene = () => self.refs['scene'];
 
-  return interactions.get('click')
-    .map(ev => 1)
-    .startWith(0)
-    .scan((count, click) => count + click)
-    .combineLatest(scene$, (count, scene) => (
-      <View style={styles.container}>
-        <TouchableOpacity onPress={interactions.listener('click')}>
-          <Text style={styles.welcome}>
-            hello world: {count}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => scene().goto('/auth/signin', {scene})}>
-          <Text style={styles.welcome}>
-            goto signin page
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => scene().goto('/auth/signup', {scene})}>
-          <Text style={styles.welcome}>
-            goto signup page
-          </Text>
-        </TouchableOpacity>
-      </View>
-    ));
-});
-
-const Main = Cycle.component('Main', function mainComputer(_1, props, self, _4, renderScheduler) {
   return props
     .observeOn(renderScheduler)
-    .map(() => {
-      const getScene = () => { return self.refs['scene']; }
+    .map((...args) => {
+      console.log('main args:', args);
       return (
         <Scene ref="scene"
           initialPath="/home"
-          initialProps={{scene: getScene}}
-          onSceneChange={(...args) => console.log('scene change', args)}
+          initialProps={{scene}}
         >
+          {/* onSceneChange={(...args) => console.log('scene change', args)} */}
           <Scene path="home" component={Home}></Scene>
           <Scene path="auth" component={Auth}>
             <Scene path="signin" component={Signin}></Scene>

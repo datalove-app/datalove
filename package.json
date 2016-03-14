@@ -2,17 +2,8 @@
   "name": "whuffie",
   "version": "0.0.1",
   "description": "whuffie — the social cryptocurrency",
+  "homepage": "https://github.com/sunny-g/whuffie#readme",
   "main": "index.js",
-  "dependencies": {
-    "cycle-react": "^4.0.0",
-    "react-native": "^0.20.0",
-    "rx": "^4.0.8",
-    "scene-router": "^0.3.5"
-  },
-  "devDependencies": {},
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sunny-g/whuffie.git"
@@ -22,5 +13,13 @@
   "bugs": {
     "url": "https://github.com/sunny-g/whuffie/issues"
   },
-  "homepage": "https://github.com/sunny-g/whuffie#readme"
+  "scripts": {
+    "test": "babel-tape-runner test/**/*.js | faucet"
+  },
+  "dependencies": {
+    "cycle-react": "^4.0.0",
+    "react-native": "^0.20.0",
+    "rx": "^4.0.8",
+    "scene-router": "^0.3.5"
+  }
 }

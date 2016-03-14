@@ -6,6 +6,7 @@ import React, {
   TouchableOpacity,
   View
 } from 'react-native';
+import Cycle from 'cycle-react/native';
 
 const styles = StyleSheet.create({
   container: {
@@ -21,16 +22,32 @@ const styles = StyleSheet.create({
   }
 });
 
-export default (props) => {
-  return (
+export default Cycle.component('Signin', function(interactions, props) {
+
+  const scene$ = props.get('scene');
+
+  const gohome$ = interactions.get('gohome')
+    .combineLatest(scene$, (_, scene) => {
+      console.log('going home', scene);
+      return scene().goto('/home', {scene});
+    });
+  const goback$ = interactions.get('goback')
+    .combineLatest(scene$, (_, scene) => {
+      console.log('going back fron signin', scene);
+      return scene().goback();
+    });
+
+  const nav$ = gohome$.merge(goback$).startWith(null);
+
+  return nav$.map(() => (
     <View style={styles.container}>
       <Text>signin page</Text>
-      <TouchableOpacity onPress={() => props.scene().goto('/home', {scene: props.scene})}>
+      <TouchableOpacity onPress={interactions.listener('gohome')}>
         <Text style={styles.welcome}>go home</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => props.scene().goback()}>
+      <TouchableOpacity onPress={interactions.listener('goback')}>
         <Text style={styles.welcome}>go back</Text>
       </TouchableOpacity>
     </View>
-  );
-}
+  ));
+})
