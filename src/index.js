@@ -10,6 +10,7 @@ import React, {
 import Cycle from 'cycle-react/native';
 import Rx, { Observable } from 'rx';
 import { Scene } from 'scene-router';
+import { makeSceneRouter } from '../lib/router.helpers.js';
 
 /* Need to require all components used to render routes */
 import Home from './Home';
@@ -34,7 +35,12 @@ const Main = Cycle.component('Main', function mainComputer(_1, props, self, life
       - "subscribe" to the subject in the Main component
         - trigger scene change and pass props
 
-    // something like this...
+    // in other components,
+    ...
+    scene.onNext({path: '/path'})
+
+    // in main router component, something like this...
+      // needs to merge props with global props to pass to new route
     const scene = new Rx.Subject();
     scene
       .combineLatest(auth$, (transition, auth) => {
@@ -44,20 +50,28 @@ const Main = Cycle.component('Main', function mainComputer(_1, props, self, life
         
       })
       
-    })
    */
-  const scene = () => self.refs['scene'];
+
+  let globalProps = {session$: new Rx.Subject()};
+  globalProps.scene = makeSceneRouter(self, globalProps);
+  /*
+    TODO: return an object whose goto and goback methods emit an event
+      - this way, we can intercept an intent to go to a path based on some criteria
+      - so in principle:
+        - map over the subject
+        - merge it with the LinkingIOS and auth streams
+        - plug it in to the vtree
+   */
 
   return props
     .observeOn(renderScheduler)
-    .map((...args) => {
-      console.log('main args:', args);
+    .map(() => {
       return (
         <Scene ref="scene"
           initialPath="/home"
-          initialProps={{scene}}
+          initialProps={{...globalProps}}
+          onSceneChange={(...args) => {console.log(args)}}
         >
-          {/* onSceneChange={(...args) => console.log('scene change', args)} */}
           <Scene path="home" component={Home}></Scene>
           <Scene path="auth" component={Auth}>
             <Scene path="signin" component={Signin}></Scene>

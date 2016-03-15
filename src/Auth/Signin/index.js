@@ -7,6 +7,7 @@ import React, {
   View
 } from 'react-native';
 import Cycle from 'cycle-react/native';
+import { makeGoto$, makeGoback$ } from '../../../lib/router.helpers.js';
 
 const styles = StyleSheet.create({
   container: {
@@ -23,19 +24,11 @@ const styles = StyleSheet.create({
 });
 
 export default Cycle.component('Signin', function(interactions, props) {
+  const session$ = props.get('session$');
 
   const scene$ = props.get('scene');
-
-  const gohome$ = interactions.get('gohome')
-    .combineLatest(scene$, (_, scene) => {
-      console.log('going home', scene);
-      return scene().goto('/home', {scene});
-    });
-  const goback$ = interactions.get('goback')
-    .combineLatest(scene$, (_, scene) => {
-      console.log('going back fron signin', scene);
-      return scene().goback();
-    });
+  const gohome$ = makeGoto$('/home', interactions.get('gohome'), scene$);
+  const goback$ = makeGoback$(interactions.get('goback'), scene$);
 
   const nav$ = gohome$.merge(goback$).startWith(null);
 

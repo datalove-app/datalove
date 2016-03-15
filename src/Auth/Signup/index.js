@@ -25,7 +25,7 @@ export default (props) => {
   return (
     <View style={styles.container}>
       <Text>signup page</Text>
-      <TouchableOpacity onPress={() => props.scene().goto('/home', {scene: props.scene})}>
+      <TouchableOpacity onPress={() => props.scene().goto('/home')}>
         <Text style={styles.welcome}>go home</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => props.scene().goback()}>
