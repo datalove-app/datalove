@@ -14,11 +14,13 @@
     "url": "https://github.com/sunny-g/whuffie/issues"
   },
   "scripts": {
-    "test": "babel-tape-runner test/**/*.js | faucet"
+    "start": "./node_modules/react-native/packager/packager.sh start"
   },
   "dependencies": {
+    "@exponent/react-native-navigator": "^0.4.2",
     "cycle-react": "^4.0.0",
-    "react-native": "^0.20.0",
+    "react-native": "^0.21.0",
+    "react-native-tab-navigator": "^0.2.17",
     "rx": "^4.0.8",
     "scene-router": "^0.3.5"
   }

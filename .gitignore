@@ -1,11 +1,14 @@
-# OSX
-#
+###############
+##### OSX
+###############
 .DS_Store
+
 whuffie.sublime-project
 whuffie.sublime-workspace
 
-# Xcode
-#
+###############
+##### Xcode
+###############
 build/
 *.pbxuser
 !default.pbxuser
@@ -24,13 +27,16 @@ DerivedData
 *.xcuserstate
 project.xcworkspace
 
-# Android/IJ
-#
+###############
+##### Android/IJ
+###############
 .idea
 .gradle
 local.properties
 
-# node.js
-#
+##########
+##### node.js
+###########
 node_modules/
+native/node_modules/
 npm-debug.log
