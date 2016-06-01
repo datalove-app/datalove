@@ -6,7 +6,7 @@ Whuffie is a social cryptocredit engine.
 - credits can be sent from one user to another if there is a path of acceptance between them
 - ?? a user's reputation can be measured by their credit's acceptance throughout the graph, similar to PageRank and linking URLs
 
-B/c of these rules, any currency or token that can be issued and sent between users can be implemented on top of Whuffie, such as:
+B/c of these rules, any currency or token that can be issued and sent between accounts can be implemented on top of Whuffie, such as:
 - social network and reputation currencies
 - rewards points systems
 - video game credits/tokens

@@ -3,25 +3,21 @@
  *    should allow for updating WhuffieAPI address
  *    should be mortal
  *    should be stored in some kind of NameReg
- *
- *    should be IMMUTABLE (i.e. non-updateable, since that would require a state migration)
- *      this means that all methods and state mutations will be set
- *      in stone for the life of the contract
  */
 
 /**
  * @title WhuffieStorage
- * @author Sunny Gonnabathula @sunny-g
+ * @author Sunny Gonnabathula | @sunny-g | sunny.gonna@gmail.com
  * @notice Implements public getters, setters and iterators for the Whuffie Graph
- * @dev This contract will maintain the base-level storage of all Users and Offers,
+ * @dev This contract will maintain the base-level storage of all Accounts and Offers,
  *  and will only be mutated by selected API contracts. It is implemented under
  *  the assumption that contract storage cannot be migrated to a new contract.
- *  If this is untrue, then this contract can be update to have higher-level
+ *  If this is untrue, then this contract can be updated to have higher-level
  *  functionality baked-in.
  */
 contract WhuffieStorage {
   mapping (address => bool) public APIAccess;   /**< All addresses allowed to mutate WhuffieStorage */
-  UserMap public Graph;                         /**< The core mapping of Users and Offers */
+  AccountMap public Graph;                      /**< The core mapping of Accounts and Offers */
 
   function WhuffieStorage (address APIaddr) {
     // set the initial API address for use in modifier
@@ -51,8 +47,8 @@ contract WhuffieStorage {
 
   /**
    * @notice Determines if a Offer has ever been created
-   * @param source Address of source user
-   * @param target Address of counterparty user
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return bool
    */
   function offerExists(
@@ -64,8 +60,8 @@ contract WhuffieStorage {
 
   /**
    * @notice Determines if a Offer is alive
-   * @param source Address of source user
-   * @param target Address of counterparty user
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return bool
    */
   function offerIsActive(
@@ -87,7 +83,7 @@ contract WhuffieStorage {
     bool activeStatus
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].active = activeStatus;
+    Graph.accounts[source].offerMap.offers[target].active = activeStatus;
     return true;
   }
 
@@ -115,7 +111,7 @@ contract WhuffieStorage {
     uint newLimit
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].limit = newLimit;
+    Graph.accounts[source].offerMap.offers[target].limit = newLimit;
     return true;
   }
 
@@ -131,7 +127,7 @@ contract WhuffieStorage {
     uint newSourceBalance
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].sourceBalance = newSourceBalance;
+    Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
     return true;
   }
 
@@ -147,7 +143,7 @@ contract WhuffieStorage {
     uint newTargetBalance
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].targetBalance = newTargetBalance;
+    Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
     return true;
   }
 
@@ -163,7 +159,7 @@ contract WhuffieStorage {
     uint[2] newExchangeRate
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].exchangeRate = newExchangeRate;
+    Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
     return true;
   }
 
@@ -179,7 +175,7 @@ contract WhuffieStorage {
     uint newSourceLockedBalance
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
+    Graph.accounts[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
     return true;
   }
 
@@ -195,13 +191,13 @@ contract WhuffieStorage {
     uint newTargetLockedBalance
   ) public returns (bool) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.users[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
+    Graph.accounts[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
     return true;
   }
 
   /********************************************************//**
    * @struct OfferMap
-   * @notice A doubly-linked list containing all of a User's open Offers,
+   * @notice A doubly-linked list containing all of a Account's open Offers,
    *  sorted by ??? (TODO: settle this when implementing swapOffers)
    * @dev O(1) get, add, remove, swap
    ***********************************************************/
@@ -216,23 +212,23 @@ contract WhuffieStorage {
 
   /**
    * @notice Internal method for fetching an individual Offer
-   * @param source Address of source user
-   * @param target Address of counterparty user
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return Offer instance
    */
   function _getOffer(
     address source,
     address target
   ) internal constant returns (Offer) {
-    return Graph.users[source].offerMap.offers[target];
+    return Graph.accounts[source].offerMap.offers[target];
   }
 
   /**
    * @notice Returns Offer struct members
    * @dev Must return individual members (since solidity doesn't allow struct
    *  return values within the EVM)
-   * @param source Address of source user
-   * @param target Address of counterparty user
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return exists
    * @return prev
    * @return next
@@ -270,9 +266,9 @@ contract WhuffieStorage {
   }
 
   /**
-   * @notice Creates a new Offer in the source user's OfferMap
-   * @param source Address of source user
-   * @param target Address of counterparty user
+   * @notice Creates a new Offer in the source account's OfferMap
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return bool
    */
   function createOffer(
@@ -285,13 +281,13 @@ contract WhuffieStorage {
     // TODO: replace this with a call that returns a pointer to storage
     // TODO: update this for adding to linked list
     var _offer = Offer(true, 0x0, 0x0, target, true, limit, exchangeRate, 0, 0, 0, 0);
-    Graph.users[source].offerMap.offers[target] = _offer;
+    Graph.accounts[source].offerMap.offers[target] = _offer;
     return true;
   }
 
   /**
    * @notice Swaps two Offers' positions within a OfferMap
-   * @param source Address of source user
+   * @param source Address of source account
    * @param targetOne Address of first Offer
    * @param targetTwo Address of second Offer
    * @return bool
@@ -346,123 +342,123 @@ contract WhuffieStorage {
   ) {}
 
   /********************************************************//**
-   * @struct User
+   * @struct Account
    * @notice A Whuffie-holding account
    ***********************************************************/
-  struct User {
-    bool      exists;       /**< whether or not the User exists */
-    address   sourceAddr;   /**< the User's address */
-    string    metadata;     /**< metadata regarding the User's last transaction */
-    OfferMap  offerMap;    /**< a collection of the User's open offers */
+  struct Account {
+    bool      exists;       /**< whether or not the Account exists */
+    address   sourceAddr;   /**< the Account's address */
+    string    metadata;     /**< metadata regarding the Account's last transaction */
+    OfferMap  offerMap;    /**< a collection of the Account's open offers */
   }
 
   // internal helpers
   // TODO: audit these functions for redundancy, performance and "throw"-related errors
   /**
    * @notice Internal method for fetching a OfferMap struct from storage
-   * @param source Address of source user for all offers in OfferMap
+   * @param source Address of source account for all offers in OfferMap
    * @return OfferMap instance
    */
   function _getOfferMap(
     address source
   ) internal constant returns (OfferMap) {
-    return Graph.users[source].offerMap;
+    return Graph.accounts[source].offerMap;
   }
 
   /**
-   * @notice Fetches the latest IPFS hash for a user
-   * @param source User's address
-   * @return metadata IPFS hash of user's latest transaction
+   * @notice Fetches the latest IPFS hash for a account
+   * @param source Account's address
+   * @return metadata IPFS hash of account's latest transaction
    */
   function getMetadata(
     address source
   ) public constant returns (string metadata) {
-    return _getUser(source).metadata;
+    return _getAccount(source).metadata;
   }
 
   /**
-   * @notice Sets latest IPFS hash for a user
-   * @param source User's address
-   * @param metadata IPFS hash of user's latest transaction
+   * @notice Sets latest IPFS hash for a account
+   * @param source Account's address
+   * @param metadata IPFS hash of account's latest transaction
    * @return bool
    */
   function setMetadata(
     address source,
     string metadata
   ) public returns (bool) {
-    if (userExists(source) == false) { throw; }
-    var user = _getUser(source);
-    user.metadata = metadata;
+    if (accountExists(source) == false) { throw; }
+    var account = _getAccount(source);
+    account.metadata = metadata;
     return true;
   }
 
   /********************************************************//**
-   * @struct UserMap
-   * @notice A doubly-linked list containing all Whuffie Users and Offers
+   * @struct AccountMap
+   * @notice A doubly-linked list containing all Whuffie Accounts and Offers
    ***********************************************************/
-  struct UserMap {
+  struct AccountMap {
     uint    size;         /**< length of the linked-list */
-    address head;         /**< pointer to the first User of linked-list */
-    address tail;         /**< pointer to the last User of linked-list */
+    address head;         /**< pointer to the first Account of linked-list */
+    address tail;         /**< pointer to the last Account of linked-list */
     mapping (
-      address => User     /**< hashmap of Users by their address */
-    ) users;
+      address => Account     /**< hashmap of Accounts by their address */
+    ) accounts;
   }
 
   /**
-   * @notice Internal method for fetching a User struct from storage
-   * @param source Address of desired user
-   * @return User instance
+   * @notice Internal method for fetching a Account struct from storage
+   * @param source Address of desired account
+   * @return Account instance
    */
   // TODO: audit and test these functions for redundancy, performance and "throw"-related errors
-  function _getUser(
+  function _getAccount(
     address source
-  ) internal constant returns (User) {
-    return Graph.users[source];
+  ) internal constant returns (Account) {
+    return Graph.accounts[source];
   }
 
   /**
-   * @notice Returns User struct members for a given address
+   * @notice Returns Account struct members for a given address
    * @dev Must return individual members (since solidity doesn't allow struct
    *  return values within the EVM)
-   * @param source Address of the user
+   * @param source Address of the account
    * @return exists
-   * @return metadata IPFS hash of the user's last transaction
+   * @return metadata IPFS hash of the account's last transaction
    */
-  function getUser(
+  function getAccount(
     address source
   ) public constant returns (
     bool exists,
     string metadata
   ) {
-    var _user = _getUser(source);
-    exists = _user.exists;
-    metadata = _user.metadata;
+    var _account = _getAccount(source);
+    exists = _account.exists;
+    metadata = _account.metadata;
   }
 
   /**
-   * @notice Determines if the User exists
-   * @param source User's address
+   * @notice Determines if the Account exists
+   * @param source Account's address
    * @return bool
    */
-  function userExists(
+  function accountExists(
     address source
   ) public constant returns (bool) {
-    return _getUser(source).exists;
+    return _getAccount(source).exists;
   }
 
   /**
-   * @notice Creates a new User in Graph
-   * @param source User's address
-   * @param metadata IPFS hash of the user creation transaction
+   * @notice Creates a new Account in Graph
+   * @param source Account's address
+   * @param metadata IPFS hash of the account creation transaction
    */
-  function createUser(
+  function createAccount(
     address source,
     string metadata
   ) public isAPI returns (bool) {
-    if (userExists(source)) { return false; }
+    if (accountExists(source)) { return false; }
     // TODO: replace this with a call that returns a pointer to storage
-    Graph.users[source] = User(true, source, metadata, OfferMap(0, 0x0, 0x0));
+    Graph.accounts[source] = Account(true, source, metadata, OfferMap(0, 0x0, 0x0));
     return true;
   }
 
@@ -471,11 +467,11 @@ contract WhuffieStorage {
   //////////////////////////////////////////////////////////////////////
   // public iterators
     // TODO: add remaining linked list iterators
-  function iter_getUserMapSize(
+  function iter_getAccountMapSize(
     address source,
     address target
   ) public constant returns (uint size) {}
-  function iter_getFirstUser(
+  function iter_getFirstAccount(
     address source,
     address target
   ) public constant returns (
@@ -486,7 +482,7 @@ contract WhuffieStorage {
     uint lockedSourceBalance,
     uint lockedTargetBalance
   ) {}
-  function iter_getPrevUser(
+  function iter_getPrevAccount(
     address source,
     address target
   ) public constant returns (
@@ -497,7 +493,7 @@ contract WhuffieStorage {
     uint lockedSourceBalance,
     uint lockedTargetBalance
   ) {}
-  function iter_getNextUser(
+  function iter_getNextAccount(
     address source,
     address target
   ) public constant returns (
