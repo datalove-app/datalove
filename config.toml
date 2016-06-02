@@ -1,0 +1,10 @@
+baseurl = "https://sunny-g.github.io/whuffie/"
+title = "Whuffie"
+languageCode = "en-us"
+
+theme = "hugo-redlounge"
+pygmentsStyle = "monokai"
+
+contentdir = "docs"
+[params]
+  GithubUser = "sunny-g"
