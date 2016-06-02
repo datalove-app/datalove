@@ -19,194 +19,221 @@ contract WhuffieStorage {
   mapping (address => bool) public APIAccess;   /**< All addresses allowed to mutate WhuffieStorage */
   AccountMap public Graph;                      /**< The core mapping of Accounts and Offers */
 
+  uint public constant MAX_UINT = 2**256 - 1;
+
   function WhuffieStorage (address APIaddr) {
     // set the initial API address for use in modifier
     APIAccess[APIaddr] = true;
   }
 
-  modifier isAPI() { if (APIAccess[msg.sender]) _ }
+  modifier isAPI() { if (APIAccess[msg.sender] == false) throw; _ }
 
   /********************************************************//**
-   * @struct Offer
-   * @notice An open offer tracking the exchange of the source's and target's credits
+   * @struct AccountMap
+   * @notice A doubly-linked list containing all Whuffie Accounts and Offers
    ***********************************************************/
-  struct Offer {
-    bool    exists;               /**< whether or not an Offer has been created */
-    address prev;                 /**< pointer to previous Offer of linked-list */
-    address next;                 /**< pointer to next Offer of linked-list */
-
-    address targetAddr;           /**< address of Offer target */
-    bool    active;               /**< whether or not the Offer can be used in transactions */
-    uint    limit;                /**< maximum amount of target credit to hold */
-    uint[2] exchangeRate;         /**< exchange rate between target's and source's credit */
-    uint    sourceBalance;        /**< balance of source's credit */
-    uint    targetBalance;        /**< balance of target's credit */
-    uint    sourceLockedBalance;  /**< immovable balance of source's credit */
-    uint    targetLockedBalance;  /**< immovable balance of target's credit */
+  struct AccountMap {
+    uint    size;         /**< length of the linked-list */
+    address headAddr;     /**< source address of first Account of linked-list */
+    address tailAddr;     /**< source address of last Account of linked-list */
+    mapping (
+      address => Account  /**< hashmap of Accounts by their address */
+    ) accounts;
   }
 
   /**
-   * @notice Determines if a Offer has ever been created
-   * @param source Address of source account
-   * @param target Address of counterparty account
+   * @notice Internal method for fetching a Account struct from storage
+   * @param source Address of desired account
+   * @return Account instance
+   */
+  // TODO: audit and test these functions for redundancy, performance and "throw"-related errors
+  function _getAccount(
+    address source
+  ) internal constant returns (Account sourceAccount) {
+    return Graph.accounts[source];
+  }
+
+  /**
+   * @notice Returns Account struct members for a given address
+   * @dev Must return individual members (since solidity doesn't allow struct
+   *  return values within the EVM)
+   * @param source Address of the account
+   * @return exists
+   * @return metadata IPFS hash of the account's last transaction
+   */
+  function getAccount(
+    address source
+  ) public constant returns (
+    bool exists,
+    string metadata
+  ) {
+    var _account = _getAccount(source);
+    exists = _account.exists;
+    metadata = _account.metadata;
+  }
+
+  /**
+   * @notice Determines if the Account exists
+   * @param source Account's address
    * @return bool
    */
-  function offerExists(
-    address source,
-    address target
-  ) public constant returns (bool) {
-    return _getOffer(source, target).exists;
+  function accountExists(
+    address source
+  ) public constant returns (bool success) {
+    return _getAccount(source).exists;
   }
 
   /**
-   * @notice Determines if a Offer is alive
-   * @param source Address of source account
-   * @param target Address of counterparty account
+   * @notice Creates a new Account in Graph
+   * @param source Account's address
+   * @param metadata IPFS hash of the account creation transaction
+   */
+  function createAccount(
+    address source,
+    string metadata
+  ) public isAPI returns (bool success) {
+    if (accountExists(source)) { throw; }
+    var size = getAccountMapSize();
+    if (size == MAX_UINT) { throw; }
+
+    var _newAccount = Account(true, 0x0, 0x0, source, metadata, OfferMap(0, 0x0, 0x0));
+
+    if (size == 0) {
+      _setAccountMapHeadAddr(source);
+      _setAccountMapTailAddr(source);
+    } else {
+      address oldTail = _getAccountMapTailAddr();
+      _setAccountNextAddr(oldTail, source);
+      _setAccountMapTailAddr(source);
+      _newAccount.prevAddr = oldTail;
+    }
+
+    Graph.size = size + 1;
+    Graph.accounts[source] = _newAccount;
+    return true;
+  }
+
+  // internal helpers
+  // TODO: audit these functions for redundancy, performance and "throw"-related errors
+  /**
+   * @notice Fetches the length of the OfferMap
+   * @return uint Size of the OfferMap
+   */
+  function getAccountMapSize() public constant returns (uint size) {
+    return Graph.size;
+  }
+
+  function _getAccountMapHeadAddr () internal constant returns (address headAddr) {
+    return Graph.headAddr;
+  }
+  function _setAccountMapHeadAddr (
+    address headAddr
+  ) internal constant returns (bool success) {
+    Graph.headAddr = headAddr;
+    return true;
+  }
+
+  function _getAccountMapTailAddr () internal constant returns (address tailAddr) {
+    return Graph.tailAddr;
+  }
+  function _setAccountMapTailAddr (
+    address tailAddr
+  ) internal constant returns (bool success) {
+    Graph.tailAddr = tailAddr;
+    return true;
+  }
+
+  /**
+   * @notice Swaps two Offers' positions within a OfferMap
+   * @param sourceOne Address of source account
+   * @param sourceTwo Address of second Offer
    * @return bool
    */
-  function offerIsActive(
-    address source,
-    address target
-  ) public constant returns (bool) {
-    return _getOffer(source, target).active;
+  function swapAccounts(
+    address sourceOne,
+    address sourceTwo
+  ) public returns (bool success) {}
+
+  /********************************************************//**
+   * @struct Account
+   * @notice A Whuffie-holding account
+   ***********************************************************/
+  struct Account {
+    bool      exists;       /**< whether or not the Account exists */
+    address   prevAddr;     /**< source address of previous Account in linked-list */
+    address   nextAddr;     /**< source address of next Account in linked-list */
+
+    address   sourceAddr;   /**< the Account's address */
+    string    metadata;     /**< metadata regarding the Account's last transaction */
+    OfferMap  offerMap;     /**< a collection of the Account's open offers */
   }
 
   /**
-   * @param source Address of the offer owner
-   * @param target Address of the offer's counterparty
-   * @param activeStatus The new activity status of the offer
-   * @return success
+   * @notice Fetches the latest IPFS hash for a account
+   * @param source Account's address
+   * @return metadata IPFS hash of account's latest transaction
    */
-  function setActiveStatus(
-    address source,
-    address target,
-    bool activeStatus
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].active = activeStatus;
-    return true;
+  function getMetadata(
+    address source
+  ) public constant returns (string metadata) {
+    return _getAccount(source).metadata;
   }
 
   /**
-   * @param source Address of the offer owner
-   * @param target Address of the offer's counterparty
-   * @return limit Maximum amount of target credit to hold
+   * @notice Sets latest IPFS hash for a account
+   * @param source Account's address
+   * @param metadata IPFS hash of account's latest transaction
+   * @return bool
    */
-  function getLimit(
+  function setMetadata(
     address source,
-    address target
-  ) public constant returns (uint) {
-    return _getOffer(source, target).limit;
-  }
-
-  /**
-   * @param source Address of the offer owner
-   * @param target Address of the offer's counterparty
-   * @param newLimit The new limit of target credit to hold
-   * @return success
-   */
-  function setLimit(
-    address source,
-    address target,
-    uint newLimit
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].limit = newLimit;
+    string metadata
+  ) public returns (bool success) {
+    if (accountExists(source) == false) { throw; }
+    var account = _getAccount(source);
+    account.metadata = metadata;
     return true;
   }
 
-  function getSourceBalance(
-    address source,
-    address target
-  ) public constant returns (uint) {
-    return _getOffer(source, target).sourceBalance;
+  function _getAccountPrevAddr(
+    address source
+  ) internal constant returns (address prevAddr) {
+    return _getAccount(source).prevAddr;
   }
-  function setSourceBalance(
+  function _setAccountPrevAddr(
     address source,
-    address target,
-    uint newSourceBalance
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
+    address prevAddr
+  ) internal returns (bool success) {
+    Graph.accounts[source].prevAddr = prevAddr;
     return true;
   }
 
-  function getTargetBalance(
+  function _getAccountNextAddr(
     address source,
     address target
-  ) public constant returns (uint) {
-    return _getOffer(source, target).targetBalance;
+  ) internal constant returns (address nextAddr) {
+    return _getAccount(source).nextAddr;
   }
-  function setTargetBalance(
+  function _setAccountNextAddr(
     address source,
-    address target,
-    uint newTargetBalance
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
-    return true;
-  }
-
-  function getExchangeRate(
-    address source,
-    address target
-  ) public constant returns (uint[2]) {
-    return _getOffer(source, target).exchangeRate;
-  }
-  function setExchangeRate(
-    address source,
-    address target,
-    uint[2] newExchangeRate
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
-    return true;
-  }
-
-  function getLockedSourceBalance(
-    address source,
-    address target
-  ) public constant returns (uint) {
-    return _getOffer(source, target).sourceLockedBalance;
-  }
-  function setLockedSourceBalance(
-    address source,
-    address target,
-    uint newSourceLockedBalance
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
-    return true;
-  }
-
-  function getLockedTargetBalance(
-    address source,
-    address target
-  ) public constant returns (uint lockedBalance) {
-    return _getOffer(source, target).targetLockedBalance;
-  }
-  function setLockedTargetBalance(
-    address source,
-    address target,
-    uint newTargetLockedBalance
-  ) public returns (bool) {
-    if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
+    address nextAddr
+  ) internal returns (bool success) {
+    Graph.accounts[source].nextAddr = nextAddr;
     return true;
   }
 
   /********************************************************//**
    * @struct OfferMap
-   * @notice A doubly-linked list containing all of a Account's open Offers,
-   *  sorted by ??? (TODO: settle this when implementing swapOffers)
+   * @notice A doubly-linked list containing all of an Account's open Offers,
+   *  sorted by ???
    * @dev O(1) get, add, remove, swap
    ***********************************************************/
   struct OfferMap {
     uint    size;         /**< length of the linked-list */
-    address head;         /**< pointer to the first Offer of linked-list */
-    address tail;         /**< pointer to the last Offer of linked-list */
+    address headAddr;     /**< source address of first Offer of linked-list */
+    address tailAddr;     /**< source address of last Offer of linked-list */
     mapping (
-      address => Offer   /**< hashmap of Offers by target address */
+      address => Offer    /**< hashmap of Offers by target address */
     ) offers;
   }
 
@@ -244,8 +271,8 @@ contract WhuffieStorage {
     address target
   ) public constant returns (
     bool exists,
-    address prev,
-    address next,
+    address prevAddr,
+    address nextAddr,
     uint limit,
     uint[2] exchangeRate,
     uint sourceBalance,
@@ -255,14 +282,23 @@ contract WhuffieStorage {
   ) {
     var _offer              = _getOffer(source, target);
     exists                  = _offer.exists;
-    prev                    = _offer.prev;
-    next                    = _offer.next;
+    prevAddr                = _offer.prevAddr;
+    nextAddr                = _offer.nextAddr;
     limit                   = _offer.limit;
     exchangeRate            = _offer.exchangeRate;
     sourceBalance           = _offer.sourceBalance;
     targetBalance           = _offer.targetBalance;
     sourceLockedBalance     = _offer.sourceLockedBalance;
     targetLockedBalance     = _offer.targetLockedBalance;
+  }
+
+  function _createOffer(
+    address source,
+    address target,
+    Offer offer
+  ) internal returns (bool success) {
+    Graph.accounts[source].offerMap.offers[target] = offer;
+    return true;
   }
 
   /**
@@ -276,17 +312,69 @@ contract WhuffieStorage {
     address target,
     uint limit,
     uint[2] exchangeRate
-  ) public returns (bool) {
+  ) public returns (bool success) {
     if (offerExists(source, target)) { throw; }
-    // TODO: replace this with a call that returns a pointer to storage
-    // TODO: update this for adding to linked list
-    var _offer = Offer(true, 0x0, 0x0, target, true, limit, exchangeRate, 0, 0, 0, 0);
-    Graph.accounts[source].offerMap.offers[target] = _offer;
+    var size = getOfferMapSize(source);
+    if (size == MAX_UINT) { throw; }
+
+    var _newOffer = Offer(true, 0x0, 0x0, target, true, limit, exchangeRate, 0, 0, 0, 0);
+
+    if (size == 0) {
+      _setOfferMapHeadAddr(source, target);
+      _setOfferMapTailAddr(source, target);
+    } else {
+      address oldTail = _getOfferMapTailAddr(source);
+      _setOfferNextAddr(source, oldTail, target);
+      _setOfferMapTailAddr(source, target);
+      _newOffer.prevAddr = oldTail;
+    }
+
+    Graph.accounts[source].offerMap.size = size + 1;
+    Graph.accounts[source].offerMap.offers[target] = _newOffer;
+    return true;
+  }
+
+  // internal helpers
+  // TODO: audit these functions for redundancy, performance and "throw"-related errors
+  /**
+   * @notice Fetches the length of the OfferMap
+   * @param source The source account's OfferMap
+   * @return uint Size of the OfferMap
+   */
+  function getOfferMapSize(
+    address source
+  ) public constant returns (uint size) {
+    return Graph.accounts[source].offerMap.size;
+  }
+
+  function _getOfferMapHeadAddr (
+    address source
+  ) internal constant returns (address headAddr) {
+    return Graph.accounts[source].offerMap.headAddr;
+  }
+  function _setOfferMapHeadAddr (
+    address source,
+    address headAddr
+  ) internal constant returns (bool success) {
+    Graph.accounts[source].offerMap.headAddr = headAddr;
+    return true;
+  }
+
+  function _getOfferMapTailAddr (
+    address source
+  ) internal constant returns (address tailAddr) {
+    return Graph.accounts[source].offerMap.tailAddr;
+  }
+  function _setOfferMapTailAddr (
+    address source,
+    address tailAddr
+  ) internal constant returns (bool success) {
+    Graph.accounts[source].offerMap.tailAddr = tailAddr;
     return true;
   }
 
   /**
-   * @notice Swaps two Offers' positions within a OfferMap
+   * @notice Swaps two Offers' positions within an OfferMap
    * @param source Address of source account
    * @param targetOne Address of first Offer
    * @param targetTwo Address of second Offer
@@ -296,214 +384,206 @@ contract WhuffieStorage {
     address source,
     address targetOne,
     address targetTwo
-  ) public returns (bool) {}
-
-  //////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // public iterators
-    // TODO: add remaining linked list iterators
-  function iter_getOfferMapSize(
-    address source,
-    address target
-  ) public constant returns (uint size) {}
-  function iter_getFirstOffer(
-    address source,
-    address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
-  function iter_getPrevOffer(
-    address source,
-    address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
-  function iter_getNextOffer(
-    address source,
-    address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
+  ) public returns (bool success) {}
 
   /********************************************************//**
-   * @struct Account
-   * @notice A Whuffie-holding account
+   * @struct Offer
+   * @notice An offer to exchange the source's credits for the target's
    ***********************************************************/
-  struct Account {
-    bool      exists;       /**< whether or not the Account exists */
-    address   sourceAddr;   /**< the Account's address */
-    string    metadata;     /**< metadata regarding the Account's last transaction */
-    OfferMap  offerMap;    /**< a collection of the Account's open offers */
-  }
+  struct Offer {
+    bool    exists;               /**< whether or not an Offer has been created */
+    address prevAddr;             /**< target address of previous Offer in linked-list */
+    address nextAddr;             /**< target address of next Offer's in linked-list */
 
-  // internal helpers
-  // TODO: audit these functions for redundancy, performance and "throw"-related errors
-  /**
-   * @notice Internal method for fetching a OfferMap struct from storage
-   * @param source Address of source account for all offers in OfferMap
-   * @return OfferMap instance
-   */
-  function _getOfferMap(
-    address source
-  ) internal constant returns (OfferMap) {
-    return Graph.accounts[source].offerMap;
+    address targetAddr;           /**< address of Offer target */
+    bool    active;               /**< whether or not the Offer can be used in transactions */
+    uint    limit;                /**< maximum amount of target credit to hold */
+    uint[2] exchangeRate;         /**< exchange rate between target's and source's credit */
+    uint    sourceBalance;        /**< balance of source's credit */
+    uint    targetBalance;        /**< balance of target's credit */
+    uint    sourceLockedBalance;  /**< immovable balance of source's credit */
+    uint    targetLockedBalance;  /**< immovable balance of target's credit */
   }
 
   /**
-   * @notice Fetches the latest IPFS hash for a account
-   * @param source Account's address
-   * @return metadata IPFS hash of account's latest transaction
-   */
-  function getMetadata(
-    address source
-  ) public constant returns (string metadata) {
-    return _getAccount(source).metadata;
-  }
-
-  /**
-   * @notice Sets latest IPFS hash for a account
-   * @param source Account's address
-   * @param metadata IPFS hash of account's latest transaction
+   * @notice Determines if a Offer has ever been created
+   * @param source Address of source account
+   * @param target Address of counterparty account
    * @return bool
    */
-  function setMetadata(
+  function offerExists(
     address source,
-    string metadata
-  ) public returns (bool) {
-    if (accountExists(source) == false) { throw; }
-    var account = _getAccount(source);
-    account.metadata = metadata;
+    address target
+  ) public constant returns (bool exists) {
+    return _getOffer(source, target).exists;
+  }
+
+  function _getOfferPrevAddr(
+    address source,
+    address target
+  ) internal constant returns (address prevAddr) {
+    return _getOffer(source, target).prevAddr;
+  }
+  function _setOfferPrevAddr(
+    address source,
+    address target,
+    address prevAddr
+  ) internal returns (bool success) {
+    Graph.accounts[source].offerMap.offers[target].prevAddr = prevAddr;
     return true;
   }
 
-  /********************************************************//**
-   * @struct AccountMap
-   * @notice A doubly-linked list containing all Whuffie Accounts and Offers
-   ***********************************************************/
-  struct AccountMap {
-    uint    size;         /**< length of the linked-list */
-    address head;         /**< pointer to the first Account of linked-list */
-    address tail;         /**< pointer to the last Account of linked-list */
-    mapping (
-      address => Account     /**< hashmap of Accounts by their address */
-    ) accounts;
-  }
-
-  /**
-   * @notice Internal method for fetching a Account struct from storage
-   * @param source Address of desired account
-   * @return Account instance
-   */
-  // TODO: audit and test these functions for redundancy, performance and "throw"-related errors
-  function _getAccount(
-    address source
-  ) internal constant returns (Account) {
-    return Graph.accounts[source];
-  }
-
-  /**
-   * @notice Returns Account struct members for a given address
-   * @dev Must return individual members (since solidity doesn't allow struct
-   *  return values within the EVM)
-   * @param source Address of the account
-   * @return exists
-   * @return metadata IPFS hash of the account's last transaction
-   */
-  function getAccount(
-    address source
-  ) public constant returns (
-    bool exists,
-    string metadata
-  ) {
-    var _account = _getAccount(source);
-    exists = _account.exists;
-    metadata = _account.metadata;
-  }
-
-  /**
-   * @notice Determines if the Account exists
-   * @param source Account's address
-   * @return bool
-   */
-  function accountExists(
-    address source
-  ) public constant returns (bool) {
-    return _getAccount(source).exists;
-  }
-
-  /**
-   * @notice Creates a new Account in Graph
-   * @param source Account's address
-   * @param metadata IPFS hash of the account creation transaction
-   */
-  function createAccount(
+  function _getOfferNextAddr(
     address source,
-    string metadata
-  ) public isAPI returns (bool) {
-    if (accountExists(source)) { return false; }
-    // TODO: replace this with a call that returns a pointer to storage
-    Graph.accounts[source] = Account(true, source, metadata, OfferMap(0, 0x0, 0x0));
+    address target
+  ) internal constant returns (address nextAddr) {
+    return _getOffer(source, target).nextAddr;
+  }
+  function _setOfferNextAddr(
+    address source,
+    address target,
+    address nextAddr
+  ) internal returns (bool success) {
+    Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
     return true;
   }
 
-  //////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////
-  // public iterators
-    // TODO: add remaining linked list iterators
-  function iter_getAccountMapSize(
+  /**
+   * @notice Determines if a Offer is alive
+   * @param source Address of source account
+   * @param target Address of counterparty account
+   * @return bool
+   */
+  function offerIsActive(
     address source,
     address target
-  ) public constant returns (uint size) {}
-  function iter_getFirstAccount(
+  ) public constant returns (bool active) {
+    return _getOffer(source, target).active;
+  }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param activeStatus The new activity status of the offer
+   * @return success
+   */
+  function setOfferActiveStatus(
+    address source,
+    address target,
+    bool activeStatus
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].active = activeStatus;
+    return true;
+  }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @return limit Maximum amount of target credit to hold
+   */
+  function getOfferLimit(
     address source,
     address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
-  function iter_getPrevAccount(
+  ) public constant returns (uint limit) {
+    return _getOffer(source, target).limit;
+  }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param newLimit The new limit of target credit to hold
+   * @return success
+   */
+  function setOfferLimit(
+    address source,
+    address target,
+    uint newLimit
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].limit = newLimit;
+    return true;
+  }
+
+  function getOfferSourceBalance(
     address source,
     address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
-  function iter_getNextAccount(
+  ) public constant returns (uint sourceBalancec) {
+    return _getOffer(source, target).sourceBalance;
+  }
+  function setOfferSourceBalance(
+    address source,
+    address target,
+    uint newSourceBalance
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
+    return true;
+  }
+
+  function getOfferTargetBalance(
     address source,
     address target
-  ) public constant returns (
-    uint limit,
-    uint[2] exchangeRate,
-    uint sourceBalance,
-    uint targetBalance,
-    uint lockedSourceBalance,
-    uint lockedTargetBalance
-  ) {}
+  ) public constant returns (uint targetBalancec) {
+    return _getOffer(source, target).targetBalance;
+  }
+  function setOfferTargetBalance(
+    address source,
+    address target,
+    uint newTargetBalance
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
+    return true;
+  }
+
+  function getOfferExchangeRate(
+    address source,
+    address target
+  ) public constant returns (uint[2] exchangeRate) {
+    return _getOffer(source, target).exchangeRate;
+  }
+  function setOfferExchangeRate(
+    address source,
+    address target,
+    uint[2] newExchangeRate
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
+    return true;
+  }
+
+  function getOfferLockedSourceBalance(
+    address source,
+    address target
+  ) public constant returns (uint lockedSourceBalance) {
+    return _getOffer(source, target).sourceLockedBalance;
+  }
+  function setOfferLockedSourceBalance(
+    address source,
+    address target,
+    uint newSourceLockedBalance
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
+    return true;
+  }
+
+  function getOfferLockedTargetBalance(
+    address source,
+    address target
+  ) public constant returns (uint lockedTargetBalance) {
+    return _getOffer(source, target).targetLockedBalance;
+  }
+  function setOfferLockedTargetBalance(
+    address source,
+    address target,
+    uint newTargetLockedBalance
+  ) public returns (bool success) {
+    if (offerExists(source, target) == false) { throw; }
+    Graph.accounts[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
+    return true;
+  }
 
   // fallback function
   function() { throw; }
