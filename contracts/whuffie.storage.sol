@@ -1,3 +1,5 @@
+import "std.sol";
+
 /* TODO:
  *    should only be called by WhuffieAPI contracts
  *    should allow for updating WhuffieAPI address
@@ -15,29 +17,22 @@
  *  If this is untrue, then this contract can be updated to have higher-level
  *  functionality baked-in.
  */
-contract WhuffieStorage {
-  mapping (address => bool) public APIAccess;   /**< All addresses allowed to mutate WhuffieStorage */
-  AccountMap public Graph;                      /**< The core mapping of Accounts and Offers */
+contract WhuffieStorage is activable, RestrictedAPI {
+  AccountMap public Graph;  /**< The core mapping of Accounts and Offers */
+  uint constant MAX_UINT = 2**256 - 1;
 
-  uint public constant MAX_UINT = 2**256 - 1;
-
-  function WhuffieStorage (address APIaddr) {
-    // set the initial API address for use in modifier
-    APIAccess[APIaddr] = true;
-  }
-
-  modifier isAPI() { if (APIAccess[msg.sender] == false) throw; _ }
+  function WhuffieStorage () {}
 
   /********************************************************//**
    * @struct AccountMap
    * @notice A doubly-linked list containing all Whuffie Accounts and Offers
    ***********************************************************/
   struct AccountMap {
-    uint    size;         /**< length of the linked-list */
-    address headAddr;     /**< source address of first Account of linked-list */
-    address tailAddr;     /**< source address of last Account of linked-list */
+    uint    size;           /**< length of the linked-list */
+    address headAddr;       /**< source address of first Account of linked-list */
+    address tailAddr;       /**< source address of last Account of linked-list */
     mapping (
-      address => Account  /**< hashmap of Accounts by their address */
+      address => Account    /**< hashmap of Accounts by their address */
     ) accounts;
   }
 
@@ -73,17 +68,6 @@ contract WhuffieStorage {
   }
 
   /**
-   * @notice Determines if the Account exists
-   * @param source Account's address
-   * @return bool
-   */
-  function accountExists(
-    address source
-  ) public constant returns (bool success) {
-    return _getAccount(source).exists;
-  }
-
-  /**
    * @notice Creates a new Account in Graph
    * @param source Account's address
    * @param metadata IPFS hash of the account creation transaction
@@ -91,23 +75,21 @@ contract WhuffieStorage {
   function createAccount(
     address source,
     string metadata
-  ) public isAPI returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (accountExists(source)) { throw; }
-    var size = getAccountMapSize();
+    var size = Graph.size;
     if (size == MAX_UINT) { throw; }
-
     var _newAccount = Account(true, 0x0, 0x0, source, metadata, OfferMap(0, 0x0, 0x0));
 
     if (size == 0) {
-      _setAccountMapHeadAddr(source);
-      _setAccountMapTailAddr(source);
+      Graph.headAddr = source;
     } else {
-      address oldTail = _getAccountMapTailAddr();
+      address oldTail = Graph.tailAddr;
       _setAccountNextAddr(oldTail, source);
-      _setAccountMapTailAddr(source);
       _newAccount.prevAddr = oldTail;
     }
 
+    Graph.tailAddr = source;
     Graph.size = size + 1;
     Graph.accounts[source] = _newAccount;
     return true;
@@ -116,43 +98,15 @@ contract WhuffieStorage {
   // internal helpers
   // TODO: audit these functions for redundancy, performance and "throw"-related errors
   /**
-   * @notice Fetches the length of the OfferMap
-   * @return uint Size of the OfferMap
-   */
-  function getAccountMapSize() public constant returns (uint size) {
-    return Graph.size;
-  }
-
-  function _getAccountMapHeadAddr () internal constant returns (address headAddr) {
-    return Graph.headAddr;
-  }
-  function _setAccountMapHeadAddr (
-    address headAddr
-  ) internal constant returns (bool success) {
-    Graph.headAddr = headAddr;
-    return true;
-  }
-
-  function _getAccountMapTailAddr () internal constant returns (address tailAddr) {
-    return Graph.tailAddr;
-  }
-  function _setAccountMapTailAddr (
-    address tailAddr
-  ) internal constant returns (bool success) {
-    Graph.tailAddr = tailAddr;
-    return true;
-  }
-
-  /**
-   * @notice Swaps two Offers' positions within a OfferMap
+   * @notice Swaps two Account's positions within an AccountMap
    * @param sourceOne Address of source account
-   * @param sourceTwo Address of second Offer
+   * @param sourceTwo Address of second Account
    * @return bool
    */
   function swapAccounts(
     address sourceOne,
     address sourceTwo
-  ) public returns (bool success) {}
+  ) public onlyAPI onlyActive returns (bool success) {}
 
   /********************************************************//**
    * @struct Account
@@ -166,6 +120,17 @@ contract WhuffieStorage {
     address   sourceAddr;   /**< the Account's address */
     string    metadata;     /**< metadata regarding the Account's last transaction */
     OfferMap  offerMap;     /**< a collection of the Account's open offers */
+  }
+
+  /**
+   * @notice Determines if the Account exists
+   * @param source Account's address
+   * @return bool
+   */
+  function accountExists(
+    address source
+  ) public constant returns (bool success) {
+    return _getAccount(source).exists;
   }
 
   /**
@@ -188,18 +153,12 @@ contract WhuffieStorage {
   function setMetadata(
     address source,
     string metadata
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (accountExists(source) == false) { throw; }
-    var account = _getAccount(source);
-    account.metadata = metadata;
+    Graph.accounts[source].metadata = metadata;
     return true;
   }
 
-  function _getAccountPrevAddr(
-    address source
-  ) internal constant returns (address prevAddr) {
-    return _getAccount(source).prevAddr;
-  }
   function _setAccountPrevAddr(
     address source,
     address prevAddr
@@ -208,12 +167,6 @@ contract WhuffieStorage {
     return true;
   }
 
-  function _getAccountNextAddr(
-    address source,
-    address target
-  ) internal constant returns (address nextAddr) {
-    return _getAccount(source).nextAddr;
-  }
   function _setAccountNextAddr(
     address source,
     address nextAddr
@@ -312,7 +265,7 @@ contract WhuffieStorage {
     address target,
     uint limit,
     uint[2] exchangeRate
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target)) { throw; }
     var size = getOfferMapSize(source);
     if (size == MAX_UINT) { throw; }
@@ -320,15 +273,14 @@ contract WhuffieStorage {
     var _newOffer = Offer(true, 0x0, 0x0, target, true, limit, exchangeRate, 0, 0, 0, 0);
 
     if (size == 0) {
-      _setOfferMapHeadAddr(source, target);
-      _setOfferMapTailAddr(source, target);
+      Graph.accounts[source].offerMap.headAddr = target;
     } else {
-      address oldTail = _getOfferMapTailAddr(source);
+      address oldTail = Graph.accounts[source].offerMap.tailAddr;
       _setOfferNextAddr(source, oldTail, target);
-      _setOfferMapTailAddr(source, target);
       _newOffer.prevAddr = oldTail;
     }
 
+    Graph.accounts[source].offerMap.tailAddr = target;
     Graph.accounts[source].offerMap.size = size + 1;
     Graph.accounts[source].offerMap.offers[target] = _newOffer;
     return true;
@@ -347,32 +299,6 @@ contract WhuffieStorage {
     return Graph.accounts[source].offerMap.size;
   }
 
-  function _getOfferMapHeadAddr (
-    address source
-  ) internal constant returns (address headAddr) {
-    return Graph.accounts[source].offerMap.headAddr;
-  }
-  function _setOfferMapHeadAddr (
-    address source,
-    address headAddr
-  ) internal constant returns (bool success) {
-    Graph.accounts[source].offerMap.headAddr = headAddr;
-    return true;
-  }
-
-  function _getOfferMapTailAddr (
-    address source
-  ) internal constant returns (address tailAddr) {
-    return Graph.accounts[source].offerMap.tailAddr;
-  }
-  function _setOfferMapTailAddr (
-    address source,
-    address tailAddr
-  ) internal constant returns (bool success) {
-    Graph.accounts[source].offerMap.tailAddr = tailAddr;
-    return true;
-  }
-
   /**
    * @notice Swaps two Offers' positions within an OfferMap
    * @param source Address of source account
@@ -384,7 +310,7 @@ contract WhuffieStorage {
     address source,
     address targetOne,
     address targetTwo
-  ) public returns (bool success) {}
+  ) public onlyAPI onlyActive returns (bool success) {}
 
   /********************************************************//**
    * @struct Offer
@@ -418,12 +344,6 @@ contract WhuffieStorage {
     return _getOffer(source, target).exists;
   }
 
-  function _getOfferPrevAddr(
-    address source,
-    address target
-  ) internal constant returns (address prevAddr) {
-    return _getOffer(source, target).prevAddr;
-  }
   function _setOfferPrevAddr(
     address source,
     address target,
@@ -433,12 +353,6 @@ contract WhuffieStorage {
     return true;
   }
 
-  function _getOfferNextAddr(
-    address source,
-    address target
-  ) internal constant returns (address nextAddr) {
-    return _getOffer(source, target).nextAddr;
-  }
   function _setOfferNextAddr(
     address source,
     address target,
@@ -471,7 +385,7 @@ contract WhuffieStorage {
     address source,
     address target,
     bool activeStatus
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].active = activeStatus;
     return true;
@@ -499,7 +413,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint newLimit
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].limit = newLimit;
     return true;
@@ -515,7 +429,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint newSourceBalance
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
     return true;
@@ -531,7 +445,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint newTargetBalance
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
     return true;
@@ -547,7 +461,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint[2] newExchangeRate
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
     return true;
@@ -563,7 +477,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint newSourceLockedBalance
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
     return true;
@@ -579,7 +493,7 @@ contract WhuffieStorage {
     address source,
     address target,
     uint newTargetLockedBalance
-  ) public returns (bool success) {
+  ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
     Graph.accounts[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
     return true;
