@@ -9,6 +9,10 @@
   - charity and volunteering incentive systems
   - basic income credit systems
 
+# Why create Whuffie?
+- there is no objectively correct way to create and administer a currency that serves all purposes for all users.
+- therefore, the best thing that can be done is to empower anyone to create any currency they want and to let the market decide how fungible the currency should be
+
 # How does Whuffie compare to Ripple/Stellar?
 - Like Ripple and Stellar, Whuffie allows users to issue arbitrary currencies and credits, choose whose credits to accept, and will trade them along multiple offers during a single transaction if necessary. There are, however, a few key differences:
   - it operates as a smart contract on Ethereum, and thus the routing capabilities are limited by the gas limit on transactions

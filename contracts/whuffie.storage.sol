@@ -6,6 +6,7 @@ import "std.sol";
  *    should be mortal
  *    should be stored in some kind of NameReg
  */
+// TODO: audit and test all functions for redundancy, performance and "throw"-related errors
 
 /**
  * @title WhuffieStorage
@@ -41,7 +42,6 @@ contract WhuffieStorage is activable, RestrictedAPI {
    * @param source Address of desired account
    * @return Account instance
    */
-  // TODO: audit and test these functions for redundancy, performance and "throw"-related errors
   function _getAccount(
     address source
   ) internal constant returns (Account sourceAccount) {
@@ -216,8 +216,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
    * @return exchangeRate
    * @return sourceBalance
    * @return targetBalance
-   * @return lockedSourceBalance
-   * @return lockedTargetBalance
+   * @return frozenSourceBalance
+   * @return frozenTargetBalance
    */
   function getOffer(
     address source,
@@ -230,8 +230,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     uint[2] exchangeRate,
     uint sourceBalance,
     uint targetBalance,
-    uint sourceLockedBalance,
-    uint targetLockedBalance
+    uint sourceFrozenBalance,
+    uint targetFrozenBalance
   ) {
     var _offer              = _getOffer(source, target);
     exists                  = _offer.exists;
@@ -241,8 +241,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     exchangeRate            = _offer.exchangeRate;
     sourceBalance           = _offer.sourceBalance;
     targetBalance           = _offer.targetBalance;
-    sourceLockedBalance     = _offer.sourceLockedBalance;
-    targetLockedBalance     = _offer.targetLockedBalance;
+    sourceFrozenBalance     = _offer.sourceFrozenBalance;
+    targetFrozenBalance     = _offer.targetFrozenBalance;
   }
 
   function _createOffer(
@@ -327,8 +327,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     uint[2] exchangeRate;         /**< exchange rate between target's and source's credit */
     uint    sourceBalance;        /**< balance of source's credit */
     uint    targetBalance;        /**< balance of target's credit */
-    uint    sourceLockedBalance;  /**< immovable balance of source's credit */
-    uint    targetLockedBalance;  /**< immovable balance of target's credit */
+    uint    sourceFrozenBalance;  /**< immovable balance of source's credit */
+    uint    targetFrozenBalance;  /**< immovable balance of target's credit */
   }
 
   /**
@@ -467,35 +467,35 @@ contract WhuffieStorage is activable, RestrictedAPI {
     return true;
   }
 
-  function getOfferLockedSourceBalance(
+  function getOfferFrozenSourceBalance(
     address source,
     address target
-  ) public constant returns (uint lockedSourceBalance) {
-    return _getOffer(source, target).sourceLockedBalance;
+  ) public constant returns (uint frozenSourceBalance) {
+    return _getOffer(source, target).sourceFrozenBalance;
   }
-  function setOfferLockedSourceBalance(
+  function setOfferFrozenSourceBalance(
     address source,
     address target,
-    uint newSourceLockedBalance
+    uint newSourceFrozenBalance
   ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].sourceLockedBalance = newSourceLockedBalance;
+    Graph.accounts[source].offerMap.offers[target].sourceFrozenBalance = newSourceFrozenBalance;
     return true;
   }
 
-  function getOfferLockedTargetBalance(
+  function getOfferFrozenTargetBalance(
     address source,
     address target
-  ) public constant returns (uint lockedTargetBalance) {
-    return _getOffer(source, target).targetLockedBalance;
+  ) public constant returns (uint frozenTargetBalance) {
+    return _getOffer(source, target).targetFrozenBalance;
   }
-  function setOfferLockedTargetBalance(
+  function setOfferFrozenTargetBalance(
     address source,
     address target,
-    uint newTargetLockedBalance
+    uint newTargetFrozenBalance
   ) public onlyAPI onlyActive returns (bool success) {
     if (offerExists(source, target) == false) { throw; }
-    Graph.accounts[source].offerMap.offers[target].targetLockedBalance = newTargetLockedBalance;
+    Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = newTargetFrozenBalance;
     return true;
   }
 
