@@ -8,12 +8,10 @@ import "restrictedAPI.sol";
 /**
  * @title WhuffieStorage
  * @author Sunny Gonnabathula | @sunny-g | sunny.gonna@gmail.com
- * @notice Implements public getters, setters and iterators for the Whuffie Graph
+ * @notice Implements public getters and API-restricted setters and iterators
+ *  for the Whuffie Graph
  * @dev This contract will maintain the base-level storage of all Accounts and Offers,
- *  and will only be mutated by selected API contracts. It is implemented under
- *  the assumption that contract storage cannot be migrated to a new contract.
- *  If this is untrue, then this contract can be updated to have higher-level
- *  functionality baked-in.
+ *  and will only be mutated by selected API contracts.
  */
 contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   AccountMap public Graph;  /**< The core mapping of Accounts and Offers */
@@ -73,41 +71,68 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function createAccount(
     address source,
-    string name,
-    string symbol,
-    string metadata
+    bytes32 name,
+    bytes32 symbol,
+    bytes32 metadata
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
-    var size = Graph.size;
-    assert(size == MAX_UINT);
-    var _newAccount = Account(true, 0x0, 0x0, source, name, symbol, metadata, OfferMap(0, 0x0, 0x0));
+    assert(Graph.size == MAX_UINT);
 
-    if (size == 0) {
-      Graph.firstAddr = source;
+    var _newAccount = Account(true, 0x0, 0x0, source, 1000000000, name, symbol, metadata, OfferMap(0, 0x0, 0x0));
+    return _insertAccount(_newAccount);
+  }
+
+  function _insertAccount(
+    Account newAccount
+    address newNextAddr
+  ) internal returns (bool success) {
+    address source = newAccount.sourceAddr;
+
+    if (newNextAddr == 0x0) {
+      // grab oldTail
+      // set oldTail's next to source
+      // set Tail to source
+
+      var oldHead = Graph.firstAddr;
+    } else if (newPrevAddr == Graph.lastAddr) {
+
     } else {
       address oldTailAddr = Graph.lastAddr;
       _setAccountNextAddr(oldTailAddr, source);
-      _newAccount.prevAddr = oldTailAddr;
+      newAccount.prevAddr = oldTailAddr;
     }
 
     Graph.lastAddr = source;
     Graph.size = size + 1;
-    Graph.accounts[source] = _newAccount;
-    return true;
+    Graph.accounts[source] = newAccount;
+  }
+
+  function _removeAccount(
+    address source
+  ) internal returns (bool success) {
+    // if source is head
+
+    // else if source is tail
+    // else
+    // set the prev account's next to sourceOne's next
+    // set sourceOne's original next's prev to sourceOne's prev
   }
 
   /**
-   * @notice Swaps two Account's positions within an AccountMap
-   * @param sourceOne Address of source account
-   * @param sourceTwo Address of second Account
+   * @notice Moves an Account to a new position within an AccountMap
+   * @param sourceOne Address of the Account to be moved
+   * @param sourceTwo Address of the Account to come after sourceOne (0x0 if to be last)
    * @return bool
    */
-  function swapAccounts(
+  function moveAccount(
     address sourceOne,
     address sourceTwo
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(sourceOne));
-    assert(accountExists(sourceTwo));
+    assert(sourceTwo == 0x0 || accountExists(sourceTwo));
+
+    // remove sourceOne from list
+    // insert sourceOne after sourceTwo (or as head)
   }
 
   /********************************************************//**
@@ -120,9 +145,10 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address   nextAddr;     /**< source address of next Account in linked-list */
 
     address   sourceAddr;   /**< the Account's address */
-    string    name;         /**< name of the Account's own credit */
-    string    symbol;       /**< symbol for the Account's own credit */
-    string    metadata;     /**< metadata regarding the Account's last transaction */
+    uint8     decimals;     /**< number of decimal places to show */
+    bytes32   name;         /**< name of the Account's own credit */
+    bytes32   symbol;       /**< symbol for the Account's own credit */
+    bytes32   metadata;     /**< metadata regarding the Account's last transaction */
     OfferMap  offerMap;     /**< a collection of the Account's open offers */
   }
 
@@ -144,7 +170,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function getName(
     address source
-  ) public constant returns (string name) {
+  ) public constant returns (bytes32 name) {
     return _getAccount(source).name;
   }
 
@@ -156,7 +182,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function setName(
     address source,
-    string name
+    bytes32 name
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
 
@@ -171,7 +197,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function getSymbol(
     address source
-  ) public constant returns (string symbol) {
+  ) public constant returns (bytes32 symbol) {
     return _getAccount(source).symbol;
   }
 
@@ -183,11 +209,38 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function setSymbol(
     address source,
-    string symbol
+    bytes32 symbol
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
 
     Graph.accounts[source].symbol = symbol;
+    return true;
+  }
+
+  /**
+   * @notice Fetches the number of decimal places for the Account's credits
+   * @param source Account's address
+   * @return decimals Number of decimal places
+   */
+  function getDecimals(
+    address source
+  ) public constant returns (uint decimals) {
+    return _getAccount(source).decimals;
+  }
+
+  /**
+   * @notice Sets the decimal places for the Account's credit
+   * @param source Account's address
+   * @param decimals New decimal places for the Account's credit to have
+   * @return bool
+   */
+  function setDecimals(
+    address source,
+    uint decimals
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].decimals = decimals;
     return true;
   }
 
@@ -198,7 +251,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function getMetadata(
     address source
-  ) public constant returns (string metadata) {
+  ) public constant returns (bytes32 metadata) {
     return _getAccount(source).metadata;
   }
 
@@ -210,7 +263,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function setMetadata(
     address source,
-    string metadata
+    bytes32 metadata
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
 

@@ -1,6 +1,6 @@
 import "std.sol";
 
-contract Activable is mortal {
+contract Activable is owned {
   bool public activated;
 
   modifier onlyActivated() { if (activated == false) throw; _ }

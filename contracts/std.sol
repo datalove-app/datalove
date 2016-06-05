@@ -5,7 +5,7 @@
 contract abstract {}
 
 contract owned is abstract {
-  address owner;
+  address public owner;
 
   function owned() {
     owner = msg.sender;
@@ -52,14 +52,14 @@ contract named is abstract, nameRegAware {
 contract util is abstract {
   // Converts 'string' to 'bytes32'
   function s2b(string s) internal returns (bytes32) {
-      bytes memory b = bytes(s);
-      uint r = 0;
-      for (uint i = 0; i < 32; i++) {
-          if (i < b.length) {
-              r = r | uint(b[i]);
-          }
-          if (i < 31) r = r * 256;
+    bytes memory b = bytes(s);
+    uint r = 0;
+    for (uint i = 0; i < 32; i++) {
+      if (i < b.length) {
+        r = r | uint(b[i]);
       }
-      return bytes32(r);
+      if (i < 31) r = r * 256;
+    }
+    return bytes32(r);
   }
 }
