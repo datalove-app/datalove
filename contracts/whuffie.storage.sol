@@ -1,11 +1,8 @@
-import "std.sol";
+import "assertive.sol";
+import "activable.sol";
+import "restrictedAPI.sol";
 
-/* TODO:
- *    should only be called by WhuffieAPI contracts
- *    should allow for updating WhuffieAPI address
- *    should be mortal
- *    should be stored in some kind of NameReg
- */
+// TODO: should be stored in some kind of NameReg
 // TODO: audit and test all functions for redundancy, performance and "throw"-related errors
 
 /**
@@ -18,7 +15,7 @@ import "std.sol";
  *  If this is untrue, then this contract can be updated to have higher-level
  *  functionality baked-in.
  */
-contract WhuffieStorage is activable, RestrictedAPI {
+contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   AccountMap public Graph;  /**< The core mapping of Accounts and Offers */
   uint constant MAX_UINT = 2**256 - 1;
 
@@ -30,8 +27,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
    ***********************************************************/
   struct AccountMap {
     uint    size;           /**< length of the linked-list */
-    address headAddr;       /**< source address of first Account of linked-list */
-    address tailAddr;       /**< source address of last Account of linked-list */
+    address firstAddr;      /**< source address of first Account of linked-list */
+    address lastAddr;       /**< source address of last Account of linked-list */
     mapping (
       address => Account    /**< hashmap of Accounts by their address */
     ) accounts;
@@ -75,21 +72,21 @@ contract WhuffieStorage is activable, RestrictedAPI {
   function createAccount(
     address source,
     string metadata
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (accountExists(source)) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
     var size = Graph.size;
-    if (size == MAX_UINT) { throw; }
+    assert(size == MAX_UINT);
     var _newAccount = Account(true, 0x0, 0x0, source, metadata, OfferMap(0, 0x0, 0x0));
 
     if (size == 0) {
-      Graph.headAddr = source;
+      Graph.firstAddr = source;
     } else {
-      address oldTail = Graph.tailAddr;
-      _setAccountNextAddr(oldTail, source);
-      _newAccount.prevAddr = oldTail;
+      address oldTailAddr = Graph.lastAddr;
+      _setAccountNextAddr(oldTailAddr, source);
+      _newAccount.prevAddr = oldTailAddr;
     }
 
-    Graph.tailAddr = source;
+    Graph.lastAddr = source;
     Graph.size = size + 1;
     Graph.accounts[source] = _newAccount;
     return true;
@@ -106,7 +103,10 @@ contract WhuffieStorage is activable, RestrictedAPI {
   function swapAccounts(
     address sourceOne,
     address sourceTwo
-  ) public onlyAPI onlyActive returns (bool success) {}
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(sourceOne));
+    assert(accountExists(sourceTwo));
+  }
 
   /********************************************************//**
    * @struct Account
@@ -153,8 +153,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
   function setMetadata(
     address source,
     string metadata
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (accountExists(source) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
+    
     Graph.accounts[source].metadata = metadata;
     return true;
   }
@@ -163,6 +164,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address prevAddr
   ) internal returns (bool success) {
+    assert(accountExists(source));
+
     Graph.accounts[source].prevAddr = prevAddr;
     return true;
   }
@@ -171,6 +174,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address nextAddr
   ) internal returns (bool success) {
+    assert(accountExists(source));
+
     Graph.accounts[source].nextAddr = nextAddr;
     return true;
   }
@@ -183,8 +188,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
    ***********************************************************/
   struct OfferMap {
     uint    size;         /**< length of the linked-list */
-    address headAddr;     /**< source address of first Offer of linked-list */
-    address tailAddr;     /**< source address of last Offer of linked-list */
+    address firstAddr;    /**< source address of first Offer of linked-list */
+    address lastAddr;     /**< source address of last Offer of linked-list */
     mapping (
       address => Offer    /**< hashmap of Offers by target address */
     ) offers;
@@ -265,22 +270,22 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address target,
     uint limit,
     uint[2] exchangeRate
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target)) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
     var size = getOfferMapSize(source);
-    if (size == MAX_UINT) { throw; }
+    assert(size == MAX_UINT);
 
     var _newOffer = Offer(true, 0x0, 0x0, target, true, limit, exchangeRate, 0, 0, 0, 0);
 
     if (size == 0) {
-      Graph.accounts[source].offerMap.headAddr = target;
+      Graph.accounts[source].offerMap.firstAddr = target;
     } else {
-      address oldTail = Graph.accounts[source].offerMap.tailAddr;
-      _setOfferNextAddr(source, oldTail, target);
-      _newOffer.prevAddr = oldTail;
+      address oldTailAddr = Graph.accounts[source].offerMap.lastAddr;
+      _setOfferNextAddr(source, oldTailAddr, target);
+      _newOffer.prevAddr = oldTailAddr;
     }
 
-    Graph.accounts[source].offerMap.tailAddr = target;
+    Graph.accounts[source].offerMap.lastAddr = target;
     Graph.accounts[source].offerMap.size = size + 1;
     Graph.accounts[source].offerMap.offers[target] = _newOffer;
     return true;
@@ -310,7 +315,10 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address targetOne,
     address targetTwo
-  ) public onlyAPI onlyActive returns (bool success) {}
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, targetOne));
+    assert(offerExists(source, targetTwo));
+  }
 
   /********************************************************//**
    * @struct Offer
@@ -349,6 +357,8 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address target,
     address prevAddr
   ) internal returns (bool success) {
+    assert(offerExists(source, target));
+
     Graph.accounts[source].offerMap.offers[target].prevAddr = prevAddr;
     return true;
   }
@@ -358,12 +368,14 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address target,
     address nextAddr
   ) internal returns (bool success) {
+    assert(offerExists(source, target));
+
     Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
     return true;
   }
 
   /**
-   * @notice Determines if a Offer is alive
+   * @notice Determines if a Offer is alive and usable for trades
    * @param source Address of source account
    * @param target Address of counterparty account
    * @return bool
@@ -385,8 +397,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     bool activeStatus
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+
     Graph.accounts[source].offerMap.offers[target].active = activeStatus;
     return true;
   }
@@ -413,8 +426,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint newLimit
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].limit = newLimit;
     return true;
   }
@@ -429,8 +443,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint newSourceBalance
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
     return true;
   }
@@ -445,8 +460,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint newTargetBalance
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
     return true;
   }
@@ -461,8 +477,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint[2] newExchangeRate
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
     return true;
   }
@@ -477,8 +494,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint newSourceFrozenBalance
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].sourceFrozenBalance = newSourceFrozenBalance;
     return true;
   }
@@ -493,8 +511,9 @@ contract WhuffieStorage is activable, RestrictedAPI {
     address source,
     address target,
     uint newTargetFrozenBalance
-  ) public onlyAPI onlyActive returns (bool success) {
-    if (offerExists(source, target) == false) { throw; }
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(offerExists(source, target));
+    
     Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = newTargetFrozenBalance;
     return true;
   }

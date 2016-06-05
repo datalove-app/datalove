@@ -6,48 +6,21 @@ contract abstract {}
 
 contract owned is abstract {
   address owner;
+
   function owned() {
     owner = msg.sender;
   }
+
+  modifier onlyOwner() { if (msg.sender==owner) _ }
+  
   function changeOwner(address newOwner) onlyOwner {
     owner = newOwner;
-  }
-  modifier onlyOwner() {
-    if (msg.sender==owner) _
   }
 }
 
 contract mortal is abstract, owned {
   function kill() onlyOwner {
     if (msg.sender == owner) suicide(owner);
-  }
-}
-
-contract activable is mortal {
-  bool public active;
-
-  modifier onlyActive() { if (active == false) { throw; } _ }
-
-  function activate() onlyOwner {
-    active = true;
-  }
-
-  function deactivate() onlyOwner {
-    active = false;
-  }
-}
-
-contract RestrictedAPI is mortal {
-  mapping (address => bool) public APIAccess;
-
-  modifier onlyAPI() { if (APIAccess[msg.sender] == false) throw; _ }
-
-  function addAPI(address addr) onlyOwner {
-    APIAccess[addr] = true;
-  }
-
-  function revokeAPI(address addr) onlyOwner {
-    APIAccess[addr] = false;
   }
 }
 
