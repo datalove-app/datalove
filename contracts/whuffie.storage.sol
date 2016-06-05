@@ -23,7 +23,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
 
   /********************************************************//**
    * @struct AccountMap
-   * @notice A doubly-linked list containing all Whuffie Accounts and Offers
+   * @notice A linked hash map containing all Whuffie Accounts and their Offers
    ***********************************************************/
   struct AccountMap {
     uint    size;           /**< length of the linked-list */
@@ -96,8 +96,6 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
-  // internal helpers
-  // TODO: audit these functions for redundancy, performance and "throw"-related errors
   /**
    * @notice Swaps two Account's positions within an AccountMap
    * @param sourceOne Address of source account
@@ -129,7 +127,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   }
 
   /**
-   * @notice Determines if the Account exists
+   * @notice Determines if an Account of this address has ever been created
    * @param source Account's address
    * @return bool
    */
@@ -194,9 +192,9 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   }
 
   /**
-   * @notice Fetches the latest IPFS hash for a account
+   * @notice Fetches the latest metadata for a account
    * @param source Account's address
-   * @return metadata IPFS hash of account's latest transaction
+   * @return metadata Metadata pertaining to the account's latest transaction
    */
   function getMetadata(
     address source
@@ -205,9 +203,9 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   }
 
   /**
-   * @notice Sets latest IPFS hash for a account
+   * @notice Sets latest metadata for a account
    * @param source Account's address
-   * @param metadata IPFS hash of account's latest transaction
+   * @param metadata Metadata pertaining to the account's latest transaction
    * @return bool
    */
   function setMetadata(
@@ -220,6 +218,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
+  // internal helpers
   function _setAccountPrevAddr(
     address source,
     address prevAddr
@@ -242,8 +241,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
 
   /********************************************************//**
    * @struct OfferMap
-   * @notice A doubly-linked list containing all of an Account's open Offers,
-   *  sorted by ???
+   * @notice A linked hash map containing all of an Account's open Offers
    * @dev O(1) get, add, remove, swap
    ***********************************************************/
   struct OfferMap {
@@ -291,6 +289,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     bool exists,
     address prevAddr,
     address nextAddr,
+    bool active,
     uint limit,
     uint[2] exchangeRate,
     uint sourceBalance,
@@ -302,6 +301,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     exists                  = _offer.exists;
     prevAddr                = _offer.prevAddr;
     nextAddr                = _offer.nextAddr;
+    active                  = _offer.active;
     limit                   = _offer.limit;
     exchangeRate            = _offer.exchangeRate;
     sourceBalance           = _offer.sourceBalance;
@@ -351,7 +351,6 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
-  // internal helpers
   // TODO: audit these functions for redundancy, performance and "throw"-related errors
   /**
    * @notice Fetches the length of the OfferMap
@@ -401,7 +400,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   }
 
   /**
-   * @notice Determines if a Offer has ever been created
+   * @notice Determines if an Offer has ever been created
    * @param source Address of source account
    * @param target Address of counterparty account
    * @return bool
@@ -411,28 +410,6 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address target
   ) public constant returns (bool exists) {
     return _getOffer(source, target).exists;
-  }
-
-  function _setOfferPrevAddr(
-    address source,
-    address target,
-    address prevAddr
-  ) internal returns (bool success) {
-    assert(offerExists(source, target));
-
-    Graph.accounts[source].offerMap.offers[target].prevAddr = prevAddr;
-    return true;
-  }
-
-  function _setOfferNextAddr(
-    address source,
-    address target,
-    address nextAddr
-  ) internal returns (bool success) {
-    assert(offerExists(source, target));
-
-    Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
-    return true;
   }
 
   /**
@@ -494,12 +471,24 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @return sourceBalance Amount of source Account's credit held within this Offer
+   */
   function getOfferSourceBalance(
     address source,
     address target
   ) public constant returns (uint sourceBalancec) {
     return _getOffer(source, target).sourceBalance;
   }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param sourceBalance New amount of source Account's credit to be held within this Offer
+   * @return success
+   */
   function setOfferSourceBalance(
     address source,
     address target,
@@ -511,12 +500,24 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @return sourceBalance Amount of target Account's credit held within this Offer
+   */
   function getOfferTargetBalance(
     address source,
     address target
-  ) public constant returns (uint targetBalancec) {
+  ) public constant returns (uint targetBalance) {
     return _getOffer(source, target).targetBalance;
   }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param targetBalance New amount of target Account's credit to be held within this Offer
+   * @return success
+   */
   function setOfferTargetBalance(
     address source,
     address target,
@@ -546,12 +547,24 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @return sourceFrozenBalance Amount of source Account's credit frozen within this Offer
+   */
   function getOfferFrozenSourceBalance(
     address source,
     address target
-  ) public constant returns (uint frozenSourceBalance) {
+  ) public constant returns (uint sourceFrozenBalance) {
     return _getOffer(source, target).sourceFrozenBalance;
   }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param sourceFrozenBalance New amount of source Account's credit to be frozen within this Offer
+   * @return success
+   */
   function setOfferFrozenSourceBalance(
     address source,
     address target,
@@ -563,12 +576,24 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     return true;
   }
 
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @return targetFrozenBalance Amount of target Account's credit frozen within this Offer
+   */
   function getOfferFrozenTargetBalance(
     address source,
     address target
-  ) public constant returns (uint frozenTargetBalance) {
+  ) public constant returns (uint targetFrozenBalance) {
     return _getOffer(source, target).targetFrozenBalance;
   }
+
+  /**
+   * @param source Address of the offer owner
+   * @param target Address of the offer's counterparty
+   * @param targetFrozenBalance New amount of target Account's credit to be frozen within this Offer
+   * @return success
+   */
   function setOfferFrozenTargetBalance(
     address source,
     address target,
@@ -577,6 +602,29 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     assert(offerExists(source, target));
 
     Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = targetFrozenBalance;
+    return true;
+  }
+
+  // internal helpers
+  function _setOfferPrevAddr(
+    address source,
+    address target,
+    address prevAddr
+  ) internal returns (bool success) {
+    assert(offerExists(source, target));
+
+    Graph.accounts[source].offerMap.offers[target].prevAddr = prevAddr;
+    return true;
+  }
+
+  function _setOfferNextAddr(
+    address source,
+    address target,
+    address nextAddr
+  ) internal returns (bool success) {
+    assert(offerExists(source, target));
+
+    Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
     return true;
   }
 
