@@ -12,7 +12,7 @@ contract owned is abstract {
   }
 
   modifier onlyOwner() { if (msg.sender==owner) _ }
-  
+
   function changeOwner(address newOwner) onlyOwner {
     owner = newOwner;
   }

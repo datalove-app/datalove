@@ -65,18 +65,22 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   }
 
   /**
-   * @notice Creates a new Account in Graph
+   * @notice Creates a new Account in the Graph
    * @param source Account's address
+   * @param name Name of the Account's own credit
+   * @param symbol Symbol associated with the Account's own credit
    * @param metadata IPFS hash of the account creation transaction
    */
   function createAccount(
     address source,
+    string name,
+    string symbol,
     string metadata
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
     var size = Graph.size;
     assert(size == MAX_UINT);
-    var _newAccount = Account(true, 0x0, 0x0, source, metadata, OfferMap(0, 0x0, 0x0));
+    var _newAccount = Account(true, 0x0, 0x0, source, name, symbol, metadata, OfferMap(0, 0x0, 0x0));
 
     if (size == 0) {
       Graph.firstAddr = source;
@@ -118,6 +122,8 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address   nextAddr;     /**< source address of next Account in linked-list */
 
     address   sourceAddr;   /**< the Account's address */
+    string    name;         /**< name of the Account's own credit */
+    string    symbol;       /**< symbol for the Account's own credit */
     string    metadata;     /**< metadata regarding the Account's last transaction */
     OfferMap  offerMap;     /**< a collection of the Account's open offers */
   }
@@ -131,6 +137,60 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address source
   ) public constant returns (bool success) {
     return _getAccount(source).exists;
+  }
+
+  /**
+   * @notice Fetches the name of the Account's credit
+   * @param source Account's address
+   * @return name Name of the Account's credit
+   */
+  function getName(
+    address source
+  ) public constant returns (string name) {
+    return _getAccount(source).name;
+  }
+
+  /**
+   * @notice Sets the name of the Account's credit
+   * @param source Account's address
+   * @param name New name of the Account's credit
+   * @return bool
+   */
+  function setName(
+    address source,
+    string name
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].name = name;
+    return true;
+  }
+
+  /**
+   * @notice Fetches the symbol of the Account's credit
+   * @param source Account's address
+   * @return symbol Symbol of the Account's credit
+   */
+  function getSymbol(
+    address source
+  ) public constant returns (string symbol) {
+    return _getAccount(source).symbol;
+  }
+
+  /**
+   * @notice Sets symbol for the Account's credit
+   * @param source Account's address
+   * @param symbol New symbol for the Account's credit
+   * @return bool
+   */
+  function setSymbol(
+    address source,
+    string symbol
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].symbol = symbol;
+    return true;
   }
 
   /**
@@ -155,7 +215,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     string metadata
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
-    
+
     Graph.accounts[source].metadata = metadata;
     return true;
   }
@@ -187,11 +247,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @dev O(1) get, add, remove, swap
    ***********************************************************/
   struct OfferMap {
-    uint    size;         /**< length of the linked-list */
-    address firstAddr;    /**< source address of first Offer of linked-list */
-    address lastAddr;     /**< source address of last Offer of linked-list */
+    uint    size;           /**< length of the linked-list */
+    address firstAddr;      /**< source address of first Offer of linked-list */
+    address lastAddr;       /**< source address of last Offer of linked-list */
     mapping (
-      address => Offer    /**< hashmap of Offers by target address */
+      address => Offer      /**< hashmap of Offers by target address */
     ) offers;
   }
 
@@ -332,6 +392,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address targetAddr;           /**< address of Offer target */
     bool    active;               /**< whether or not the Offer can be used in transactions */
     uint    limit;                /**< maximum amount of target credit to hold */
+    // TODO: fix this to be more ERC20-compliant
     uint[2] exchangeRate;         /**< exchange rate between target's and source's credit */
     uint    sourceBalance;        /**< balance of source's credit */
     uint    targetBalance;        /**< balance of target's credit */
@@ -419,17 +480,17 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   /**
    * @param source Address of the offer owner
    * @param target Address of the offer's counterparty
-   * @param newLimit The new limit of target credit to hold
+   * @param limit The new limit of target credit to hold
    * @return success
    */
   function setOfferLimit(
     address source,
     address target,
-    uint newLimit
+    uint limit
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].limit = newLimit;
+
+    Graph.accounts[source].offerMap.offers[target].limit = limit;
     return true;
   }
 
@@ -442,11 +503,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   function setOfferSourceBalance(
     address source,
     address target,
-    uint newSourceBalance
+    uint sourceBalance
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].sourceBalance = newSourceBalance;
+
+    Graph.accounts[source].offerMap.offers[target].sourceBalance = sourceBalance;
     return true;
   }
 
@@ -459,11 +520,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   function setOfferTargetBalance(
     address source,
     address target,
-    uint newTargetBalance
+    uint targetBalance
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].targetBalance = newTargetBalance;
+
+    Graph.accounts[source].offerMap.offers[target].targetBalance = targetBalance;
     return true;
   }
 
@@ -473,14 +534,15 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   ) public constant returns (uint[2] exchangeRate) {
     return _getOffer(source, target).exchangeRate;
   }
+
   function setOfferExchangeRate(
     address source,
     address target,
-    uint[2] newExchangeRate
+    uint[2] exchangeRate
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].exchangeRate = newExchangeRate;
+
+    Graph.accounts[source].offerMap.offers[target].exchangeRate = exchangeRate;
     return true;
   }
 
@@ -493,11 +555,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   function setOfferFrozenSourceBalance(
     address source,
     address target,
-    uint newSourceFrozenBalance
+    uint sourceFrozenBalance
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].sourceFrozenBalance = newSourceFrozenBalance;
+
+    Graph.accounts[source].offerMap.offers[target].sourceFrozenBalance = sourceFrozenBalance;
     return true;
   }
 
@@ -510,11 +572,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
   function setOfferFrozenTargetBalance(
     address source,
     address target,
-    uint newTargetFrozenBalance
+    uint targetFrozenBalance
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(offerExists(source, target));
-    
-    Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = newTargetFrozenBalance;
+
+    Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = targetFrozenBalance;
     return true;
   }
 
