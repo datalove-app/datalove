@@ -21,7 +21,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
 
   /********************************************************//**
    * @struct AccountMap
-   * @notice A linked hash map containing all Whuffie Accounts and their Offers
+   * @notice A linked hashmap containing all Whuffie Accounts and their Offers
    ***********************************************************/
   struct AccountMap {
     uint    size;           /**< length of the linked-list */
@@ -79,35 +79,49 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     assert(Graph.size == MAX_UINT);
 
     var _newAccount = Account(true, 0x0, 0x0, source, 1000000000, name, symbol, metadata, OfferMap(0, 0x0, 0x0));
-    return _insertAccount(_newAccount);
+
+    Graph.accounts[source] = newAccount;
+    Graph.size = size + 1;
+
+    if (_spliceInAccount(source, 0x0)) {
+      return true;
+    }
+    throw;
   }
 
-  function _insertAccount(
-    Account newAccount
+  /**
+   * @notice Internal method for splicing an Account into the AccountMap, updating
+   *  all of the linked hashmap pointers
+   * @param newAccount The new Account to be added
+   * @param newNextAddr Address of the soon-to-be next element in the AccountMap
+   */
+  function _spliceInAccount(
+    Account source
     address newNextAddr
   ) internal returns (bool success) {
-    address source = newAccount.sourceAddr;
+    if (Graph.size == 0) {
 
-    if (newNextAddr == 0x0) {
+
+    } else if (newNextAddr == Graph.firstAddr) {
+      // grab oldHead
+      // set oldHead.prev to source
+      // set source.next to oldHead
+      // set Graph.head to source
+
+    } else if (newNextAddr == 0x0) {
       // grab oldTail
-      // set oldTail's next to source
-      // set Tail to source
+      // set oldTail.next to source
+      // set Graph.tail to source
 
       var oldHead = Graph.firstAddr;
-    } else if (newPrevAddr == Graph.lastAddr) {
-
     } else {
       address oldTailAddr = Graph.lastAddr;
       _setAccountNextAddr(oldTailAddr, source);
-      newAccount.prevAddr = oldTailAddr;
+      _setAccountPrevAddr(source, oldTailAddr);
     }
-
-    Graph.lastAddr = source;
-    Graph.size = size + 1;
-    Graph.accounts[source] = newAccount;
   }
 
-  function _removeAccount(
+  function _spliceOutAccount(
     address source
   ) internal returns (bool success) {
     // if source is head
@@ -124,7 +138,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @param sourceTwo Address of the Account to come after sourceOne (0x0 if to be last)
    * @return bool
    */
-  function moveAccount(
+  function spliceAccount(
     address sourceOne,
     address sourceTwo
   ) public onlyAPI onlyActivated returns (bool success) {
@@ -146,10 +160,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
 
     address   sourceAddr;   /**< the Account's address */
     uint8     decimals;     /**< number of decimal places to show */
-    bytes32   name;         /**< name of the Account's own credit */
-    bytes32   symbol;       /**< symbol for the Account's own credit */
+    bytes32   creditName;   /**< name of the Account's own credit */
+    bytes32   creditSymbol; /**< symbol for the Account's own credit */
     bytes32   metadata;     /**< metadata regarding the Account's last transaction */
     OfferMap  offerMap;     /**< a collection of the Account's open offers */
+                            // TODO: a collection of Account's that have offers for this Account's credit?
   }
 
   /**
@@ -168,10 +183,10 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @param source Account's address
    * @return name Name of the Account's credit
    */
-  function getName(
+  function getCreditName(
     address source
-  ) public constant returns (bytes32 name) {
-    return _getAccount(source).name;
+  ) public constant returns (bytes32 creditName) {
+    return _getAccount(source).creditName;
   }
 
   /**
@@ -182,11 +197,11 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function setName(
     address source,
-    bytes32 name
+    bytes32 creditName
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
 
-    Graph.accounts[source].name = name;
+    Graph.accounts[source].creditName = creditName;
     return true;
   }
 
@@ -195,10 +210,10 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @param source Account's address
    * @return symbol Symbol of the Account's credit
    */
-  function getSymbol(
+  function getCreditSymbol(
     address source
-  ) public constant returns (bytes32 symbol) {
-    return _getAccount(source).symbol;
+  ) public constant returns (bytes32 creditSymbol) {
+    return _getAccount(source).creditSymbol;
   }
 
   /**
@@ -207,13 +222,13 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @param symbol New symbol for the Account's credit
    * @return bool
    */
-  function setSymbol(
+  function setCreditSymbol(
     address source,
     bytes32 symbol
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(accountExists(source));
 
-    Graph.accounts[source].symbol = symbol;
+    Graph.accounts[source].creditSymbol = creditSymbol;
     return true;
   }
 
@@ -294,7 +309,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
 
   /********************************************************//**
    * @struct OfferMap
-   * @notice A linked hash map containing all of an Account's open Offers
+   * @notice A linked hashmap containing all of an Account's open Offers
    * @dev O(1) get, add, remove, swap
    ***********************************************************/
   struct OfferMap {

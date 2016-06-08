@@ -1,4 +1,6 @@
-# What prevents inflation and creation of extraneous credit?
+<!-- for software engineers and those in alternative money community -->
+
+# What prevents inflation and explosive creation of credit?
 
 # What prevents Sybil attacks?
 

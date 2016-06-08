@@ -1,11 +1,15 @@
+<!-- for the general public, journalists, and casual cryptocurrency enthusiasts -->
+
 # What is Whuffie?
+-
 
 # What can I do with Whuffie?
 - any currency or token that can be issued and sent between accounts can be implemented on top of Whuffie, such as:
+  - crowdsale, ICO and DAO tokens
   - social network and reputation currencies
-  - rewards points systems
+  - rewards/loyalty points systems
   - video game credits/tokens
-  - community currencies & mutual credit systems
+  - mutual credit and community currencies
   - charity and volunteering incentive systems
   - basic income credit systems
 
@@ -20,6 +24,8 @@
   - no KYC/AML restrictions are baked into the code
 
 # Whuffie sounds like a decentralized exchange, so how does it compare to EtherEx?
-- an exchange like EtherEx could be implemented on top of Whuffie, capable of trading tokens and currencies over multiple offers thru the Whuffie engine
+- an exchange like EtherEx could be implemented on top of Whuffie, trades over multiple offers thru the Whuffie engine
+- likewise, EtherEx could implement a Whuffie-like contract on top of EtherEx
 - Whuffie tokens and credits that implement the ERC20 token interface should be tradeable on EtherEx
-- other non-whuffie tokens and smart contract currencies would have to be pegged to a Whuffie token contract equivalent, though further research is required to work out the details.
+
+# If I deploy my token using Whuffie, Am I locked in forever? Likewise, if I don't deploy my token with Whuffie, am I permanently locked out?

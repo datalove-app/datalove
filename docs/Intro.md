@@ -1,16 +1,18 @@
 # Introduction to Whuffie
 
-Whuffie is a social cryptocredit engine.
-- users create their own currencies or credits
-- users individually choose to accept other's credits at some user-defined exchange rate
-- credits can be sent from one user to another if there is a path of acceptance between them
-- ?? a user's reputation can be measured by their credit's acceptance throughout the graph, similar to PageRank and linking URLs
+Whuffie is a social cryptocredit network built on two basic actions:
+- users can issue their own credits (and/or import their existing token balances from other Ethereum token contracts), denominated in any unit-of-account of their choosing
+- users can "share" with other users some amount of the credit/tokens they hold (and credit/tokens shared with them by others) at any exchange rate the user might choose
 
-B/c of these rules, any currency or token that can be issued and sent between accounts can be implemented on top of Whuffie, such as:
+As a result of these actions and Whuffie contract code, credit/tokens can now be sent from one user to another, **even if the recipient doesn't direcly accept the credit/token being sent**
+This also means that a credit/token's value (and to a certain extent, the reputation of it's issuer) can be measured by measuring that credit/token's acceptance and fungibility throughout the network, similar to using links between webpages to calculate PageRank.
+
+B/c of these actions, *Whuffie can be use to implement any kind of credit, token and currency*, such as:
+- crowdsale, ICO and DAO tokens
 - social network and reputation currencies
-- rewards points systems
+- rewards/loyalty points systems
 - video game credits/tokens
-- community currencies & mutual credit systems
+- mutual credit and community currencies
 - charity and volunteering incentive systems
 - basic income credit systems
 
@@ -20,7 +22,7 @@ In the beginning of human civilization, trade was conducted not by barter, but b
 (EX: baskets for chickens).
 This was possible b/c people knew each other their entire lives and could trust that they wouldn't leave town, rendering any earned credit but unspent worthless.
 
-The problem was that this did't scale as easily as currencies run by the state and backed by commodities like gold
+The problem was that this didn't scale as easily as currencies run by the state and backed by commodities like gold
 ?????????????????????????????????
 for one, dunbar's number suggests that it is impossible for any one person in modern society to maintain enough close relationships to be able to rely solely on p2p credit for trade.
 (EX: go into how it could be difficult to use the credit you have with the chicken farmer on blacksmith, MAYBE WATCH MONEY IS DEBT)
