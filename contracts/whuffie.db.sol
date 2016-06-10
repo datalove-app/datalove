@@ -1,6 +1,6 @@
-import "assertive.sol";
-import "activable.sol";
-import "restrictedAPI.sol";
+import "lib/assertive.sol";
+import "lib/activable.sol";
+import "lib/restrictedAPI.sol";
 
 // TODO: should be stored in some kind of NameReg
 // TODO: audit and test all functions for redundancy, performance and "throw"-related errors
@@ -53,10 +53,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    */
   function getAccount(
     address source
-  ) public constant returns (
-    bool exists,
-    string metadata
-  ) {
+  ) public constant returns (bool exists, string metadata) {
     var _account = _getAccount(source);
     exists = _account.exists;
     metadata = _account.metadata;
@@ -87,6 +84,23 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
       return true;
     }
     throw;
+  }
+
+  /**
+   * @notice Moves an Account to a new position within an AccountMap
+   * @param sourceOne Address of the Account to be moved
+   * @param sourceTwo Address of the Account to come after sourceOne (0x0 if to be last)
+   * @return bool
+   */
+  function spliceAccount(
+    address sourceOne,
+    address sourceTwo
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(sourceOne));
+    assert(sourceTwo == 0x0 || accountExists(sourceTwo));
+
+    // remove sourceOne from list
+    // insert sourceOne after sourceTwo (or as head)
   }
 
   /**
@@ -132,23 +146,6 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     // set sourceOne's original next's prev to sourceOne's prev
   }
 
-  /**
-   * @notice Moves an Account to a new position within an AccountMap
-   * @param sourceOne Address of the Account to be moved
-   * @param sourceTwo Address of the Account to come after sourceOne (0x0 if to be last)
-   * @return bool
-   */
-  function spliceAccount(
-    address sourceOne,
-    address sourceTwo
-  ) public onlyAPI onlyActivated returns (bool success) {
-    assert(accountExists(sourceOne));
-    assert(sourceTwo == 0x0 || accountExists(sourceTwo));
-
-    // remove sourceOne from list
-    // insert sourceOne after sourceTwo (or as head)
-  }
-
   /********************************************************//**
    * @struct Account
    * @notice A Whuffie-holding account
@@ -163,7 +160,8 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     bytes32   creditName;   /**< name of the Account's own credit */
     bytes32   creditSymbol; /**< symbol for the Account's own credit */
     bytes32   metadata;     /**< metadata regarding the Account's last transaction */
-    OfferMap  offerMap;     /**< a collection of the Account's open offers */
+    CreditMap creditMap;    /**< collection of the credits issued by the Account */
+    OfferMap  offerMap;     /**< collection of the offers involving the Account */
                             // TODO: a collection of Account's that have offers for this Account's credit?
   }
 
@@ -176,6 +174,76 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     address source
   ) public constant returns (bool success) {
     return _getAccount(source).exists;
+  }
+
+  /**
+   * @notice Fetches the latest metadata for a account
+   * @param source Account's address
+   * @return metadata Metadata pertaining to the account's latest transaction
+   */
+  function getMetadata(
+    address source
+  ) public constant returns (bytes32 metadata) {
+    return _getAccount(source).metadata;
+  }
+
+  /**
+   * @notice Sets latest metadata for a account
+   * @param source Account's address
+   * @param metadata Metadata pertaining to the account's latest transaction
+   * @return bool
+   */
+  function setMetadata(
+    address source,
+    bytes32 metadata
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].metadata = metadata;
+    return true;
+  }
+
+  // internal helpers
+  function _setAccountPrevAddr(
+    address source,
+    address prevAddr
+  ) internal returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].prevAddr = prevAddr;
+    return true;
+  }
+
+  function _setAccountNextAddr(
+    address source,
+    address nextAddr
+  ) internal returns (bool success) {
+    assert(accountExists(source));
+
+    Graph.accounts[source].nextAddr = nextAddr;
+    return true;
+  }
+
+  /********************************************************//**
+   * @struct CreditMap
+   * @notice A linked hashmap containing all of an Account's issued credits
+   * @dev O(1) get, add, remove, swap
+   ***********************************************************/
+  struct CreditMap {
+    uint    size;           /**< length of the linked-list */
+    address firstAddr;      /**< source address of first Credit of linked-list */
+    address lastAddr;       /**< source address of last Credit of linked-list */
+    mapping (
+      bytes12 => Credit     /**< hashmap of Credits by symbol */
+    ) credits;
+  }
+
+  /********************************************************//**
+   * @struct Credit
+   * @notice
+   ***********************************************************/
+  struct Credit {
+
   }
 
   /**
@@ -195,7 +263,7 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
    * @param name New name of the Account's credit
    * @return bool
    */
-  function setName(
+  function setCreditName(
     address source,
     bytes32 creditName
   ) public onlyAPI onlyActivated returns (bool success) {
@@ -256,54 +324,6 @@ contract WhuffieStorage is Assertive, Activable, RestrictedAPI {
     assert(accountExists(source));
 
     Graph.accounts[source].decimals = decimals;
-    return true;
-  }
-
-  /**
-   * @notice Fetches the latest metadata for a account
-   * @param source Account's address
-   * @return metadata Metadata pertaining to the account's latest transaction
-   */
-  function getMetadata(
-    address source
-  ) public constant returns (bytes32 metadata) {
-    return _getAccount(source).metadata;
-  }
-
-  /**
-   * @notice Sets latest metadata for a account
-   * @param source Account's address
-   * @param metadata Metadata pertaining to the account's latest transaction
-   * @return bool
-   */
-  function setMetadata(
-    address source,
-    bytes32 metadata
-  ) public onlyAPI onlyActivated returns (bool success) {
-    assert(accountExists(source));
-
-    Graph.accounts[source].metadata = metadata;
-    return true;
-  }
-
-  // internal helpers
-  function _setAccountPrevAddr(
-    address source,
-    address prevAddr
-  ) internal returns (bool success) {
-    assert(accountExists(source));
-
-    Graph.accounts[source].prevAddr = prevAddr;
-    return true;
-  }
-
-  function _setAccountNextAddr(
-    address source,
-    address nextAddr
-  ) internal returns (bool success) {
-    assert(accountExists(source));
-
-    Graph.accounts[source].nextAddr = nextAddr;
     return true;
   }
 
