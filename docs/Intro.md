@@ -1,20 +1,23 @@
 # Introduction to Whuffie
 
-Whuffie is a social cryptocredit network built on two basic actions:
-- users can issue their own credits (and/or import their existing token balances from other Ethereum token contracts), denominated in any unit-of-account of their choosing
-- users can "share" with other users some amount of the credit/tokens they hold (and credit/tokens shared with them by others) at any exchange rate the user might choose
+Whuffie is a social cryptocredit network and API built on two basic, but powerful actions:
+- users can issue their own custom credits and tokens (or import existing credit/token balances from other Ethereum ERC20 contracts), and can denominate them in any unit-of-account of their choosing
+- users can "share" with other users some amount of the credit/tokens they hold (and credit/tokens shared with them by other users) at any exchange rate the user chooses, essentially creating an open offer to hold and exchange their credit/tokens for another's
 
-As a result of these actions and Whuffie contract code, credit/tokens can now be sent from one user to another, **even if the recipient doesn't direcly accept the credit/token being sent**
-This also means that a credit/token's value (and to a certain extent, the reputation of it's issuer) can be measured by measuring that credit/token's acceptance and fungibility throughout the network, similar to using links between webpages to calculate PageRank.
-
-B/c of these actions, *Whuffie can be use to implement any kind of credit, token and currency*, such as:
+Because Whuffie implements the minimum subset of features that all currencies, credits and tokens need, *Whuffie can be use to implement any kind of credit, token and currency*, such as:
 - crowdsale, ICO and DAO tokens
 - social network and reputation currencies
-- rewards/loyalty points systems
-- video game credits/tokens
-- mutual credit and community currencies
+- a full-blown currency/commodity exchange
 - charity and volunteering incentive systems
-- basic income credit systems
+- video game credits/tokens
+- rewards/loyalty points systems
+- mutual credit and community currencies
+- even localized basic income credit systems
+
+... and because we've included a path-finding algorithm in the contract to traverse open offers, any of these credits and tokens can now be sent from one user to another, **even if the recipient doesn't direcly accept the credit/token being sent**
+
+
+This also means that a credit/token's value (and to a certain extent, the reputation of it's issuer) can be measured by measuring that credit/token's acceptance and fungibility throughout the network, similar to using links between webpages to calculate PageRank.
 
 Too good to be true, right? To explain how all of this is possible, I'll need to provide a bit of backstory:
 
