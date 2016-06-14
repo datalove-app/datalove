@@ -3,11 +3,9 @@ import "lib/whuffie.accounts.sol";
 
 /**
  */
-library Credits {
+// library Credits {}
 
-}
-
-library Credit {
+// library Credit {
   // /**
   // * @notice Fetches the name of the Account's credit
   // * @param source Account's address
@@ -88,4 +86,4 @@ library Credit {
   //   Graph.accounts[source].decimals = decimals;
   //   return true;
   // }
-}
+// }

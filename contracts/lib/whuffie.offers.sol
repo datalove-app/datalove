@@ -3,9 +3,9 @@ import "lib/whuffie.accounts.sol";
 
 /**
  */
-library Offers {
-  using Accounts for Types.AccountMap;
-  using Account for Types.Account;
+// library Offers {
+  // using Accounts for Types.AccountMap;
+  // using Account for Types.Account;
 
   // /**
   // * @notice Internal method for fetching an individual Offer
@@ -132,9 +132,9 @@ library Offers {
   //   assert(offerExists(source, targetOne));
   //   assert(offerExists(source, targetTwo));
   // }
-}
+// }
 
-library Offer {
+// library Offer {
   // /**
   // * @notice Determines if an Offer has ever been created
   // * @param source Address of source account
@@ -363,4 +363,4 @@ library Offer {
   //   Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
   //   return true;
   // }
-}
+// }

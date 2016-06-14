@@ -46,34 +46,34 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
    *  return values within the EVM)
    * @param source Address of the account
    */
-  // function getAccount(
-  //   address source
-  // ) public constant returns (
-  //   bytes32   metadata,
-  //   address   owner,
-  //   bytes12   creditSymbol,
-  //   bytes32   creditName,
-  //   uint      totalSupply,
-  //   uint      sourceBalance,
-  //   uint      sourceFrozenBalance,
-  //   uint8     decimals,
-  //   bool      exists,
-  //   address   prevAddr,
-  //   address   nextAddr
-  // ) {
-  //   Types.Account storage account = Graph.getAccount(source);
-  //   metadata              = account.metadata;
-  //   creditSymbol          = account.creditSymbol;
-  //   creditName            = account.creditName;
-  //   totalSupply           = account.totalSupply;
-  //   sourceBalance         = account.sourceBalance;
-  //   sourceFrozenBalance   = account.sourceFrozenBalance;
-  //   decimals              = account.decimals;
-  //   exists                = account.exists;
-  //   owner                 = account.owner;
-  //   prevAddr              = account.prevAddr;
-  //   nextAddr              = account.nextAddr;
-  // }
+  function getAccount(
+    address source
+  ) public constant returns (
+    bytes32   metadata,
+    address   owner,
+    bytes12   creditSymbol,
+    bytes32   creditName,
+    uint      totalSupply,
+    uint      sourceBalance,
+    uint      sourceFrozenBalance,
+    uint8     decimals,
+    bool      exists,
+    address   prevAddr,
+    address   nextAddr
+  ) {
+    Types.Account storage account = Graph.getAccount(source);
+    metadata              = account.metadata;
+    creditSymbol          = account.creditSymbol;
+    creditName            = account.creditName;
+    totalSupply           = account.totalSupply;
+    sourceBalance         = account.sourceBalance;
+    sourceFrozenBalance   = account.sourceFrozenBalance;
+    decimals              = account.decimals;
+    exists                = account.exists;
+    owner                 = account.owner;
+    prevAddr              = account.prevAddr;
+    nextAddr              = account.nextAddr;
+  }
 
   /**
    * @notice Determines if an Account of this address has ever been created
@@ -91,25 +91,25 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
    * @param source Account's address
    * @param metadata IPFS hash of the account creation transaction
    */
-  // function createAccount(
-  //   address source,
-  //   address owner,
-  //   bytes12 creditSymbol,
-  //   bytes32 creditName,
-  //   uint8   decimals,
-  //   uint    initialTotalSupply,
-  //   uint    initialSourceBalance,
-  //   bytes32 metadata
-  // ) public onlyAPI onlyActivated returns (bool success) {
-  //   assert(!accountExists(source));
-  //   assert(Graph.size != MAXUINT);
+  function createAccount(
+    address source,
+    address owner,
+    bytes12 creditSymbol,
+    bytes32 creditName,
+    uint8   decimals,
+    uint    initialTotalSupply,
+    uint    initialSourceBalance,
+    bytes32 metadata
+  ) public onlyAPI onlyActivated returns (bool success) {
+    assert(!accountExists(source));
+    assert(Graph.size != MAXUINT);
 
-  //   assert(Graph.createAccount(
-  //     source, owner, creditSymbol, creditName,
-  //     decimals, initialTotalSupply, initialSourceBalance, metadata
-  //   ));
-  //   return true;
-  // }
+    assert(Graph.createAccount(
+      source, owner, creditSymbol, creditName,
+      decimals, initialTotalSupply, initialSourceBalance, metadata
+    ));
+    return true;
+  }
 
   /********************************************************//**
    * @notice Account - A Whuffie-holding account
