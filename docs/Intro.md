@@ -1,6 +1,6 @@
 # Introduction to Whuffie
 
-Whuffie is a social cryptocredit network and API built on two basic, but powerful actions:
+Whuffie is a social cryptocurrency network and API built on two basic, but powerful actions:
 - users can issue their own custom credits and tokens (or import existing credit/token balances from other Ethereum ERC20 contracts), and can denominate them in any unit-of-account of their choosing
 - users can "share" with other users some amount of the credit/tokens they hold (and credit/tokens shared with them by other users) at any exchange rate the user chooses, essentially creating an open offer to hold and exchange their credit/tokens for another's
 

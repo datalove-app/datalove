@@ -5,55 +5,25 @@
     "block": {
       "coinbase" : "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba",
       "difficulty" : "0x0100",
-      "gasLimit" : 3141592,
+      "gasLimit" : 1000000000,
       "gasPrice": 60000000000
     },
 
     "accounts": {
-
       "0xdedb49385ad5b94a16f236a6890cf9e0b1e30392": {
         "balance": 1000000000000000000000000000000000000000000000000000000 ,
         "nonce": "0x1cf",
-        "pkey": "0x974f963ee4571e86e5f9bc3b493e453db9c15e5bd19829a4ef9a790de0da0015", 
+        "pkey": "0x974f963ee4571e86e5f9bc3b493e453db9c15e5bd19829a4ef9a790de0da0015",
         "default": true
       },
-
-      "0xb8c059e31bcfa20b961d3f5a021b5c44d7da57ae": {
-        "balance": 1000000000000000000 ,
-        "nonce": "0",
-        "pkey": "1234", 
-        "default": false
-      }, 
-
-      "0x1691747b4769a4547ce736b298274a93bd80d6b9": {
-        "balance": 999 ,
-        "nonce": "0",
-        "pkey": "roman:test", 
-        "default": false
-      }, 
 
       "0xcc49bea5129ef2369ff81b0c0200885893979b77": {
         "balance": 1000000000000000000000000000000000000000000000000000000 ,
         "nonce": "0",
-        "pkey": "roman1", 
-        "default": false
-      }, 
+        "pkey": "sunnyg",
+        "default": true
+      },
 
-      "0x211b1b6e61e475ace9bf13ae79373ddb419b5f72": {
-        "balance": 1000000000000000000000000000000000000000000000000000000 ,
-        "nonce": "0",
-        "pkey": "roman2", 
-        "default": false
-      }, 
-      
-      "0x2168853ae7d2893d610a1583729efb6f405adfd4": {
-        "balance": 1000000000000000000000000000000000000000000000000000000 ,
-        "nonce": "0",
-        "pkey": "roman3", 
-        "default": false
-      }, 
-      
-      
       "0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826": {
         "balance": "0x1000000000000000000000000000000000000",
         "nonce": "1430",

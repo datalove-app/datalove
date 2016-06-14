@@ -1,15 +1,17 @@
-import "std.sol";
+import "lib/std.sol";
 
-contract Activable is owned {
+contract Activable is abstract, owned {
   bool public activated;
 
   modifier onlyActivated() { if (activated == false) throw; _ }
 
-  function activate() onlyOwner {
+  function activate() onlyOwner returns (bool success) {
     activated = true;
+    return true;
   }
 
-  function deactivate() onlyOwner {
+  function deactivate() onlyOwner returns (bool success) {
     activated = false;
+    return true;
   }
 }
