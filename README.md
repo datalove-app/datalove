@@ -1,4 +1,4 @@
-[Whuffie]() — the social cryptocredit engine
+[Whuffie](https://github.com/sunny-g/whuffie) — A cryptocredit network and API, designed for issuing and seamlessly exchanging p2p credit, as well as any arbitrary currencies, credits and tokens
 ==================================================
 
 What is Whuffie?
