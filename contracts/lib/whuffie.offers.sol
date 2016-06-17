@@ -1,285 +1,11 @@
-import "lib/assertive.sol";
-import "lib/activable.sol";
-import "lib/restrictedAPI.sol";
-
 import "lib/whuffie.types.sol";
 import "lib/whuffie.accounts.sol";
-// import "lib/whuffie.credits.sol";
-// import "lib/whuffie.offers.sol";
-
-// TODO: should be stored in some kind of NameReg
-// TODO: audit and test all functions for redundancy, performance and "throw"-related errors
 
 /**
- * @title WhuffieDB
- * @author Sunny Gonnabathula | @sunny-g | sunny.gonna@gmail.com
- * @notice Implements public getters and API-restricted setters and iterators
- *  for the Whuffie Graph
- * @dev This contract will maintain the base-level storage of all Accounts and Offers,
- *  and will only be mutated by selected API contracts.
  */
-contract WhuffieDB is Assertive, Activable, RestrictedAPI {
-  using Accounts for Types.AccountMap;
+// library Offers {
+  // using Accounts for Types.AccountMap;
   // using Account for Types.Account;
-  // using Credits for Types.CreditMap;
-  // using Credit for Types.Credit;
-  // using Offers for Types.OfferMap;
-  // using Offer for Types.Offer;
-
-  Types.AccountMap public Graph;
-  uint constant MAXUINT = 2**256 - 1;
-
-  function WhuffieDB () {
-    Graph = Types.AccountMap(0, 0x0, 0x0);
-
-    // for testing purposes
-    activate();
-    addAPI(0xdedb49385ad5b94a16f236a6890cf9e0b1e30392, "test");
-  }
-
-  /********************************************************//**
-   * @notice AccountMap - A linked hashmap containing all Whuffie Accounts and their Offers
-   ***********************************************************/
-  /**
-   * @notice Returns Account struct members for a given address
-   * @dev Must return individual members (since solidity doesn't allow struct
-   *  return values within the EVM)
-   * @param source Address of the account
-   */
-  function getAccount(
-    address source
-  ) public constant returns (
-    bytes32   metadata,
-    address   owner,
-    bytes12   creditSymbol,
-    bytes32   creditName,
-    uint      totalSupply,
-    uint      sourceBalance,
-    uint      sourceFrozenBalance,
-    uint8     decimals,
-    bool      exists,
-    address   prevAddr,
-    address   nextAddr
-  ) {
-    Types.Account storage account = Graph.getAccount(source);
-    metadata              = account.metadata;
-    creditSymbol          = account.creditSymbol;
-    creditName            = account.creditName;
-    totalSupply           = account.totalSupply;
-    sourceBalance         = account.sourceBalance;
-    sourceFrozenBalance   = account.sourceFrozenBalance;
-    decimals              = account.decimals;
-    exists                = account.exists;
-    owner                 = account.owner;
-    prevAddr              = account.prevAddr;
-    nextAddr              = account.nextAddr;
-  }
-
-  /**
-   * @notice Determines if an Account of this address has ever been created
-   * @param source Account's address
-   * @return bool
-   */
-  function accountExists(
-    address source
-  ) public constant returns (bool exists) {
-    return Graph.getAccount(source).exists;
-  }
-
-  /**
-   * @notice Creates a new Account in the Graph
-   * @param source Account's address
-   * @param metadata IPFS hash of the account creation transaction
-   */
-  function createAccount(
-    address source,
-    address owner,
-    bytes12 creditSymbol,
-    bytes32 creditName,
-    uint8   decimals,
-    uint    initialTotalSupply,
-    uint    initialSourceBalance,
-    bytes32 metadata
-  ) public onlyAPI onlyActivated returns (bool success) {
-    assert(!accountExists(source));
-    assert(Graph.size != MAXUINT);
-
-    assert(Graph.createAccount(
-      source, owner, creditSymbol, creditName,
-      decimals, initialTotalSupply, initialSourceBalance, metadata
-    ));
-    return true;
-  }
-
-  /********************************************************//**
-   * @notice Account - A Whuffie-holding account
-   ***********************************************************/
-  /**
-   * @notice Fetches the latest metadata for a account
-   * @param source Account's address
-   * @return metadata Metadata pertaining to the account's latest transaction
-   */
-  function getMetadata(
-    address source
-  ) public constant returns (bytes32 metadata) {
-    return Graph.getAccount(source).metadata;
-  }
-
-  /**
-   * @notice Sets latest metadata for a account
-   * @param source Account's address
-   * @param metadata Metadata pertaining to the account's latest transaction
-   * @return bool
-   */
-  function setMetadata(
-    address source,
-    bytes32 metadata
-  ) public onlyAPI onlyActivated returns (bool success) {
-    Types.Account storage account = Graph.getAccount(source);
-    assert(account.exists);
-
-    account.metadata = metadata;
-    return true;
-  }
-
-  // internal helpers
-  function _setAccountPrevAddr(
-    address source,
-    address prevAddr
-  ) internal returns (bool success) {
-    Types.Account storage account = Graph.getAccount(source);
-    assert(account.exists);
-
-    account.prevAddr = prevAddr;
-    return true;
-  }
-
-  function _setAccountNextAddr(
-    address source,
-    address nextAddr
-  ) internal returns (bool success) {
-    Types.Account storage account = Graph.getAccount(source);
-    assert(account.exists);
-
-    account.nextAddr = nextAddr;
-    return true;
-  }
-
-  /********************************************************//**
-   * @notice CreditMap - A linked hashmap containing all of an Account's issued credits
-   * @dev O(1) get, add, remove, swap
-   ***********************************************************/
-  // struct CreditMap {
-  //   uint    size;           /**< length of the linked-list */
-  //   address firstAddr;      /**< source address of first Credit of linked-list */
-  //   address lastAddr;       /**< source address of last Credit of linked-list */
-  //   mapping (
-  //     bytes12 => Credit     /**< hashmap of Credits by symbol */
-  //   ) credits;
-  // }
-
-  // /********************************************************//**
-  // * @struct Credit
-  // * @notice
-  // ***********************************************************/
-  // struct Credit {
-
-  // }
-
-  // /**
-  // * @notice Fetches the name of the Account's credit
-  // * @param source Account's address
-  // * @return name Name of the Account's credit
-  // */
-  // function getCreditName(
-  //   address source
-  // ) public constant returns (bytes32 creditName) {
-  //   return getAccount(source).creditName;
-  // }
-
-  // /**
-  // * @notice Sets the name of the Account's credit
-  // * @param source Account's address
-  // * @param name New name of the Account's credit
-  // * @return bool
-  // */
-  // function setCreditName(
-  //   address source,
-  //   bytes32 creditName
-  // ) public onlyAPI onlyActivated returns (bool success) {
-  //   assert(accountExists(source));
-
-  //   Graph.accounts[source].creditName = creditName;
-  //   return true;
-  // }
-
-  // /**
-  // * @notice Fetches the symbol of the Account's credit
-  // * @param source Account's address
-  // * @return symbol Symbol of the Account's credit
-  // */
-  // function getCreditSymbol(
-  //   address source
-  // ) public constant returns (bytes32 creditSymbol) {
-  //   return getAccount(source).creditSymbol;
-  // }
-
-  // /**
-  // * @notice Sets symbol for the Account's credit
-  // * @param source Account's address
-  // * @param symbol New symbol for the Account's credit
-  // * @return bool
-  // */
-  // function setCreditSymbol(
-  //   address source,
-  //   bytes32 symbol
-  // ) public onlyAPI onlyActivated returns (bool success) {
-  //   assert(accountExists(source));
-
-  //   Graph.accounts[source].creditSymbol = creditSymbol;
-  //   return true;
-  // }
-
-  // /**
-  // * @notice Fetches the number of decimal places for the Account's credits
-  // * @param source Account's address
-  // * @return decimals Number of decimal places
-  // */
-  // function getDecimals(
-  //   address source
-  // ) public constant returns (uint decimals) {
-  //   return getAccount(source).decimals;
-  // }
-
-  // /**
-  // * @notice Sets the decimal places for the Account's credit
-  // * @param source Account's address
-  // * @param decimals New decimal places for the Account's credit to have
-  // * @return bool
-  // */
-  // function setDecimals(
-  //   address source,
-  //   uint decimals
-  // ) public onlyAPI onlyActivated returns (bool success) {
-  //   assert(accountExists(source));
-
-  //   Graph.accounts[source].decimals = decimals;
-  //   return true;
-  // }
-
-  // /********************************************************//**
-  // * @struct OfferMap
-  // * @notice A linked hashmap containing all of an Account's open Offers
-  // * @dev O(1) get, add, remove, swap
-  // ***********************************************************/
-  // struct OfferMap {
-  //   uint    size;           /**< length of the linked-list */
-  //   address firstAddr;      /**< source address of first Offer of linked-list */
-  //   address lastAddr;       /**< source address of last Offer of linked-list */
-  //   mapping (
-  //     address => Offer      /**< hashmap of Offers by target address */
-  //   ) offers;
-  // }
 
   // /**
   // * @notice Internal method for fetching an individual Offer
@@ -288,10 +14,10 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   // * @return Offer instance
   // */
   // function _getOffer(
-  //   address source,
-  //   address target
+  //   OfferMap storage offerMap,
+  //   address source
   // ) internal constant returns (Offer) {
-  //   return Graph.accounts[source].offerMap.offers[target];
+  //   return offerMap.offers[target];
   // }
 
   // /**
@@ -358,7 +84,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address target,
   //   uint limit,
   //   uint[2] exchangeRate
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
   //   var size = getOfferMapSize(source);
   //   assert(size == MAX_UINT);
@@ -402,31 +128,13 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address targetOne,
   //   address targetTwo
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, targetOne));
   //   assert(offerExists(source, targetTwo));
   // }
+// }
 
-  // /********************************************************//**
-  // * @struct Offer
-  // * @notice An offer to exchange the source's credits for the target's
-  // ***********************************************************/
-  // struct Offer {
-  //   bool    exists;               /**< whether or not an Offer has been created */
-  //   address prevAddr;             /**< target address of previous Offer in linked-list */
-  //   address nextAddr;             /**< target address of next Offer's in linked-list */
-
-  //   address targetAddr;           /**< address of Offer target */
-  //   bool    active;               /**< whether or not the Offer can be used in transactions */
-  //   uint    limit;                /**< maximum amount of target credit to hold */
-  //   // TODO: fix this to be more ERC20-compliant
-  //   uint[2] exchangeRate;         /**< exchange rate between target's and source's credit */
-  //   uint    sourceBalance;        /**< balance of source's credit */
-  //   uint    targetBalance;        /**< balance of target's credit */
-  //   uint    sourceFrozenBalance;  /**< immovable balance of source's credit */
-  //   uint    targetFrozenBalance;  /**< immovable balance of target's credit */
-  // }
-
+// library Offer {
   // /**
   // * @notice Determines if an Offer has ever been created
   // * @param source Address of source account
@@ -463,7 +171,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   bool activeStatus
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].active = activeStatus;
@@ -492,7 +200,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint limit
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].limit = limit;
@@ -521,7 +229,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint sourceBalance
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].sourceBalance = sourceBalance;
@@ -550,7 +258,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint targetBalance
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].targetBalance = targetBalance;
@@ -568,7 +276,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint[2] exchangeRate
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].exchangeRate = exchangeRate;
@@ -597,7 +305,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint sourceFrozenBalance
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].sourceFrozenBalance = sourceFrozenBalance;
@@ -626,7 +334,7 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   address source,
   //   address target,
   //   uint targetFrozenBalance
-  // ) public onlyAPI onlyActivated returns (bool success) {
+  // ) internal returns (bool success) {
   //   assert(offerExists(source, target));
 
   //   Graph.accounts[source].offerMap.offers[target].targetFrozenBalance = targetFrozenBalance;
@@ -655,7 +363,4 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   //   Graph.accounts[source].offerMap.offers[target].nextAddr = nextAddr;
   //   return true;
   // }
-
-  // fallback function
-  function() { throw; }
-}
+// }

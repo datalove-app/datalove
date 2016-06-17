@@ -1,19 +1,19 @@
-import "std.sol";
+import "lib/std.sol";
 
-contract RestrictedAPI is owned {
+contract RestrictedAPI is abstract, owned {
   mapping (address => bool) public APIAccess;
-  mapping (string => address) public APIVersions;
+  mapping (bytes24 => address) public APIVersions;
 
   modifier onlyAPI() { if (APIAccess[msg.sender] == false) throw; _ }
 
-  function addAPI(address addr, string version) onlyOwner {
-    // TODO: check what a `null` address' hex value is, then test this
-    if (APIVersions[version] != 0x0) throw;
+  function addAPI(address addr, bytes24 version) onlyOwner returns (bool) {
     APIVersions[version] = addr;
     APIAccess[addr] = true;
+    return true;
   }
 
-  function revokeAPI(address addr) onlyOwner {
+  function revokeAPI(address addr) onlyOwner returns (bool) {
     APIAccess[addr] = false;
+    return true;
   }
 }

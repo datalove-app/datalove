@@ -1,24 +1,66 @@
 # Introduction to Whuffie
 
-Whuffie is a social cryptocredit network and API built on two basic, but powerful actions:
-- users can issue their own custom credits and tokens (or import existing credit/token balances from other Ethereum ERC20 contracts), and can denominate them in any unit-of-account of their choosing
-- users can "share" with other users some amount of the credit/tokens they hold (and credit/tokens shared with them by other users) at any exchange rate the user chooses, essentially creating an open offer to hold and exchange their credit/tokens for another's
+## What is Whuffie?
+Whuffie is a cryptocredit network and API, designed for issuing and seamlessly exchanging p2p credit, as well as any arbitrary currencies, credits and tokens.
 
-Because Whuffie implements the minimum subset of features that all currencies, credits and tokens need, *Whuffie can be use to implement any kind of credit, token and currency*, such as:
+The contract system accomplishes this by exposing two basic, but incredibly powerful actions:
+- you can issue their own custom currencies, tokens and credits denominated in any unit-of-account of your choosing (hereby collectively referred to as "credits"), or you can import existing balances from other Ethereum ERC20 contracts
+- you can "share" with other users some amount of the credits you hold (and credits shared with you by other users) at any exchange rate you choose, essentially creating an open offer to hold and exchange your credits for another's
+
+## What can Whuffie be used for?
+
+Whuffie was designed with peer-to-peer credit in mind - that is, credit that is owned and issued by all participants of a cryptocredit network, rather than a single issuer. This approach removes the need for treasuries and Sybll-attack prevention and allows users to determine whose credit they find valuable (in whatever amounts they want to accept, and at whatever exchange rate they choose).
+
+However, since Whuffie implements the minimum subset of features required for all currencies, credits and tokens (namely: issuance, transfer and exchange), *Whuffie can be used to implement any kind of currency, token or credit with any Turing-complete ruleset for participation*, such as:
 - crowdsale, ICO and DAO tokens
 - social network and reputation currencies
-- a full-blown currency/commodity exchange
 - charity and volunteering incentive systems
-- video game credits/tokens
+- in-game credits
 - rewards/loyalty points systems
-- mutual credit and community currencies
-- even localized basic income credit systems
+- a full-blown currency/commodity exchange
+- mutual credit and community currencies (with or without demurrage)
+- a bank that takes in deposits and can make loans/extend lines of credit (both centralized and fully peer-to-peer)
+- even localized basic income systems...
 
-... and because we've included a path-finding algorithm in the contract to traverse open offers, any of these credits and tokens can now be sent from one user to another, **even if the recipient doesn't direcly accept the credit/token being sent**
+... and because we've included a path-finding algorithm in the contract to traverse over everyone's open offers, any of your credits can now be sent from one user to another, **even if the recipient doesn't accept the credit you're sending**.
 
+## What makes this possible?
 
-This also means that a credit/token's value (and to a certain extent, the reputation of it's issuer) can be measured by measuring that credit/token's acceptance and fungibility throughout the network, similar to using links between webpages to calculate PageRank.
+The Whuffie engine maintains a [graph](https://en.wikipedia.org/wiki/Graph_(abstract_data_type)) of all offers, which lets users define whose credit they want to accept, the maximum amount they'll want to accept (which can be increased or decreased at a later time), and at what exchange rate they'll accept it (between the credit they themselves issue and the credit they want to hold).
 
+By analyzing the graph of credits and offers during a transaction, two people who do not hold each other's credit can now trade with each other through intermediary offers, taking as few or as many "hops" thru offers as necessary, at the lowest cost possible. This is easiest to explain by example:
+
+- Say Bob shared with me some of Bob's USD, but the shoemaker only accepts Bob's CNY.
+- I'll ask to send 50 USD for the shoes, and the smart contract code will transparently and automatically:
+  1. send 50 USD to Bob
+  2. Bob receives 50 USD, then sends 50 USD worth of CNY to the shoemaker
+- Notice that at the end of this transaction:
+  - my Bob's USD balance went down
+  - the shoemaker's Bob's CNY balance went up
+  - and Bob's USD balance increased, his CNY balance decreased, and Bob may have even made money along the way depending on the exchange rate he established between his own USD and CNY
+
+## What advantages are there to issuing p2p credits on Whuffie?
+
+Say I want to build a social network with a p2p credit called REP that users can "share" with each other as upvotes (or "unshare" with each other as downvotes).
+
+Because all users can dictate whose REP to accept, how much REP they'll want to hold, and at what exchange rate they'll trade their own REP for someone else's, users:
+- are unable to inflate their own REP supply (since they can only spend as much as others have chosen to accept)
+- are unable to use spammers (aka, a Sybil attack) to give them more REP (because those spam accounts are limited on how much and who they can spend their REP unto), thus users can trust that while everyone limits the supply of everyone else's REP, no one can "game the system" (see the Stellar issuance [debacle](https://news.ycombinator.com/item?id=8126282))
+- can calculate their REP balance and spendability as a function of the acceptance of that user's REP throughout the greater network of all REP tokens (similar to using links between webpages to calculate PageRank or using PGP key signing to create a web-of-trust).
+
+## What advantages are there to issuing non-p2p credits on Whuffie?
+
+Using Whuffie for launching your credit comes with innumerable benefits, for example:
+- In general, the value of any credit is derived from what it can be traded for. However, creating a robust-enough community around a credit such that it can be used to pay for goods, services and wages is an incredibly difficult endeavour (think about how long it took Bitcoin to be exchanged for pizza and alpaca socks, and all the other altcoins that failed to get that level of traction).
+  - With Whuffie, every credit you issue is now connected to most every other credit on the  Whuffie network, through the offers users set to accept yours and other people's credits
+
+## So why is this a big deal?
+
+Because users are free to decide whose credit they want to accept (and thus, give value), everyone is now free to issue any kind of credit they want, knowing that the more the network finds it valuable, the more acceptable and fungible it will be among greater parts of the cryptocredit network.
+
+So whether you're trying to create a currency for [a social network](), a token backed by [wind energy production in Romania](), or even a [basic income system](), the Whuffie engine will give your users access to a greater network of credits (and goods and services) than just your own credit network, giving your credits and your users *greater local significance and greater global impact simultaneously*.
+
+<!--
 Too good to be true, right? To explain how all of this is possible, I'll need to provide a bit of backstory:
 
 In the beginning of human civilization, trade was conducted not by barter, but by trust and credit - people traded their wares today to the people they trusted only to receive something back in the future
@@ -32,15 +74,5 @@ for one, dunbar's number suggests that it is impossible for any one person in mo
 Also, at the time, the logistics for tabulating every citizen's balances were too high. As a result,  took over, and the rest is history.
 ?????????????????????????????????
 
-Today however, with modern CPUs and smart contracts, we can trustlessly solve the second problem of managing p2p balances, which then inadvertantly solves the first problem of limited trade. Whuffie maintains a graph of all credit pairs users have established (called ledgers), letting users define whose credit they want, how many they want, and at what exchange rate they'll accept it.
-
-By analyzing the graph of ledgers in real time, two people who do not hold each other's credit can now trade with each other through other user's ledgers, taking as few or as many hops as necessary at the lowest cost possible. This is easiest to explain by example:
-
-say I have USD, and the shoemaker wants to receive CNY. I'll ask to send 50 USD, and the smart contract code will automatically:
-1) send 50 USD to Bob
-2) Bob receives 50 USD, then sends 50 USD worth of CNY to the shoemaker
-notice that my balance went down, the shoemaker's went up, and Bob's stayed the same or increased, depending on the exchange rate he established
-
-## So what?
-
-Because users are free decide whose currency they want to accept (and thus, give value), everyone is now free to issue any kind of currency they want, knowing that the more the network finds it valuable, the more receivable it will be among greater parts of the network. This means that whether you're trying to create a currency for [a social network](), a token backed by [wind energy production in Romania](), or even a [basic income system](), the Whuffie engine will give your users access to a greater network of currencies than just your own, giving your currency local significance *and* global impact.
+Today however, with modern CPUs and smart contracts, we can trustlessly solve the second problem of managing p2p balances, which then inadvertantly solves the first problem of limited trade.
+-->
