@@ -1,11 +1,10 @@
 [Whuffie](https://github.com/sunny-g/whuffie)
----------------------------------------------
+===========
 
-A cryptocredit network and API, designed for issuing and seamlessly exchanging p2p credit, as well as any arbitrary currencies, credits and tokens
+A Cryptocredit network and API, designed for issuing and seamlessly exchanging p2p credit, as well as any arbitrary currencies, credits and tokens
 
-=====
-
-### What is Whuffie?
+What is Whuffie?
+----------------
 
 Whuffie is an attempt at creating a money system that truly captures the essence of money:
 > ... in the old days, if you were broke but respected, you wouldn't starve; contrariwise, if you were rich and hated, no sum could buy you security and peace. By measuring the thing that money really represented — your personal capital with your friends and neighbors — you more accurately gauged your success.
