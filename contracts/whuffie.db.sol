@@ -46,13 +46,15 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
    *  return values within the EVM)
    * @param source Address of the account
    */
-  function getAccount(
+  //TODO: refactor this to return only a subset of Account struct members
+  function getAccountInfo(
     address source
   ) public constant returns (
     bytes32   metadata,
     address   owner,
     bytes12   creditSymbol,
-    bytes32   creditName,
+    // bytes32   creditName,
+    // bytes32   creditMetadata,
     uint      totalSupply,
     uint      sourceBalance,
     uint      sourceFrozenBalance,
@@ -63,17 +65,21 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
   ) {
     Types.Account storage account = Graph.getAccount(source);
     metadata              = account.metadata;
+    owner                 = account.owner;
     creditSymbol          = account.creditSymbol;
-    creditName            = account.creditName;
+    // creditName            = account.creditName;
+    // creditMetadata        = account.creditMetadata;
     totalSupply           = account.totalSupply;
     sourceBalance         = account.sourceBalance;
     sourceFrozenBalance   = account.sourceFrozenBalance;
     decimals              = account.decimals;
     exists                = account.exists;
-    owner                 = account.owner;
     prevAddr              = account.prevAddr;
     nextAddr              = account.nextAddr;
   }
+
+  //TODO: add another getter function to return the Credit-related members of an Account
+  function getCreditInfo() public constant {}
 
   /**
    * @notice Determines if an Account of this address has ever been created
@@ -99,14 +105,16 @@ contract WhuffieDB is Assertive, Activable, RestrictedAPI {
     uint8   decimals,
     uint    initialTotalSupply,
     uint    initialSourceBalance,
-    bytes32 metadata
+    bytes32 metadata,
+    bytes32 creditMetadata
   ) public onlyAPI onlyActivated returns (bool success) {
     assert(!accountExists(source));
     assert(Graph.size != MAXUINT);
 
     assert(Graph.createAccount(
       source, owner, creditSymbol, creditName,
-      decimals, initialTotalSupply, initialSourceBalance, metadata
+      decimals, initialTotalSupply, initialSourceBalance,
+      metadata, creditMetadata
     ));
     return true;
   }

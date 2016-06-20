@@ -3,24 +3,26 @@
 ## What is Whuffie?
 Whuffie is a cryptocredit network and API, designed for issuing and seamlessly exchanging p2p credit, as well as any arbitrary currencies, credits and tokens.
 
-The contract system accomplishes this by exposing two basic, but incredibly powerful actions:
-- you can issue their own custom currencies, tokens and credits denominated in any unit-of-account of your choosing (hereby collectively referred to as "credits"), or you can import existing balances from other Ethereum ERC20 contracts
-- you can "share" with other users some amount of the credits you hold (and credits shared with you by other users) at any exchange rate you choose, essentially creating an open offer to hold and exchange your credits for another's
+The contract system accomplishes this by exposing three basic, but incredibly powerful actions:
+- you can issue their own custom currencies, tokens and credits (hereby collectively referred to as "credits"), denominated in any unit-of-account of your choosing, (or you can import balances from existing Ethereum [ERC20](https://github.com/ethereum/EIPs/issues/20)-compliant contracts)
+- you can "share" with other users some amount of the credits you hold and/or issue (and credits shared with you by other users) at any exchange rate you choose, essentially creating a passive offer to hold and exchange your credits for another's
+- you can transfer credits you hold to another account, taking into account how many the recipient account will hold and at what exchange rate
 
 ## What can Whuffie be used for?
 
 Whuffie was designed with peer-to-peer credit in mind - that is, credit that is owned and issued by all participants of a cryptocredit network, rather than a single issuer. This approach removes the need for treasuries and Sybll-attack prevention and allows users to determine whose credit they find valuable (in whatever amounts they want to accept, and at whatever exchange rate they choose).
 
 However, since Whuffie implements the minimum subset of features required for all currencies, credits and tokens (namely: issuance, transfer and exchange), *Whuffie can be used to implement any kind of currency, token or credit with any Turing-complete ruleset for participation*, such as:
+
 - crowdsale, ICO and DAO tokens
+- in-game credits
+- rewards/loyalty point systems
 - social network and reputation currencies
 - charity and volunteering incentive systems
-- in-game credits
-- rewards/loyalty points systems
 - a full-blown currency/commodity exchange
 - mutual credit and community currencies (with or without demurrage)
-- a bank that takes in deposits and can make loans/extend lines of credit (both centralized and fully peer-to-peer)
-- even localized basic income systems...
+- a replacement for ACH, SWIFT, MasterCard and Visa
+- even basic income systems...
 
 ... and because we've included a path-finding algorithm in the contract to traverse over everyone's open offers, any of your credits can now be sent from one user to another, **even if the recipient doesn't accept the credit you're sending**.
 

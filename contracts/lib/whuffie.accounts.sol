@@ -30,10 +30,11 @@ library Accounts {
     uint8   decimals,
     uint    initialTotalSupply,
     uint    initialSourceBalance,
-    bytes32 metadata
+    bytes32 metadata,
+    bytes32 creditMetadata
   ) returns (bool success) {
     Graph.accounts[source] = Types.Account(
-      metadata, source, creditSymbol, creditName,
+      metadata, source, creditSymbol, creditName, creditMetadata,
       initialTotalSupply, initialSourceBalance, 0,
       decimals, true, owner, 0x0, 0x0,
       Types.CreditMap(0, 0, 0),

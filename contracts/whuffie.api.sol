@@ -1,5 +1,5 @@
-import "std.sol";
-import "assertive.sol";
+import "lib/std.sol";
+import "lib/assertive.sol";
 
 /**
  * TODO:
@@ -7,6 +7,6 @@ import "assertive.sol";
  *    required for both direct and indirect `send` and `trade`
  *    should index by source, target and transaction id
  */
-contract WhuffieAPI owned, Assertive {
+contract WhuffieAPI is owned, Assertive {
 
 }

@@ -24,6 +24,7 @@ library Types {
     address   sourceAddr;           /**< the Account's address */
     bytes12   creditSymbol;         /**< symbol of this Account's credit, 4-12 alphanumeric characters */
     bytes32   creditName;           /**< name of this credit */
+    bytes32   creditMetadata;       /**< metadata about the credit being issued */
     uint      totalSupply;          /**< total supply of the credit */
     uint      sourceBalance;        /**< balance of source's credit */
     uint      sourceFrozenBalance;  /**< immovable balance of source's credit */
