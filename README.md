@@ -1,15 +1,14 @@
 [Nanex](https://github.com/sunny-g/nanex)
-=============================================
+=========================================
 <!--
 [![Dependency Status](https://david-dm.org/sunny-g/whuffie.svg?path=frontend)](https://david-dm.org/sunny-g/whuffie?path=native)
 [![devDependency Status](https://david-dm.org/sunny-g/whuffie/dev-status.svg?path=frontend)](https://david-dm.org/sunny-g/whuffie?path=native#info=devDependencies)
 [![Join the chat at https://gitter.im/sunny-g/whuffie](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sunny-g/whuffie)
 -->
 
-A crypto-asset network, exchange and API, built on Ethereum and Solidity.
+A crypto-asset network, liquid exchange and API, built on Ethereum and Solidity.
 
-With Nanex, you can seamlessly trade, exchange and issue custom p2p crypto-assets (or any other kind of assets, currencies, credits, or tokens) and soon, Nanex will support migrating your balances of existing Ethereum ERC20 tokens into and out of Nanex. 
-
+With Nanex, you can seamlessly transfer, exchange and issue custom p2p crypto-assets (or any other kind of assets, currencies, credits, or tokens).
 
 ### Note:
 
@@ -18,20 +17,19 @@ With Nanex, you can seamlessly trade, exchange and issue custom p2p crypto-asset
 About
 -----
 
-Nanex implements the minimum subset of features required for all assets, currencies, credits, and tokens (i.e. issuance, transference, and exchange), therefore, you can use it to implement **any kind of asset, currency, token, credit system you want** or even your own **higher-level platforms** on the Nanex network. Examples of what can be built with Nanex include:
+Nanex implements the minimum set of features required for all assets, currencies, credits, and tokens (i.e. issuance, transference, and exchange). As a result, you can use it to **create any kind of asset, currency, token, or credit system you want** (or migrate your balances of existing Ethereum ERC-20 tokens into and out Nanex). With our low-level crypto-asset API, you can even **build your own higher-level platforms**, all within the same exchange network.
 
-- crowdsale, ICO and DAO tokens
-- synthetic and decentralized assets
-- in-game credits
-- rewards/loyalty point systems
-- social network and reputation currencies
-- charity and volunteering incentive systems
-- a full-blown currency/commodity exchange
-- mutual credit and community currencies (with or without demurrage)
-- a low-level, fully-p2p replacement for ACH, SWIFT, MasterCard *and* Visa transaction networks
-- custom basic income systems
+A few examples of what can be built with or on top of Nanex include:
 
-... and because we've included a path-finding algorithm to traverse over everyone's open offers (i.e. trades between assets), **any of your assets can now be transferred** from one user to another, **even if the recipient doesn't accept the asset you're sending**.
+- [crowdsale](), ICO and DAO tokens                                             [](implement a simple deposit-to-vault and withdraw-from-vault functions)
+- synthetic and decentralized assets, backed by assets IRL
+- [social network and reputation currencies]()                                  [](implement a public credit symbol, gifting, sharing and sending operations)
+- a liquid [currency/commodity exchange]() with traditional trading operations (put, call, margin, limit and stop offers, etc)
+- basic income, mutual credit and community currency systems (with or without demurrage)
+- gateways to existing financial institutions
+- or anything else that needs a flexible yet robust accounting system...
+
+... and because we've included a path-finding algorithm to traverse over everyone's offers to exchange assets, **any of your assets can now be transferred** from one user to another, **even if the recipient doesn't accept the asset you're sending**.
 
 Components
 ----------
