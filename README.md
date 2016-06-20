@@ -1,5 +1,5 @@
 [Whuffie](https://github.com/sunny-g/whuffie)
-================================================
+=============================================
 <!--
 [![Dependency Status](https://david-dm.org/sunny-g/whuffie.svg?path=frontend)](https://david-dm.org/sunny-g/whuffie?path=native)
 [![devDependency Status](https://david-dm.org/sunny-g/whuffie/dev-status.svg?path=frontend)](https://david-dm.org/sunny-g/whuffie?path=native#info=devDependencies)
@@ -7,6 +7,11 @@
 -->
 
 A cryptocredit network and API, built on Ethereum: issue and seamlessly exchange custom p2p credits (or any other arbitrary currencies, credits or tokens).
+
+
+### Note:
+
+:warning: Whuffie is currently in active development, experimental and untested. :warning:
 
 About
 -----
@@ -36,10 +41,6 @@ Components
 - `contracts/` - Ethereum contracts in Solidity
 - `docs/` - Documentation about theory and implementation
 - `native/` - React Native frontend (currently, not in active development)
-
-### Note:
-
-Whuffie is currently in development, experimental and untested.
 
 ### Questions?
 
