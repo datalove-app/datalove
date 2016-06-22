@@ -1,4 +1,4 @@
-[Whuffie](https://github.com/sunny-g/whuffie)
+[Nanex](https://github.com/sunny-g/nanex)
 =============================================
 <!--
 [![Dependency Status](https://david-dm.org/sunny-g/whuffie.svg?path=frontend)](https://david-dm.org/sunny-g/whuffie?path=native)
@@ -6,34 +6,32 @@
 [![Join the chat at https://gitter.im/sunny-g/whuffie](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sunny-g/whuffie)
 -->
 
-A cryptocredit network and API, built on Ethereum: issue and seamlessly exchange custom p2p credits (or any other arbitrary currencies, credits or tokens).
+A crypto-asset network, exchange and API, built on Ethereum and Solidity.
+
+With Nanex, you can seamlessly trade, exchange and issue custom p2p crypto-assets (or any other kind of assets, currencies, credits, or tokens) and soon, Nanex will support migrating your balances of existing Ethereum ERC20 tokens into and out of Nanex. 
 
 
 ### Note:
 
-:warning: Whuffie is currently in active development, experimental and untested. :warning:
+:warning: Nanex is currently in active development, experimental and untested. :warning:
 
 About
 -----
 
-Whuffie is an attempt at creating a money system that truly captures the essence of money:
-> ... in the old days, if you were broke but respected, you wouldn't starve; contrariwise, if you were rich and hated, no sum could buy you security and peace. By measuring the thing that money really represented — your personal capital with your friends and neighbors — you more accurately gauged your success.
-
-> \- Cory Doctorow, *Down and Out in The Magic Kingdom*
-
-More specifically, because Whuffie implements the minimum subset of features required for all currencies, credits and tokens (i.e. issuance, transfer, and exchange), you can use it to **implement any currency, token, credit** or **higher-level exchange platform**, such as:
+Nanex implements the minimum subset of features required for all assets, currencies, credits, and tokens (i.e. issuance, transference, and exchange), therefore, you can use it to implement **any kind of asset, currency, token, credit system you want** or even your own **higher-level platforms** on the Nanex network. Examples of what can be built with Nanex include:
 
 - crowdsale, ICO and DAO tokens
+- synthetic and decentralized assets
 - in-game credits
 - rewards/loyalty point systems
 - social network and reputation currencies
 - charity and volunteering incentive systems
 - a full-blown currency/commodity exchange
 - mutual credit and community currencies (with or without demurrage)
-- a low-level, p2p replacement for ACH, SWIFT, MasterCard *and* Visa
-- even custom basic income systems...
+- a low-level, fully-p2p replacement for ACH, SWIFT, MasterCard *and* Visa transaction networks
+- custom basic income systems
 
-... and because we've included a path-finding algorithm in the contract to traverse over everyone's open offers, any of your credits can now be sent from one user to another, **even if the recipient doesn't accept the credit you're sending**.
+... and because we've included a path-finding algorithm to traverse over everyone's open offers (i.e. trades between assets), **any of your assets can now be transferred** from one user to another, **even if the recipient doesn't accept the asset you're sending**.
 
 Components
 ----------
