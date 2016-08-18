@@ -40,6 +40,10 @@ Questions?
 
 If you have any questions, please feel free to email me. Thanks for checking this out!
 
+License
+-------
+
+MIT
 
 <!--
 About
