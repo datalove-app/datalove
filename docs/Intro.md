@@ -60,7 +60,11 @@ Using Nanex for launching your credit comes with innumerable benefits, for examp
 
 Because users are free to decide whose credit they want to accept (and thus, give value), everyone is now free to issue any kind of credit they want, knowing that the more the network finds it valuable, the more acceptable and fungible it will be among greater parts of the cryptocredit network.
 
-So whether you're trying to create a currency for [a social network](), a token backed by [wind energy production in Romania](), or even a [basic income system](), the Nanex engine will give your users access to a greater network of credits (and goods and services) than just your own credit network, giving your credits and your users *greater local significance and greater global impact simultaneously*.
+So whether you're trying to create a currency for [a social network](), a token backed by [wind energy production in Romania](), or even a [basic income system](), the Nanex engine will give your users access to a greater network of credits (and goods and services) than just your own credit network, giving your credits and your users **greater local significance** and **greater global impact** *simultaneously*.
+
+## Who am I?
+
+My name is Sunny G ([@sunny-g](https://github.com/sunny-g)), and I'm the lead developer of Nanex at the moment. If you have any questions, please feel free to email me!
 
 <!--
 Too good to be true, right? To explain how all of this is possible, I'll need to provide a bit of backstory:
