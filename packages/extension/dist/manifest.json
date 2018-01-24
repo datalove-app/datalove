@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Astro",
+  "version": "0.0.0",
+  "description": "",
+
+  "browser_action": {
+    "default_title": "Astro",
+    "default_popup": "popup.html"
+  },
+
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+
+  "permissions": []
+  // "content_security_policy": ""
+}
