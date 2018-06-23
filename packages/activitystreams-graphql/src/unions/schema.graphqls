@@ -1,0 +1,4 @@
+union LinkOrCollection        = Link | Collection
+union LinkOrCollectionPage    = Link | CollectionPage
+union LinkOrImage             = Link | Image
+union LinkOrObject            = Link | Object

@@ -1,0 +1,7 @@
+enum ActorType {
+  Application
+  Group
+  Organization
+  Person
+  Service
+}

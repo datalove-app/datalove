@@ -1,0 +1,24 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-intransitiveactivity
+interface IntransitiveActivity {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [ActivityType!]!
+  url:        URI!
+  actor:      [LinkOrObject!]!
+}
+
+interface IntransitiveActivityTarget {
+  target:     [LinkOrObject!]!
+}
+
+interface IntransitiveActivityTesult {
+  result:     [LinkOrObject!]!
+}
+
+interface IntransitiveActivityOrigin {
+  origin:     [LinkOrObject!]!
+}
+
+interface IntransitiveActivityInstrument {
+  instrument: [LinkOrObject!]!
+}

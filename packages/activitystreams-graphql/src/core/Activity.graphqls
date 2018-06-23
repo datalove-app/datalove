@@ -1,0 +1,28 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-activity
+interface Activity {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [ActivityType!]!
+  url:        URI!
+  actor:      [LinkOrObject!]!
+}
+
+interface ActivityObject {
+  object:     [LinkOrObject!]!
+}
+
+interface ActivityTarget {
+  target:     [LinkOrObject!]!
+}
+
+interface ActivityTesult {
+  result:     [LinkOrObject!]!
+}
+
+interface ActivityOrigin {
+  origin:     [LinkOrObject!]!
+}
+
+interface ActivityInstrument {
+  instrument: [LinkOrObject!]!
+}

@@ -1,0 +1,28 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-link
+interface Link {
+  _context:   [URI!]!
+  type:       [LinkType!]!
+  href:       URI!
+}
+
+interface LinkRel {
+  rel:        [LinkRelation!]!
+}
+interface LinkName {
+  name:       [String!]!
+}
+interface LinkMediaType {
+  mediaType:  MIMEType!
+}
+interface LinkPreview {
+  preview:    [LinkOrObject!]!
+}
+interface LinkHreflang {
+  hreflang:   LanguageTag!
+}
+interface LinkHeight {
+  height:     NonNegativeInteger!
+}
+interface LinkWidth {
+  width:      NonNegativeInteger!
+}

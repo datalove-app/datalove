@@ -1,0 +1,13 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-collectionpage
+interface CollectionPage {
+  _context: [URI!]!
+  id:       ID!
+  type:     [CollectionPageType!]!
+  url:      URI!
+  partOf:   LinkOrCollection!
+}
+
+interface CollectionPageLinks {
+  next:     LinkOrCollectionPage!
+  prev:     LinkOrCollectionPage!
+}

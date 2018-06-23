@@ -1,0 +1,23 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "module": "commonjs",
+    "target": "es5",
+
+    "alwaysStrict": true,
+    "strict": true,
+    "declaration": true,
+    "outDir": "./lib",
+
+    "types": [
+      "graphql",
+      "node"
+    ]
+  },
+
+  "include": [
+    "./src",
+    "./types"
+  ]
+}

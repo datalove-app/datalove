@@ -1,0 +1,16 @@
+enum ObjectType {
+  Object
+
+  Article
+  Audio
+  Document
+  Event
+  Image
+  Note
+  Page
+  Place
+  Profile
+  Relationship
+  Tombstone
+  Video
+}

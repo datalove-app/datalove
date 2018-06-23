@@ -1,0 +1,28 @@
+{
+  "name": "activitystreams-graphql",
+  "version": "0.0.1",
+  "description": "",
+  "main": "./lib/main.js",
+  "types": "./lib/main.d.ts",
+  "files": [
+    "lib",
+    "src",
+    "types"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublish": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sunny G <sunny.gonna@gmail.com> (http://blog.sunnyg.io)",
+  "license": "ISC",
+  "dependencies": {
+    "@okgrow/graphql-scalars": "^0.4.0",
+    "bcp47-validate": "^1.0.0",
+    "graphql": "^0.13.2",
+    "graphql-s2s": "^0.16.5",
+    "iso8601-duration": "^1.1.1",
+    "mime": "^2.3.1",
+    "valid-url": "^1.0.9"
+  }
+}

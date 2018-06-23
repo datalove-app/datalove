@@ -1,0 +1,89 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-object
+interface Object {
+  _context:     [URI!]!
+  id:           ID!
+  type:         [ObjectType!]!
+  url:          URI!
+}
+
+# content-related
+interface ObjectContent {
+  content:      [String!]!
+  mediaType:    MIMEType!
+}
+interface ObjectPreview {
+  preview:      [LinkOrObject!]!
+}
+interface ObjectSummary {
+  summary:      [String!]!
+}
+interface ObjectTag {
+  tag:          [LinkOrObject!]!
+}
+
+# context-related
+interface ObjectAttributedTo {
+  attributedTo: [LinkOrObject!]!
+}
+interface ObjectContext {
+  context:      [LinkOrObject!]!
+}
+interface ObjectGenerator {
+  generator:    [LinkOrObject!]!
+}
+
+# threading-related
+interface ObjectInReplyTo {
+  inReplyTo:    [LinkOrObject!]!
+}
+interface ObjectReplies {
+  replies:      Collection!
+}
+
+# messaging-related
+interface ObjectAudience {
+  audience:     [LinkOrObject!]!
+}
+interface ObjectTo {
+  to:           [LinkOrObject!]!
+}
+interface ObjectBto {
+  bto:          [LinkOrObject!]!
+}
+interface ObjectCc {
+  cc:           [LinkOrObject!]!
+}
+interface ObjectBcc {
+  bcc:          [LinkOrObject!]!
+}
+
+# time-related
+interface ObjectDuration {
+  duration:     Duration!
+}
+interface ObjectStartTime {
+  startTime:    DateTime!
+}
+interface ObjectEndTime {
+  endTime:      DateTime!
+}
+interface ObjectUpdated {
+  updated:      DateTime!
+}
+interface ObjectPublished {
+  published:    DateTime!
+}
+
+# extra
+interface ObjectAttachment {
+  attachment:   [LinkOrObject!]!
+}
+interface ObjectIcon {
+  icon:         [LinkOrImage!]!
+}
+interface ObjectImage {
+  image:        [LinkOrImage!]!
+}
+interface ObjectLocation {
+  location:     [LinkOrObject!]!
+}
