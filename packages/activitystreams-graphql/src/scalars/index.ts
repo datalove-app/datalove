@@ -1,17 +1,12 @@
-import { GraphQLScalarType } from 'graphql';
 import DateTime from './DateTime';
 import Duration from './Duration';
 import LanguageTag from './LanguageTag';
 import MIMEType from './MIMEType';
 import NonNegativeInt from './NonNegativeInt';
 import URI from './URI';
-import { mergeSchemas} from '../utils';
+import { mergeSchemas } from '../utils';
 
-interface IResolvers {
-  [name: string]: GraphQLScalarType,
-}
-
-export const resolvers: IResolvers = {
+export const resolvers = {
   DateTime: DateTime.resolver,
   Duration: Duration.resolver,
   LanguageTag: LanguageTag.resolver,

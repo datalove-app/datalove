@@ -1,28 +1,25 @@
 # https://www.w3.org/TR/activitystreams-vocabulary/#dfn-activity
-interface Activity {
-  _context:   [URI!]!
-  id:         ID!
-  type:       [ActivityType!]!
-  url:        URI!
-  actor:      [LinkOrObject!]!
+# NOTE: should be used in conjunction with ASObject
+interface ASActivity {
+  actor:      [ASLinkOrASObject!]!
 }
 
-interface ActivityObject {
-  object:     [LinkOrObject!]!
+interface ASActivityObject {
+  object:     [ASLinkOrASObject!]!
 }
 
-interface ActivityTarget {
-  target:     [LinkOrObject!]!
+interface ASActivityTarget {
+  target:     [ASLinkOrASObject!]!
 }
 
-interface ActivityTesult {
-  result:     [LinkOrObject!]!
+interface ASActivityTesult {
+  result:     [ASLinkOrASObject!]!
 }
 
-interface ActivityOrigin {
-  origin:     [LinkOrObject!]!
+interface ASActivityOrigin {
+  origin:     [ASLinkOrASObject!]!
 }
 
-interface ActivityInstrument {
-  instrument: [LinkOrObject!]!
+interface ASActivityInstrument {
+  instrument: [ASLinkOrASObject!]!
 }

@@ -1,0 +1,6 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-document
+type Document implements Object {
+  id:   ID!
+  type: StringOrMultiple!
+  url:  URI!
+}

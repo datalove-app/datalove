@@ -1,9 +1,0 @@
-enum CollectionType {
-  Collection
-  CollectionPage
-}
-
-enum CollectionPageType {
-  OrderedCollection
-  OrderedCollectionPage
-}

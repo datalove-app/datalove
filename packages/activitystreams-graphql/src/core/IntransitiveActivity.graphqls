@@ -1,24 +1,21 @@
 # https://www.w3.org/TR/activitystreams-vocabulary/#dfn-intransitiveactivity
-interface IntransitiveActivity {
-  _context:   [URI!]!
-  id:         ID!
-  type:       [ActivityType!]!
-  url:        URI!
-  actor:      [LinkOrObject!]!
+# NOTE: should be used in conjunction with ASObject
+interface ASIntransitiveActivity {
+  actor:      [ASLinkOrASObject!]!
 }
 
-interface IntransitiveActivityTarget {
-  target:     [LinkOrObject!]!
+interface ASIntransitiveActivityTarget {
+  target:     [ASLinkOrASObject!]!
 }
 
-interface IntransitiveActivityTesult {
-  result:     [LinkOrObject!]!
+interface ASIntransitiveActivityTesult {
+  result:     [ASLinkOrASObject!]!
 }
 
-interface IntransitiveActivityOrigin {
-  origin:     [LinkOrObject!]!
+interface ASIntransitiveActivityOrigin {
+  origin:     [ASLinkOrASObject!]!
 }
 
-interface IntransitiveActivityInstrument {
-  instrument: [LinkOrObject!]!
+interface ASIntransitiveActivityInstrument {
+  instrument: [ASLinkOrASObject!]!
 }

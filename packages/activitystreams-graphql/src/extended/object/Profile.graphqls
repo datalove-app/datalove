@@ -1,0 +1,7 @@
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-profile
+type Profile implements Object {
+  id:         ID!
+  type:       StringOrMultiple!
+  url:        URI!
+  describes:  Object
+}

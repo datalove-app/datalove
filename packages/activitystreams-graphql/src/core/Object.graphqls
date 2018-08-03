@@ -1,89 +1,83 @@
 # https://www.w3.org/TR/activitystreams-vocabulary/#dfn-object
-interface Object {
-  _context:     [URI!]!
+interface ASObject {
+  _context:     [URI!]! @rename(to: "@context")
   id:           ID!
-  type:         [ObjectType!]!
+  type:         [String!]!
   url:          URI!
 }
 
 # content-related
-interface ObjectContent {
+interface ASObjectContent {
   content:      [String!]!
   mediaType:    MIMEType!
 }
-interface ObjectPreview {
-  preview:      [LinkOrObject!]!
+interface ASObjectPreview {
+  preview:      [ASLinkOrASObject!]!
 }
-interface ObjectSummary {
+interface ASObjectSummary {
   summary:      [String!]!
 }
-interface ObjectTag {
-  tag:          [LinkOrObject!]!
+interface ASObjectTag {
+  tag:          [ASLinkOrASObject!]!
 }
 
 # context-related
-interface ObjectAttributedTo {
-  attributedTo: [LinkOrObject!]!
+interface ASObjectAttributedTo {
+  attributedTo: [ASLinkOrASObject!]!
 }
-interface ObjectContext {
-  context:      [LinkOrObject!]!
+interface ASObjectContext {
+  context:      [ASLinkOrASObject!]!
 }
-interface ObjectGenerator {
-  generator:    [LinkOrObject!]!
+interface ASObjectGenerator {
+  generator:    [ASLinkOrASObject!]!
 }
 
 # threading-related
-interface ObjectInReplyTo {
-  inReplyTo:    [LinkOrObject!]!
+interface ASObjectInReplyTo {
+  inReplyTo:    [ASLinkOrASObject!]!
 }
-interface ObjectReplies {
-  replies:      Collection!
+interface ASObjectReplies {
+  replies:      ASLinkOrASCollection!
 }
 
 # messaging-related
-interface ObjectAudience {
-  audience:     [LinkOrObject!]!
+interface ASObjectAudience {
+  audience:     [ASLinkOrASObject!]!
 }
-interface ObjectTo {
-  to:           [LinkOrObject!]!
+interface ASObjectTo {
+  to:           [ASLinkOrASObject!]!
 }
-interface ObjectBto {
-  bto:          [LinkOrObject!]!
+interface ASObjectBto {
+  bto:          [ASLinkOrASObject!]!
 }
-interface ObjectCc {
-  cc:           [LinkOrObject!]!
+interface ASObjectCc {
+  cc:           [ASLinkOrASObject!]!
 }
-interface ObjectBcc {
-  bcc:          [LinkOrObject!]!
+interface ASObjectBcc {
+  bcc:          [ASLinkOrASObject!]!
 }
 
 # time-related
-interface ObjectDuration {
+interface ASObjectDuration {
   duration:     Duration!
 }
-interface ObjectStartTime {
+interface ASObjectStartTime {
   startTime:    DateTime!
 }
-interface ObjectEndTime {
+interface ASObjectEndTime {
   endTime:      DateTime!
 }
-interface ObjectUpdated {
+interface ASObjectUpdated {
   updated:      DateTime!
 }
-interface ObjectPublished {
+interface ASObjectPublished {
   published:    DateTime!
 }
 
 # extra
-interface ObjectAttachment {
-  attachment:   [LinkOrObject!]!
+interface ASObjectAttachment {
+  attachment:   [ASLinkOrASObject!]!
 }
-interface ObjectIcon {
-  icon:         [LinkOrImage!]!
-}
-interface ObjectImage {
-  image:        [LinkOrImage!]!
-}
-interface ObjectLocation {
-  location:     [LinkOrObject!]!
+interface ASObjectLocation {
+  location:     [ASLinkOrASObject!]!
 }

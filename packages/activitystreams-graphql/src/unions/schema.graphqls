@@ -1,4 +1,3 @@
-union LinkOrCollection        = Link | Collection
-union LinkOrCollectionPage    = Link | CollectionPage
-union LinkOrImage             = Link | Image
-union LinkOrObject            = Link | Object
+union ASLinkOrASCollection      = ASLink | ASCollection
+union ASLinkOrASCollectionPage  = ASLink | ASCollectionPage
+union ASLinkOrASObject          = ASLink | ASObject

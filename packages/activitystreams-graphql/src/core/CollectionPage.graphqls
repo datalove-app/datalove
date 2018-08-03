@@ -1,13 +1,10 @@
 # https://www.w3.org/TR/activitystreams-vocabulary/#dfn-collectionpage
-interface CollectionPage {
-  _context: [URI!]!
-  id:       ID!
-  type:     [CollectionPageType!]!
-  url:      URI!
-  partOf:   LinkOrCollection!
+# NOTE: should be used in conjunction with ASObject
+interface ASCollectionPage {
+  partOf:   ASLinkOrASCollection!
 }
 
-interface CollectionPageLinks {
-  next:     LinkOrCollectionPage!
-  prev:     LinkOrCollectionPage!
+interface ASCollectionPageLinks {
+  next:     ASLinkOrASCollectionPage!
+  prev:     ASLinkOrASCollectionPage!
 }

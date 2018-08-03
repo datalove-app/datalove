@@ -1,28 +1,28 @@
 # https://www.w3.org/TR/activitystreams-vocabulary/#dfn-link
-interface Link {
-  _context:   [URI!]!
-  type:       [LinkType!]!
+interface ASLink {
+  _context:   [URI!]! @rename(to: "@context")
+  type:       [String!]!
   href:       URI!
 }
 
-interface LinkRel {
-  rel:        [LinkRelation!]!
+interface ASLinkRel {
+  rel:        [ASLinkRelation!]!
 }
-interface LinkName {
+interface ASLinkName {
   name:       [String!]!
 }
-interface LinkMediaType {
+interface ASLinkMediaType {
   mediaType:  MIMEType!
 }
-interface LinkPreview {
-  preview:    [LinkOrObject!]!
+interface ASLinkPreview {
+  preview:    [ASLinkOrASObject!]!
 }
-interface LinkHreflang {
+interface ASLinkHreflang {
   hreflang:   LanguageTag!
 }
-interface LinkHeight {
-  height:     NonNegativeInteger!
+interface ASLinkHeight {
+  height:     NonNegativeInt!
 }
-interface LinkWidth {
-  width:      NonNegativeInteger!
+interface ASLinkWidth {
+  width:      NonNegativeInt!
 }
