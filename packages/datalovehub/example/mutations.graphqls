@@ -1,0 +1,262 @@
+################################################################################
+# Input
+################################################################################
+input ApplicationInput {
+  name:       String!
+  blog:       BlogPostCollectionLinkInput
+}
+
+input BlogPostCollectionLinkInput {
+  href:       URI
+}
+
+input ReplyCollectionLinkInput {
+  href:       URI
+}
+
+input BlogPostLinkInput {
+  href:       URI
+}
+
+input ReplyLinkInput {
+  href:       URI
+}
+
+input CoverImageLinkInput {
+  href:       URI
+  mediaType:  MIMEType!
+}
+
+################################################################################
+# Input types
+################################################################################
+input ProfileInput {}
+
+input BlogPostInput {
+  type:       [String!]!
+  content:    String!
+  mediaType:  String!
+  replies:    ReplyCollectionLinkInput
+  coverImage: CoverImageLinkInput
+}
+
+input CoverImageInput {
+  fileName:   String!
+  image:      Buffer!
+}
+
+input ReplyInput {
+  content:    String!
+  mediaType:  MIMEType!
+  inReplyTo:  BlogPostLinkInput!
+}
+
+################################################################################
+# Mutation input types
+################################################################################
+input PutFileOptions {
+  encrypt:    Boolean = false
+  privateKey: String
+}
+
+input CreateApplicationInput {
+  app:        ApplicationInput
+  id:         String = "app"
+}
+
+input CreateSimpleBlogPostCollectionInput {
+  blog:       BlogPostCollectionInput!
+  blogLink:   BlogPostCollectionLinkInput!
+  appPath:    String = "app"
+  blogPath:   String = "blog"
+}
+
+input CreateBlogPostCollectionInput {
+  blog:           BlogPostCollectionInput!
+  blogLink:       BlogPostCollectionLinkInput!
+  coverImage:     Buffer
+  coverImageName: String
+  coverImageLink: CoverImageLinkInput
+  appPath:        String = "app"
+  blogPath:       String = "blog"
+}
+
+input CreateBlogPostInput {
+  replies:        ReplyCollectionInput
+  coverImage:     Buffer
+  post:           BlogPostInput!
+  postLink:       BlogPostLinkInput!
+}
+
+################################################################################
+################################################################################
+# Mutations
+#
+# general idea:
+#   structure mutation input types as a tree with two children:
+#     the tree of all the content (root object and any amount of nested types)
+#       the graphql input type will use @links to know when to create a file vs nest its content
+#         one @link on the
+#     the link and creation location of an existing tree
+################################################################################
+################################################################################
+type Mutation {
+  #
+  createApplication(app: CreateApplicationInput!): Application
+    @object(operation: {
+      type: "create",
+      content: "$app.app",
+      path: "$app.appPath",       #--- object folder path
+    })
+    @end
+
+#  createProfile(
+#    profile: ProfileInput!,
+#    path: String = "profile"
+#  ): Profile @object(type: "create", input: "$profile": "$path")
+
+  #
+  createSimpleBlogPostCollection(blog: CreateSimpleBlogPostCollectionInput!): BlogPostCollection
+    @collection(operation: {  # create collection
+      type: "create",
+      content: "$blog.blog"
+      path: "$blog.blogPath",                         #### object folder path
+      export: "#newBlog",
+    })
+    @link(operation: {        # link collection to app.blog
+      type: "create",
+      content: "$blog.blogLink",
+
+      # if `path` resolves to a string while there are segments left, interpret it as a path to JSON, then continue along
+      path: "$blog.appPath.blog",                     #--- resolved object property path
+      target: "#newBlog",
+    })
+    @end
+
+  #
+  createBlogPostCollection(blog: CreateBlogPostCollectionInput!): BlogPostCollection
+    @collection(operation: {  # create collection
+      type: "create",
+      content: "$blog.blog",
+      path: "$blog.blogPath",                         #### (new) collection folder path
+      export: "#newBlog",
+    })
+    @link(operation: {        # link collection to app.blog
+      type: "create",
+      content: "$blog.blogLink",
+      path: "$blog.appPath.blog",                     #--- resolved object property path
+      target: "#newBlog",
+    })
+    @file(operation: {        # store an image file
+      type: "create",
+      content: "$blog.coverImage",
+      path: "$blog.blogPath/coverImage",              #=== created file folder path
+      filename: "$blog.coverImageName",
+      export: "#newImage",
+    })
+    @link(operation: {        # link new image to #newBlog.coverImage
+      type: "create",
+      content: "$blog.coverImageLink",
+      path: "#newBlog.coverImage",                    #*** created object property path
+      target: "#newImage"
+    })
+    @end
+
+  #
+  createBlogPost(post: CreateBlogPostInput): BlogPost
+    @collection(
+      type: "create",
+      value: "$post.replies",
+      export: "#replies",
+    )
+    @file(
+      type: "create",
+      value: "$post.coverImage",
+      export: "#coverImage",
+    )
+    # `id` and `name` are missing === create a random ID
+    # `value` is missing, therefore it's inferred from input value
+    @object(
+      type: "create",
+      value: "$post.post",
+      links: [
+        { fromLink: "replies", to: "#replies" },
+        { fromLink: "coverImage", to: "#coverImage" },
+      ],
+      export: "#post",
+    )
+    @collection(
+      type: "appendLink",
+      name: "blog",
+      value: "$post.postLink",
+      to: "#post",
+      commit: true,
+    )
+
+#    @object(operation: {      # create blog post to a random path within $post.blogPath
+#      type: "create",
+#      content: "$post.post",
+#      randomPath: "$post.blogPath",                   #### (*random*) object folder path
+#      export: "#newPost"
+#    })
+#    @file(operation: {        # store an image file
+#      type: "create",
+#      content: "$post.coverImage",
+#      path: "$post.blogPath/coverImage",              #=== created file folder path
+#      fileName: "$post.coverImageName",
+#      export: "#newImage"
+#    })
+#    @link(operation: {        # append blog post link to collection at $post.blogPath
+#      type: "append",
+#      content: "$post.postLink",
+#      path: "$post.blogPath",                         #### collection folder path
+#      target: "#newPost",
+#    })
+#    @link(operation: {        # link new image to #newPost.coverImage
+#      type: "create",
+#      content: "$post.coverImageLink",
+#      path: "#newPost.coverImage",                    #*** created object property path
+#      target: "#newImage",
+#    })
+
+#    @object(operation: {      # create blog post to a random path within $post.blogPath
+#      type: "create",
+#      content: "$post.post",
+#      randomPath: "$post.blogPath",
+#      export: "#newPost"
+#    })
+#    @file(operation: {        # store an image file
+#      type: "create",
+#      content: "$post.coverImage",
+#      path: "post.$blogPath/coverImage",
+#      fileName: "$post.coverImageName",
+#      export: "#newImage"
+#    })
+#    @link(operation: {        # append blog post link to collection at $post.blogPath
+#      type: "append",
+#      content: "$post.postLink",
+#      path: "$post.blogPath",
+#      target: "#newPost",
+#    })
+#    @link(operation: {        # link new image to #newPost.coverImage
+#      type: "create",
+#      content: "$post.coverImageLink",
+#      path: "#newPost.coverImage",
+#      target: "#newImage",
+#    })
+
+#  addReply(
+#    postID: ID!,
+#    reply: ReplyInput!,
+#    path: String = "blog/:postID/replies"
+#  ): Reply @collection(type: "append", to: ":path")
+#
+#  updateBlogPost(
+#    postID: ID!,
+#    post: BlogPostInput!
+#  ): BlogPost @object(type: "update", id: ":postID")
+
+  ############################################################################
+  # attempts at generics
+  createCollection()
+}

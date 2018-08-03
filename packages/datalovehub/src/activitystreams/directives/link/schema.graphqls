@@ -1,0 +1,73 @@
+################################################################################
+# FIELD_DEFINITION:
+#   during query:
+#     resolves URL, URN, etc from sibling scalar field to the given field's type (only when expanded)
+#   during mutation:
+#     creates a Link, pointing `href` to anothe object/collection/file
+################################################################################
+enum LinkDirectiveType {
+  fileURI
+  mentionMemo
+  objectMemo
+
+  create
+  append
+  insert
+}
+
+directive @link(
+  type: LinkDirectiveType!,
+  from: String,
+
+  id: String,
+  value: String,
+  linksTo: String,
+  commit: boolean,
+) on
+  | FIELD_DEFINITION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# FIELD_DEFINITION:
+#   attaches custom Link (or [Link]) resolver for the field
+#
+#   type:
+#     during query:
+#       fetches the `href`ed resource w/in the link, replaces the item with the
+#       resulting object, then gives it it this type
+#     during mutation:
+#
+# FIELD:
+#   type:
+#     in query:
+#       fetches the `href`ed resource, gives it this type
+#     in mutation:
+#
+################################################################################
+directive @link() on FIELD_DEFINITION

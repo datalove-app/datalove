@@ -1,0 +1,18 @@
+################################################################################
+# https://www.w3.org/TR/activitystreams-vocabulary/#dfn-mention
+#
+# This is a special interface, used with the `Link` interface to denote
+#   a Link to a Blockstack Gaia file belonging to a particular user
+################################################################################
+interface LinkMention {
+  blockstackID: String
+}
+
+################################################################################
+# FIELD_DEFINITION:
+#   during query:
+#     resolves URL, URN, etc scalar field to an object (only when expanded)
+#
+################################################################################
+directive @mention() on
+  | FIELD_DEFINITION

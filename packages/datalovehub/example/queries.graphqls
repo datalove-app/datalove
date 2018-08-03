@@ -1,0 +1,161 @@
+################################################################################
+# Links
+################################################################################
+type BlogPostCollectionLink implements Link {
+  _context:   [URI!]!
+  type:       [String!]!
+  href:       URI!
+              @fileURN
+  blogPosts:  BlogPostCollection!
+              @link(from: "href")
+}
+
+type ReplyCollectionLink implements Link {
+  _context:   [URI!]!
+  type:       [String!]!
+  href:       URI!
+              @fileURN
+  replies:    ReplyCollection!
+              @link(from: "href")
+}
+
+type BlogPostLink implements Link, LinkMediaType {
+  _context:   [URI!]!
+  type:       [String!]!
+  href:       URI!
+              @fileURN
+  mediaType:  MIMEType!
+  blogPost:   BlogPost!
+              @link(from: "href")
+}
+
+type ReplyLink implements Link, LinkMediaType {
+  _context:   [URI!]!
+  type:       [String!]!
+  href:       URI!
+              @fileURN
+  mediaType:  MIMEType!
+  reply:      Reply!
+              @link(from: "href")
+}
+
+type CoverImageLink implements Link, LinkMediaType {
+  _context:   [URI!]!
+  type:       [String!]!
+  href:       URI!
+              @fileURN
+  mediaType:  MIMEType!
+  value:      CoverImage!
+              @link(from: "href")
+}
+
+################################################################################
+# Collections
+################################################################################
+type BlogPostCollection implements Object, Collection {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+  items:      [BlogPostLink!]!
+  coverImage: CoverImageLink
+}
+
+type ReplyCollection implements Object, Collection {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+  items:      [ReplyLink!]!
+}
+
+################################################################################
+# Application, Profile, other Objects
+################################################################################
+type Application implements Object {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+  name:       String
+  blog:       BlogPostCollectionLink!
+}
+
+type Profile implements Object {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+}
+
+type BlogPost implements Object, ObjectContent, ObjectReplies {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+  content:    String!
+  mediaType:  String!
+  replies:    ReplyCollectionLink!
+  coverImage: CoverImageLink
+}
+
+type Reply implements Object, ObjectContent, ObjectInReplyTo {
+  _context:   [URI!]!
+  id:         ID!
+  type:       [String!]!
+  url:        URI!
+              @fileURN
+  content:    String!
+  mediaType:  String!
+  inReplyTo:  BlogPostLink!
+}
+
+################################################################################
+################################################################################
+# Query
+################################################################################
+################################################################################
+type Query {
+  profile(options: GetFileOptions): Profile
+    @object(
+      type: "get",
+      id: "profile",
+      options: "$options",
+    )
+
+  blogPost(postID: ID!, options: GetFileOptions): BlogPost
+    @object(
+      type: "get",
+      id: "$postID",
+      options: "$options",
+    )
+  reply(replyID: ID!, options: GetFileOptions): Reply
+    @object(
+      type: "get",
+      id: "$replyID",
+      options: "$options",
+    )
+
+  blogPosts(options: CollectionOptions): BlogPostCollection
+    @collection(
+      type: "get",
+      id: "blog",
+      options: "$options",
+    )
+  replies(postID: ID!, options: CollectionOptions): ReplyCollection
+    @collection(
+      type: "get",
+      id: "$postID",
+      fromLink: "replies",
+      options: "$options",
+    )
+
+  ############################################################################
+  # attempts at generics
+
+}

@@ -1,0 +1,9 @@
+################################################################################
+# FIELD_DEFINITION:
+#   - renames the resolved field to the `to` value
+# INPUT_FIELD_DEFINITION:
+#   - rename the resolved input field to the `to` value
+################################################################################
+directive @rename(to: String, from: String) on
+  | FIELD_DEFINITION
+  | INPUT_FIELD_DEFINITION

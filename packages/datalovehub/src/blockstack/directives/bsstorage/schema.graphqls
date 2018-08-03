@@ -1,0 +1,11 @@
+input GetFileOptions {
+  decrypt: Boolean = true,
+  username: String,
+  appURL: String,
+  appID: String,
+  zoneFileLookupURL: String,
+}
+
+input PutFileOptions {
+  encrypt: Boolean = true,
+}

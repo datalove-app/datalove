@@ -1,0 +1,48 @@
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input CollectionOptions {
+  limit: Int = 5,
+  sort: SortDirection = DESC,
+  cursor: Int = 0,
+  itemFilter: String,
+  linkFilter: String,
+  getFileOptions: GetFileOptions,
+}
+
+################################################################################
+# FIELD_DEFINITION:
+#
+################################################################################
+directive @collection(
+  type: String
+) on
+  | FIELD_DEFINITION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# OBJECT:
+#   creates and manages a singleton Collection
+#
+#   pageSize:
+#     how many items to include in each CollectionPage
+#   encrypt:
+#     whether or not the entire Collection and it's linked Objects should be encrypted
+################################################################################
