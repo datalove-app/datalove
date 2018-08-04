@@ -21,10 +21,13 @@ module.exports = {
     // file
     'eol-last': 'error',
     'indent': ['error', 2],
-    'max-len': ['error', {
+    'max-len': ['warn', {
       code: 80,
       tabWidth: 2,
+      ignoreRegExpLiterals: true,
+      ignoreTemplateLiterals: true,
       ignoreTrailingComments: true,
+      ignoreUrls: true,
     }],
     'no-multiple-empty-lines': ['error', {
       max: 2,
@@ -41,21 +44,25 @@ module.exports = {
     'new-cap': ['error', {
       capIsNew: false,
     }],
+    'no-nested-ternary': 'off',
     'no-plusplus': 'error',
     'no-undef': 'off',  // TODO: see https://github.com/eslint/typescript-eslint-parser/issues/77
     'no-undefined': 'error',
-    'no-underscore-dangle': ['error', {
+    'no-underscore-dangle': ['warn', {
       allowAfterSuper: true,
       allowAfterThis: true,
       enforceInMethodNames: true,
     }],
     'no-unused-vars': ['error', {
-      argsIgnorePattern: '^_'
+      argsIgnorePattern: '^_',
+      ignoreRestSiblings: true,
+      varsIgnorePattern: '^_',
     }],
-    'no-use-before-define': ['error', {
+    'no-use-before-define': ['warn', {
       functions: false,
     }],
     'no-void': 'off',
+    'object-curly-newline': 'off',
     'prefer-arrow-callback': 'off',
     'quotes': ['error', 'single', {
       avoidEscape: true,
@@ -92,7 +99,7 @@ module.exports = {
     'typescript/no-angle-bracket-type-assertion': 'error',
     'typescript/no-array-constructor': 'error',
     'typescript/no-empty-interface': 'error',
-    'typescript/no-explicit-any': 'error',
+    'typescript/no-explicit-any': 'warn',
     'typescript/no-triple-slash-reference': 'error',
     'typescript/no-use-before-define': 'error',
 
