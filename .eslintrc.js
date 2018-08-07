@@ -46,6 +46,7 @@ module.exports = {
     }],
     'no-nested-ternary': 'off',
     'no-plusplus': 'error',
+    'no-restricted-global': 'warn',
     'no-undef': 'off',  // TODO: see https://github.com/eslint/typescript-eslint-parser/issues/77
     'no-undefined': 'error',
     'no-underscore-dangle': ['warn', {

@@ -1,0 +1,12 @@
+{
+  "name": "holochain-types",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "tools": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sunny G <sunny.gonna@gmail.com> (http://blog.sunnyg.io)",
+  "license": "ISC"
+}
