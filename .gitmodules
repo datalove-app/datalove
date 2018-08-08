@@ -1,0 +1,6 @@
+[submodule "clutter"]
+	path = packages/clutter
+	url = https://github.com/datalove-app/clutter
+[submodule "dpki"]
+	path = packages/dpki
+	url = https://github.com/datalove-app/dpki
