@@ -1,9 +1,10 @@
 {
-  "name": "holochain-types",
+  "name": "holochain-ts",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
-  "tools": "index.d.ts",
+  "types": "types/index.d.ts",
+  "typings": "types/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
