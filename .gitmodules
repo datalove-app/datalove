@@ -4,3 +4,6 @@
 [submodule "dpki"]
 	path = packages/dpki
 	url = https://github.com/datalove-app/dpki
+[submodule "packages/hc-dao"]
+	path = packages/hc-dao
+	url = https://github.com/datalove-app/hc-dao
