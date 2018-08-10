@@ -7,3 +7,6 @@
 [submodule "packages/hc-dao"]
 	path = packages/hc-dao
 	url = https://github.com/datalove-app/hc-dao
+[submodule "packages/holo-vault"]
+	path = packages/vault
+	url = https://github.com/datalove-app/holo-vault
