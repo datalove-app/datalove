@@ -2,12 +2,30 @@
   "name": "holochain-ts",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
-  "types": "types/index.d.ts",
-  "typings": "types/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/env/index.d.ts",
+  "typings": "dist/env/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "Gulpfile.base.ts",
+    "tsconfig.json",
+    "webpack.config.dna.base.js"
+  ],
   "scripts": {
+    "build:env": "tsc --project tsconfig.env.json",
+    "build:lib": "tsc --project tsconfig.lib.json",
+    "postinstall": "npm run build:env && npm run build:lib",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Sunny G <sunny.gonna@gmail.com> (http://blog.sunnyg.io)",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "copy-webpack-plugin": "^4.5.2",
+    "gulp": "^3.9.1",
+    "ts-loader": "^4.5.0",
+    "typescript": "^3.0.1",
+    "typescript-json-schema": "^0.31.0",
+    "webpack": "^4.17.0"
+  }
 }
