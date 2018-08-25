@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+
+    "typeRoots": [],
+    "types": [],
+
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "strictFunctionTypes": true
+  },
+  "include": [
+    "node_modules/holochain-ts/dist/env/*.d.ts",
+    "src/dna/zomes"
+  ]
+}
