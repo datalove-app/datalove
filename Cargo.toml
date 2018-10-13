@@ -1,0 +1,5 @@
+[workspace]
+
+members = [
+  "lib/datalove-dna/zomes/basic/code",
+]

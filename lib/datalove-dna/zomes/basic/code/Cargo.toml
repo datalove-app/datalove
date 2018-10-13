@@ -1,0 +1,21 @@
+[package]
+name = "datalove_zome"
+version = "0.0.1"
+authors = ["Sunny G <sunny.gonna@gmail.com>"]
+
+[dependencies]
+# hdk = { git = "https://github.com/holochain/hdk-rust" }
+# holochain_wasm_utils = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
+# failure = "0.1.3"
+# failure_derive = "0.1.3"
+# id_tree = "1.3"
+# is-match = "0.1.0"
+lazy_static = "1.1.0"
+quick-error = "1.2"
+serde = { version = "1.0", features = ["rc"] }
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
