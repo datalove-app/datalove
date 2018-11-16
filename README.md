@@ -1,4 +1,4 @@
-# Multicodec
+# Ex-Multicodec
 
 Elixir implementation of [Multicodec](https://github.com/multiformats/multicodec), a self-describing protocol codec.
 
