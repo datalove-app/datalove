@@ -355,6 +355,29 @@ defmodule Multicodec do
       e in ArgumentError -> {:error, Exception.message(e)}
   end
 
+  @doc """
+  Returns true if the given codec is a valid Multicodec name.
+
+  ## Examples
+
+      iex> Multicodec.codec?("sha2-256")
+      true
+
+      iex> Multicodec.codec?("dag-pb")
+      true
+
+      iex> Multicodec.codec?("peanut brittle")
+      false
+
+  """
+  @spec codec?(multi_codec()) :: boolean()
+  def codec?(codec) do
+    case Multicodec.prefix_for(codec) do
+      {:ok, _prefix} -> true
+      _ -> false
+    end
+  end
+
 #===============================================================================
 # Private
 #===============================================================================

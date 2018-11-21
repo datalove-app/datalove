@@ -167,6 +167,16 @@ Multicodec.mappings()
  "0xB212", "0xB213", "0xB214", "0xB215", "0xB216", ...]
 ```
 
+Sometime's it is useful to do a sanity check on codec names, especially if we are storing them to use later:
+
+```elixir
+Multicodec.codec?("md5")
+true
+
+Multicodec.codec?("free frozen yogurt for all citizens")
+false
+```
+
 ## New Codecs
 
 Multicodec tables can grow over time. As such, this library dynamically generates the list of codecs and includes only those codecs that are official supported by the Multicodec standard.
