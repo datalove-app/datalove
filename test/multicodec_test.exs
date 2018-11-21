@@ -126,4 +126,12 @@ defmodule MulticodecTest do
     assert Enum.all?(mappings, &is_map/1) == true
   end
 
+  test "codec?/1 returns whether or not a codec name exists" do
+    for codec <- Multicodec.codecs() do
+      assert Multicodec.codec?(codec) == true
+    end
+    assert Multicodec.codec?("") == false
+    assert Multicodec.codec?("spaghetti monsters") == false
+  end
+
 end
