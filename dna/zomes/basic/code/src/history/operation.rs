@@ -1,70 +1,91 @@
-/*  ## Tree based algo:
-	on basic:
-		map ledger tree
-			bump seq_no
-			apply tx
-	on htl:
-		map ledger tree
-			bump seq_no
-		traverse ledger tree
-			apply tx
-			append resulting ledger to each existing ledger as a child
-	on htl_end:
-		map ledger tree
-			bump seq_no
-		if htl failure tx:
-			remove all ledgers (and subtrees) w/ the htl_id as key
-		if htl fulfilled tx:
-			traverse tree (in-order?)
-			if ledger has htl_id as key
-				delete newer, "younger" siblings (and subtrees)
-
- */
-
-// use id_tree::Tree;
+use std::collections::HashMap;
 use ledger::*;
-use operations::*;
-use operations::base::*;
+use operations::{LedgerOperation, Error as LedgerOperationError};
+use operations::base::{LedgerEffects, LedgerHistory, Operation};
 
-pub type LedgerStates = Vec<LedgerState>;
+/**
+ * Stores the ledger state and any side effects of applying an operation
+ */
+pub struct SingleLedgerState {
+    ledger: Ledger,
+    effects: LedgerEffects,
+}
 
+impl SingleLedgerState {
+    pub fn new(ledger: Ledger) -> Self {
+        SingleLedgerState {
+            ledger,
+            effects: HashMap::new()
+        }
+    }
+}
+
+impl LedgerHistory for SingleLedgerState {
+    fn ledger(&self) -> &Ledger { &self.ledger }
+    fn effects(&self) -> &LedgerEffects { &self.effects }
+
+    fn mut_ledger(&mut self) -> &mut Ledger { &mut self.ledger }
+    fn mut_effects(&mut self) -> &mut LedgerEffects { &mut self.effects }
+}
+
+pub type SingleLedgerStates = Vec<SingleLedgerState>;
+
+/**
+ * Contains a list of `SingleLedgerState`s, i.e. the entire potential history
+ * of a single ledger.
+ *
+ * Since operations within HTL transactions can succeed or fail
+ * `SingleLedgerState`s are either cloned or removed from the
+ * `OperationHistory` before the newer operations are applied. This allows
+ * certain operations to be applied on top of currently unresolved operations.
+ */
 pub struct OperationHistory {
-	ledger_states: LedgerStates,
+    ledger_states: SingleLedgerStates,
 }
 
 impl OperationHistory {
-	pub fn new(ledger: Ledger) -> Self {
-		let mut ledger_states = Vec::new();
-		ledger_states.push(LedgerState::new(ledger));
-		OperationHistory { ledger_states: ledger_states }
-	}
+    pub fn new(ledger: Ledger) -> Self {
+        let mut ledger_states = Vec::new();
+        ledger_states.push(SingleLedgerState::new(ledger));
+        OperationHistory { ledger_states }
+    }
 
-	pub fn validate(
-		&self,
-		operation: &LedgerOperation,
-	) -> Result<&Self, LedgerOperationError> {
-		let op_is_valid = self.ledger_states
-			.iter()
-			.fold(Ok(()), |are_ledger_states_valid, ledger_state| {
-				are_ledger_states_valid
-					.and(operation.validate(ledger_state))
-					.and(Ok(()))
-			});
+    pub fn current_seq_no(&self) -> Option<u64> {
+        self.ledger_states
+            .first()
+            .map(|ledger_states| ledger_states.ledger().seq_no())
+    }
 
-		match op_is_valid {
-			Ok(()) => Ok(&self),
-			Err(err) => Err(err),
-		}
-	}
+    pub fn validate(
+        &self,
+        operation: &LedgerOperation,
+    ) -> Result<&Self, LedgerOperationError> {
+        self.ledger_states
+            .iter()
+            .fold(Ok(()), |ledger_states_are_valid, ledger_states| {
+                ledger_states_are_valid
+                    .and(operation.validate(ledger_states))
+                    .and(Ok(()))
+            })
+            .map(|_| self)
+    }
 
-	pub fn mut_apply(
-		&mut self,
-		operation: &LedgerOperation,
-	) -> &mut Self {
-		self.ledger_states
-			.iter_mut()
-			.for_each(|mut_ls| { operation.mut_apply(mut_ls); });
+    pub fn mut_apply(
+        &mut self,
+        operation: &LedgerOperation,
+    ) -> &mut Self {
+        self.ledger_states
+            .iter_mut()
+            .for_each(|mut_ls| { operation.mut_apply(mut_ls); });
 
-		self
-	}
+        self
+    }
+
+    // pub fn mut_fork(&mut self) -> &mut Self {
+    // 	Ok(self)
+    // }
+
+    // pub fn mut_join(&mut self, index: usize) -> Result<&mut Self, ()> {
+    // 	Ok(self)
+    // }
 }

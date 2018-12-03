@@ -1,117 +1,122 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Iter, HashMap, HashSet};
 use std::error::Error;
 use std::rc::Rc;
 use history::operation::OperationHistory;
+use ledger::LedgerId;
 use operations::*;
 use operations::base::*;
 use types::*;
 
-pub type LedgerIds = HashSet<Rc<Hash>>;
+pub type LedgerIds = HashSet<LedgerId>;
 pub type Operations = Vec<LedgerOperation>;
-pub type SequenceNumbers = HashMap<Rc<Hash>, u64>;
+pub type SequenceNumbers = HashMap<LedgerId, u64>;
+pub type TransactionId = Rc<Hash>;
 
-/// Stores the side effects of applying a transaction, i.e.:
-/// - changes to multiple ledgers
-/// - side effects of relevance to future operations
-pub type MultiLedgerState = HashMap<Hash, OperationHistory>;
+pub type TransactionEffectKey = (&'static str, String);
+pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
+
+/**
+ * Provides access to the set of `OperationHistory`s and any effects a
+ * transaction may have.
+ */
+pub trait MultiLedgerHistory {
+    /// Determines if the `MultiLedgerHistory` already contains a given `OperationHistory`.
+    ///
+    /// Useful during history reconstruction when deciding whether or not to
+    /// skip validation and application of a given operation (since it's
+    /// validation and application won't be relevant to the newest transaction.
+    fn has_history(&self, ledger_id: &LedgerId) -> bool;
+
+    /// Determines if the `MultiLedgerHistory` contains all `OperationHistory`s
+    /// necessary to validate a given transaction.
+    ///
+    /// Useful during validation and application of a new transaction.
+    fn has_all_histories(&self, ids: &LedgerIds) -> bool;
+
+    /// Retrieves the `OperationHistory` for a given `LedgerId`.
+    fn get(&self, ledger_id: &LedgerId) -> Option<&OperationHistory>;
+
+    /// Returns an iterator over the different ledgers' `OperationHistory`s of
+    /// a `MultiLedgerHistory`.
+    fn iter(&self) -> Iter<LedgerId, OperationHistory>;
+
+    fn effects(&self) -> &TransactionEffects;
+    fn mut_effects(&mut self) -> &mut TransactionEffects;
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "status", content = "payload")]
 pub enum HashedTimeLockProof {
-	// contains a reason (i.e. VDF proof, signature of timestamp, etc)
-	Failed(HashedTimeLockFailureReason),
-	// contains the preimage
-	Fulfilled(Hash),
+    /// Contains a reason for HTL transaction failure.
+    ///
+    /// Could (eventually) be a VDF proof, signature of timestamp, etc.
+    Failed(HashedTimeLockFailureReason),
+
+    /// Contains the preimage necessary to fulfill an HTL transaction.
+    Fulfilled(Hash),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "reason", content = "proof")]
 pub enum HashedTimeLockFailureReason {
-	Timeout(String),
-	NoPath,
+    Timeout(String),
+    NoPath,
 }
 
+/// TODO: is this necessary??
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransactionMetadata {
-	app_hash: Hash,
-	entry_hash: Hash,
+    app_hash: Hash,
+    entry_hash: Hash,
 }
 
-pub trait Transaction<'a, TxError: Error> {
-	fn id(&self) -> Rc<Hash>;
+/**
+ * Validation and application of changes to a set of ledgers.
+ */
+pub trait Transaction<TxError: Error> {
+    /// Retrieves the `TransactionId` of a given transaction.
+    fn id(&self) -> TransactionId;
 
-	fn operations(&self) -> &Operations;
+    /// Retrieves a reference to the given transaction's underlying
+    /// `Operations` vector.
+    fn operations(&self) -> &Operations;
 
-	fn seq_nos(&'a self) -> &SequenceNumbers;
+    /// Retrives a reference to the given transaction's affected ledgers and
+    /// their new (upon success) sequence numbers.
+    fn seq_nos(&self) -> &SequenceNumbers;
 
-	// fn validate_and_apply(
-	// 	&self,
-	// 	multiledger_state: MultiLedgerState,
-	// ) -> Result<MultiLedgerState, TxError> {
-	// 	Err(MultiLedgerTransactionError::Basic)
-	// }
+    /// Retrives the set of all `LedgerId`s explicitly listed alongside their
+    /// new sequence numbers in a given transaction.
+    fn seq_ledger_ids(&self) -> LedgerIds {
+        self.seq_nos()
+            .keys()
+            .fold(HashSet::new(), |mut ids, id| {
+                ids.insert(Rc::clone(id));
+                ids
+            })
+    }
 
-	// DEFAULTS
+    /// Retrives the set of all `LedgerId`s explicitly listed within the given
+    /// transaction's list of contained `LedgerOperation`s.
+    fn operation_ledger_ids(&self) -> LedgerIds {
+        self.operations()
+            .iter()
+            .fold(HashSet::new(), |mut ids, op| {
+                ids.insert(Rc::new(op.ledger_id().clone()));
+                ids
+            })
+    }
 
-	fn is_valid_seq_no(&self, multiledger_state: &MultiLedgerState) -> bool {
-		false
-	}
-
-	// TODO: move core logic to... somewhere else
-	// fn is_valid_seq_no(
-	// 	&'a self,
-	// 	starting_ledger: &'a Ledger,
-	// 	previous_transactions: &Vec<impl Transaction<'a, TxError>>,
-	// ) -> bool {
-	// 	let initial_seq_no = starting_ledger.sequence_number();
-	// 	let new_seq_no = self.seq_nos().get(starting_ledger.id());
-	// 	if Option::is_none(&new_seq_no) {
-	// 		return false;
-	// 	}
-
-	// 	let latest_seq_no = previous_transactions
-	// 		.iter()
-	// 		.fold(initial_seq_no, |current_seq_no, tx| {
-	// 			match tx.seq_nos().get(starting_ledger.id()) {
-	// 				Some(&seq_no) if seq_no == current_seq_no + 1 => seq_no,
-	// 				_ => current_seq_no,
-	// 			}
-	// 		});
-
-	// 	return latest_seq_no + 1 == *new_seq_no.unwrap();
-	// }
-
-	fn seq_ledger_ids(&'a self) -> LedgerIds {
-		self.seq_nos()
-			.keys()
-			.fold(HashSet::new(), |mut ids, id| {
-				ids.insert(Rc::clone(id));
-				ids
-			})
-	}
-
-	fn operation_ledger_ids(&'a self) -> LedgerIds {
-		self.operations()
-			.iter()
-			.fold(HashSet::new(), |mut ids, op| {
-				ids.insert(Rc::new(op.ledger_id().clone()));
-				ids
-			})
-	}
-
-	fn required_ledger_ids(&'a self) -> Option<LedgerIds> {
-		let seq_ledger_ids = self.seq_ledger_ids();
-		let op_ledger_ids = self.operation_ledger_ids();
-		match seq_ledger_ids == op_ledger_ids {
-			true => Some(seq_ledger_ids),
-			false => None,
-		}
-	}
-}
-
-quick_error! {
-	#[derive(Debug)]
-	pub enum TransactionError {
-		MismatchedLedgerIdsError {}
-	}
+    /// Retrives an `Option` of the set of all `LedgerIds` required for
+    /// validation and  application of this transaction, or `None` if there's
+    /// a mismatch in ledger requirements between the specified sequence
+    /// numbers and listed operations.
+    fn required_ledger_ids(&self) -> Option<LedgerIds> {
+        let seq_ledger_ids = self.seq_ledger_ids();
+        let op_ledger_ids = self.operation_ledger_ids();
+        match seq_ledger_ids == op_ledger_ids {
+            true => Some(seq_ledger_ids),
+            false => None,
+        }
+    }
 }

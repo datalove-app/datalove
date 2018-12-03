@@ -2,15 +2,14 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use types::*;
 use self::base::*;
-use self::basic::*;
-use self::start_htl::*;
-use self::end_htl::*;
-use self::MultiLedgerTransactionError as Error;
+use self::basic::{Error as BasicError, *};
+use self::start_htl::{Error as StartHTLError, *};
+use self::end_htl::{Error as EndHTLError, *};
 
 pub mod base;
-mod basic;
-mod start_htl;
-mod end_htl;
+pub mod basic;
+pub mod start_htl;
+pub mod end_htl;
 
 /// Stores all transactions relevant to multiple ledgers' histories
 pub type TransactionMap = HashMap<Rc<Hash>, MultiLedgerTransaction>;
@@ -18,110 +17,187 @@ pub type TransactionMap = HashMap<Rc<Hash>, MultiLedgerTransaction>;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum MultiLedgerTransaction {
-	Basic(BasicTransaction),
-	StartHTL(StartHTLTransaction),
-	EndHTL(EndHTLTransaction),
+    Basic(BasicTransaction),
+    StartHTL(StartHTLTransaction),
+    EndHTL(EndHTLTransaction),
 }
 
 impl MultiLedgerTransaction {
-	pub fn validate_and_apply(
-		&self,
-		ledger_ids: &LedgerIds,
-		transactions: &TransactionMap,
-		multiledger_state: MultiLedgerState,
-	) -> Result<MultiLedgerState, Error> {
-		match self {
-			MultiLedgerTransaction::Basic(tx) => tx
-				.validate_and_apply(ledger_ids, multiledger_state)
-				.map_err(Error::Basic),
-			MultiLedgerTransaction::StartHTL(tx) => tx
-				.validate_and_apply(ledger_ids, multiledger_state)
-				.map_err(Error::StartHTL),
-			MultiLedgerTransaction::EndHTL(tx) => {
-				let start_htl_hash = tx.start_htl_hash();
-				match transactions.get(&start_htl_hash) {
-					None => Err(Error::NonExistantStartHTLError),
-					Some(start_htl) => {
-						let start_htl = start_htl.unwrap_start_htl()?;
-						tx
-							.validate_and_apply(start_htl, multiledger_state)
-							.map_err(Error::EndHTL)
-					},
-				}
+    /// Validates and applies the transaction and it's operations against the
+    /// ledgers available in `MultiLedgerHistory`
+    pub fn validate_and_apply<H: MultiLedgerHistory>(
+        &self,
+        transactions: &TransactionMap,
+        multiledger_history: H,
+    ) -> Result<H, Error> {
+        self.is_valid_seq_no(&multiledger_history)?;
 
-			},
-		}
-	}
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx
+                .validate_and_apply(multiledger_history)
+                .map_err(Error::BasicError),
+            MultiLedgerTransaction::StartHTL(tx) => tx
+                .validate_and_apply(multiledger_history)
+                .map_err(Error::StartHTLError),
+            MultiLedgerTransaction::EndHTL(tx) => transactions
+                .get(&tx.start_htl_hash())
+                .and_then(|start_htl| start_htl.unwrap_start_htl())
+                .ok_or(Error::InvalidStartHTLError)
+                .and_then(|start_htl| tx
+                    .validate_and_apply(start_htl, multiledger_history)
+                    .map_err(Error::EndHTLError)
+                ),
+        }
+    }
 
-	fn unwrap_start_htl(&self) -> Result<&StartHTLTransaction, Error> {
-		match self {
-			MultiLedgerTransaction::StartHTL(tx) => Ok(tx),
-			_ => Err(Error::InvalidStartHTLError),
-		}
-	}
+    /// Validates and applies the transaction and it's operations against the
+    /// ledgers available in `MultiLedgerHistory`, but also guarantees that all
+    /// ledgers required by the transaction are available.
+    pub fn validate_and_apply_new<H: MultiLedgerHistory>(
+        &self,
+        transactions: &TransactionMap,
+        multiledger_history: H,
+    ) -> Result<H, Error> {
+        // ensure no ops require ledgers not in multiledger_history
+        self.required_ledger_ids(transactions)
+            .ok_or(Error::InvalidEndHTLError)
+            .and_then(|ref required_ledger_ids| {
+                if multiledger_history.has_all_histories(required_ledger_ids) {
+                    self.validate_and_apply(transactions, multiledger_history)
+                } else {
+                    Err(Error::InvalidEndHTLError)
+                }
+            })
+    }
+
+    /// Checks that the transaction's ledger sequence number bumps are valid
+    /// against multi ledger history.
+    ///
+    /// NOTE: only checks against `MultiLedgerState`s present in
+    /// `multiledger_history`
+    fn is_valid_seq_no<H: MultiLedgerHistory>(
+        &self,
+        multiledger_history: &H,
+    ) -> Result<(), Error> {
+        self.seq_nos()
+            .iter()
+            .filter(|(id, _)| multiledger_history.has_history(id))
+            .map(|(ledger_id, tx_seq_no)| multiledger_history
+                .get(ledger_id)
+                .and_then(|op_history| op_history.current_seq_no())
+                .map(|ledger_seq_no| (ledger_seq_no, tx_seq_no))
+            )
+            .fold(Ok(()), |seq_nos_are_valid, seq_nos| seq_nos_are_valid
+                .and_then(|_| seq_nos.ok_or(Error::InvalidSequenceNumberError))
+                .and_then(|(ledger_seq_no, &tx_seq_no)| {
+                    let new_seq_no = ledger_seq_no + 1;
+                    if tx_seq_no.lt(&new_seq_no) {
+                        Err(Error::RepeatedSequenceNumberError)
+                    } else if tx_seq_no.gt(&new_seq_no) {
+                        Err(Error::SkippedSequenceNumberError)
+                    } else {
+                        Ok(())
+                    }
+                })
+            )
+    }
+
+    fn required_ledger_ids(
+        &self,
+        transactions: &TransactionMap,
+    ) -> Option<LedgerIds> {
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx.required_ledger_ids(),
+            MultiLedgerTransaction::StartHTL(tx) => tx.required_ledger_ids(),
+            MultiLedgerTransaction::EndHTL(tx) => transactions
+                .get(&tx.start_htl_hash())
+                .and_then(|start_htl_mlt| start_htl_mlt.unwrap_start_htl())
+                .and_then(|start_htl| tx.required_ledger_ids(start_htl)),
+        }
+    }
+
+    /// Retrieve the nested `StartHTLTransaction` from the container
+    /// `MultiLedgerTransaction`, if possible
+    fn unwrap_start_htl(&self) -> Option<&StartHTLTransaction> {
+        match self {
+            MultiLedgerTransaction::StartHTL(tx) => Some(tx),
+            _ => None,
+        }
+    }
 }
 
-impl<'a> Transaction<'a, Error> for MultiLedgerTransaction {
-	fn id(&self) -> Rc<Hash> {
-		match self {
-			MultiLedgerTransaction::Basic(tx) => tx.id(),
-			MultiLedgerTransaction::StartHTL(tx) => tx.id(),
-			MultiLedgerTransaction::EndHTL(tx) => tx.id(),
-		}
-	}
+impl Transaction<Error> for MultiLedgerTransaction {
+    fn id(&self) -> TransactionId {
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx.id(),
+            MultiLedgerTransaction::StartHTL(tx) => tx.id(),
+            MultiLedgerTransaction::EndHTL(tx) => tx.id(),
+        }
+    }
 
-	fn operations(&self) -> &Operations {
-		match self {
-			MultiLedgerTransaction::Basic(tx) => tx.operations(),
-			MultiLedgerTransaction::StartHTL(tx) => tx.operations(),
-			MultiLedgerTransaction::EndHTL(tx) => tx.operations(),
-		}
-	}
+    fn operations(&self) -> &Operations {
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx.operations(),
+            MultiLedgerTransaction::StartHTL(tx) => tx.operations(),
+            MultiLedgerTransaction::EndHTL(tx) => tx.operations(),
+        }
+    }
 
-	fn seq_nos(&self) -> &SequenceNumbers {
-		match *self {
-			MultiLedgerTransaction::Basic(ref tx) => tx.seq_nos(),
-			MultiLedgerTransaction::StartHTL(ref tx) => tx.seq_nos(),
-			MultiLedgerTransaction::EndHTL(ref tx) => tx.seq_nos(),
-		}
-	}
+    fn seq_nos(&self) -> &SequenceNumbers {
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx.seq_nos(),
+            MultiLedgerTransaction::StartHTL(tx) => tx.seq_nos(),
+            MultiLedgerTransaction::EndHTL(tx) => tx.seq_nos(),
+        }
+    }
 
-	// lists all ids of ledgers required by all operations
-	fn operation_ledger_ids(&'a self) -> LedgerIds {
-		match self {
-			MultiLedgerTransaction::Basic(tx) =>
-				tx.operation_ledger_ids(),
-			MultiLedgerTransaction::StartHTL(tx) =>
-				tx.operation_ledger_ids(),
-			MultiLedgerTransaction::EndHTL(tx) =>
-				tx.operation_ledger_ids(),
-		}
-	}
+    fn operation_ledger_ids(&self) -> LedgerIds {
+        match self {
+            MultiLedgerTransaction::Basic(tx) =>
+                tx.operation_ledger_ids(),
+            MultiLedgerTransaction::StartHTL(tx) =>
+                tx.operation_ledger_ids(),
+            MultiLedgerTransaction::EndHTL(tx) =>
+                tx.operation_ledger_ids(),
+        }
+    }
 
-	// fn validate(&self, ledger: &Ledger) -> Result<&Self, String> {}
-
-	// fn mut_apply(&self, mut_ledger: &mut Ledger) -> Result<&mut Ledger, String> {}
+    fn required_ledger_ids(&self) -> Option<LedgerIds> {
+        panic!("Use `required_ledger_ids(&self, txs: &TransactionMap)");
+    }
 }
 
 quick_error! {
-	#[derive(Debug)]
-	pub enum MultiLedgerTransactionError {
-		InvalidStartHTLError {
-			description("StartHTL transaction is invalid")
-		}
-		NonExistantStartHTLError {
-			description("StartHTL transaction (referred to by an EndHTL transaction) does not exist")
-		}
-		Basic(err: BasicTransactionError) {
-			description(err.description())
-		}
-		StartHTL(err: StartHTLTransactionError) {
-			description(err.description())
-		}
-		EndHTL(err: EndHTLTransactionError) {
-			description(err.description())
-		}
-	}
+    #[derive(Debug)]
+    pub enum Error {
+        NonExistantStartHTLError {
+            description("StartHTL transaction (referred to by an EndHTL transaction) does not exist")
+        }
+        InvalidStartHTLError {
+            description("StartHTL transaction is invalid")
+        }
+        InvalidEndHTLError {
+            description("EndHTL transaction is invalid")
+        }
+        InvalidSequenceNumberError {
+            description("Transaction conflicts with current ledger sequence number")
+        }
+        RepeatedSequenceNumberError {
+            description("Transaction requires reusing a ledger sequence number")
+        }
+        SkippedSequenceNumberError {
+            description("Transaction requires skipping a ledger sequence number; some transactions may not have been applied")
+        }
+        BasicError(err: BasicError) {
+            description(err.description())
+        }
+        StartHTLError(err: StartHTLError) {
+            description(err.description())
+        }
+        EndHTLError(err: EndHTLError) {
+            description(err.description())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +206,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-		assert!(true);
+        assert!(true);
     }
 }
