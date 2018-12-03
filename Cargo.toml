@@ -1,5 +1,5 @@
 [workspace]
 
 members = [
-  "lib/datalove-dna/zomes/basic/code",
+  "dna/zomes/basic/code",
 ]
