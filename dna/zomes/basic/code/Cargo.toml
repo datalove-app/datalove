@@ -1,7 +1,8 @@
 [package]
-name = "datalove_zome"
+name = "dna"
 version = "0.0.1"
 authors = ["Sunny G <sunny.gonna@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 # hdk = { git = "https://github.com/holochain/hdk-rust" }

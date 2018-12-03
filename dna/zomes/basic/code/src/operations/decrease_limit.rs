@@ -1,4 +1,4 @@
-use types::*;
+use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use types::*;
+use crate::types::*;
 
 pub type LedgerId = Rc<Hash>;
 

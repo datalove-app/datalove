@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use types::*;
+use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]

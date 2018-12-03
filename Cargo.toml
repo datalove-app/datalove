@@ -1,5 +1,6 @@
 [workspace]
 
 members = [
+  "core/",
   "dna/zomes/basic/code",
 ]

@@ -1,4 +1,4 @@
-use types::*;
+use crate::types::*;
 use self::base::*;
 use self::set_exchange_rate::{Error as SetExchangeRateError, *};
 use self::increase_limit::{Error as IncreaseLimitError, *};

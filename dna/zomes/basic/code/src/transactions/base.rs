@@ -1,11 +1,10 @@
 use std::collections::{hash_map::Iter, HashMap, HashSet};
 use std::error::Error;
 use std::rc::Rc;
-use history::operation::OperationHistory;
-use ledger::LedgerId;
-use operations::*;
-use operations::base::*;
-use types::*;
+use crate::ledger::LedgerId;
+use crate::types::*;
+use crate::history::operation::OperationHistory;
+use crate::operations::{*, base::*};
 
 pub type LedgerIds = HashSet<LedgerId>;
 pub type Operations = Vec<LedgerOperation>;
@@ -44,6 +43,10 @@ pub trait MultiLedgerHistory {
     fn mut_effects(&mut self) -> &mut TransactionEffects;
 }
 
+/**
+ * Provides the proof justifying the failing or fulfilling of the hashed
+ * timelock transaction.
+ */
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "status", content = "payload")]
 pub enum HashedTimeLockProof {
@@ -56,11 +59,21 @@ pub enum HashedTimeLockProof {
     Fulfilled(Hash),
 }
 
+/**
+ * Enum of the possible reasons and proofs for failing a hashed timelock
+ * transaction.
+ */
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "reason", content = "proof")]
 pub enum HashedTimeLockFailureReason {
-    Timeout(String),
+    /// No path exists from this agent to the destination.
     NoPath,
+
+    ///
+    ExceedMaxHops,
+
+    ///
+    Timeout(String),
 }
 
 /// TODO: is this necessary??
