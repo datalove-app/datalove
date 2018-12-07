@@ -3,6 +3,7 @@ use std::{
     error::Error,
     rc::Rc,
 };
+use serde_derive::{Serialize, Deserialize};
 use crate::{
     history::operation::OperationHistory,
     ledger::LedgerId,

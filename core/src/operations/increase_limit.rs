@@ -1,3 +1,5 @@
+use quick_error::quick_error;
+use serde_derive::{Serialize, Deserialize};
 use crate::types::*;
 use super::base::*;
 
@@ -16,7 +18,7 @@ impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
 
     fn validate(
         &self,
-        ledger_history: &LedgerHistory,
+        _ledger_history: &LedgerHistory,
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>

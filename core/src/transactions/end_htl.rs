@@ -2,6 +2,9 @@ use std::{
     collections::HashSet,
     rc::Rc,
 };
+use lazy_static::lazy_static;
+use quick_error::quick_error;
+use serde_derive::{Serialize, Deserialize};
 use crate::{
     ledger::LedgerId,
     types::*,
@@ -31,8 +34,8 @@ impl EndHTLTransaction {
 
     pub fn validate_and_apply<H: MultiLedgerHistory>(
         &self,
-        start_htl: &StartHTLTransaction,
-        multiledger_history: H,
+        _start_htl: &StartHTLTransaction,
+        _multiledger_history: H,
     ) -> Result<H, Error> {
         // ensure all seq_ledger_ids in start_htl are listed in &self
         // ensure this txn's seq_no is one greater than seq_no in ledger

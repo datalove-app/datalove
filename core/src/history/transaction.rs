@@ -110,8 +110,8 @@ impl TransactionHistory {
     // creates a new LedgerOperationHistory, applying each transaction
     pub fn mut_apply_ledger(
         &mut self,
-        ledger: Ledger,
-        transactions: Vec<MultiLedgerTransaction>
+        _ledger: Ledger,
+        _transactions: Vec<MultiLedgerTransaction>
     ) -> &Self {
         // validates new transaction against to-be-added ledger
             // i.e. if basic, are we the owner? etc
@@ -131,11 +131,11 @@ impl TransactionHistory {
         transaction: &MultiLedgerTransaction
     ) -> Result<&Self, ()> {
         match transaction {
-            MultiLedgerTransaction::Basic(tx) =>
+            MultiLedgerTransaction::Basic(_tx) =>
                 self.validate_basic(),
-            MultiLedgerTransaction::StartHTL(tx) =>
+            MultiLedgerTransaction::StartHTL(_tx) =>
                 self.validate_start_htl(),
-            MultiLedgerTransaction::EndHTL(tx) =>
+            MultiLedgerTransaction::EndHTL(_tx) =>
                 self.validate_end_htl(),
         }
     }
@@ -145,11 +145,11 @@ impl TransactionHistory {
         transaction: &MultiLedgerTransaction,
     ) -> Result<&mut Self, ()> {
         match transaction {
-            MultiLedgerTransaction::Basic(tx) =>
+            MultiLedgerTransaction::Basic(_tx) =>
                 self.mut_apply_basic(),
-            MultiLedgerTransaction::StartHTL(tx) =>
+            MultiLedgerTransaction::StartHTL(_tx) =>
                 self.mut_apply_start_htl(),
-            MultiLedgerTransaction::EndHTL(tx) =>
+            MultiLedgerTransaction::EndHTL(_tx) =>
                 self.mut_apply_end_htl(),
         }
     }

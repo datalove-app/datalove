@@ -1,3 +1,5 @@
+use quick_error::quick_error;
+use serde_derive::{Serialize, Deserialize};
 use crate::{
     ledger::*,
     types::*,
@@ -18,16 +20,16 @@ impl SetExchangeRateOperation {
 
     // to sell one of the ledger owner's units, the amount of receiving counterparty units would exceed the limit
     fn is_ledger_capacity_exceeded(&self, ledger: &Ledger) -> bool {
-        let limit = ledger.limit();
-        let balance = ledger.balance();
-        let (n, d) = ledger.exchange_rate();
+        let _limit = ledger.limit();
+        let _balance = ledger.balance();
+        let (_n, _d) = ledger.exchange_rate();
         // let min_counterparty_per_owner_units = 0;
         true
     }
 
     // to buy one of the ledger owner's units, the amount of counterparty units to send would exceed the balance
     fn is_ledger_underfunded(&self, ledger: &Ledger) -> bool {
-        let limit = ledger.limit();
+        let _limit = ledger.limit();
         // let balance = ledger.balance();
         // let (n, d) = ledger.exchange_rate();
         true

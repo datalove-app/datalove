@@ -2,16 +2,14 @@
 name = "datalove-core"
 version = "0.0.1"
 authors = ["Sunny G <sunny.gonna@gmail.com>"]
-edition = "2018"
 readme = "README.md"
 categories = ["p2p", "cryptocurrency"]
 license = "MIT"
+edition = "2018"
 
 [dependencies]
 # failure = "0.1.3"
 # failure_derive = "0.1.3"
-# id_tree = "1.3"
-# is-match = "0.1.0"
 hdk = { git = "https://github.com/holochain/holochain-rust" , branch = "master" }
 lazy_static = "1.1.0"
 quick-error = "1.2"

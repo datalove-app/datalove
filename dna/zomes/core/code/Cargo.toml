@@ -1,7 +1,8 @@
 [package]
-name = "datalove-zome-basic"
+name = "datalove-zome-core"
 version = "0.0.1"
 authors = ["Sunny G <sunny.gonna@gmail.com>"]
+readme = "README.md"
 edition = "2018"
 
 [dependencies]

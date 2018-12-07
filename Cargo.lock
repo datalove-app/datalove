@@ -61,7 +61,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "datalove-zome-basic"
+name = "datalove-zome-core"
 version = "0.0.1"
 dependencies = [
  "datalove-core 0.0.1",

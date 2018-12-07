@@ -1,4 +1,6 @@
 use std::rc::Rc;
+use quick_error::quick_error;
+use serde_derive::{Serialize, Deserialize};
 use crate::ledger::LedgerId;
 use crate::types::*;
 use super::base::*;
@@ -15,7 +17,7 @@ pub struct BasicTransaction {
 impl BasicTransaction {
     pub fn validate_and_apply<H: MultiLedgerHistory>(
         &self,
-        multiledger_history: H,
+        _multiledger_history: H,
     ) -> Result<H, Error> {
         // ensure no ops require ledgers not listed in seq_nos
         // ensure sender is owner on all used ledgers

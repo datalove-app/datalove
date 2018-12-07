@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use serde_derive::{Serialize, Deserialize};
 use crate::types::*;
 
 pub type LedgerId = Rc<Hash>;
@@ -10,7 +11,7 @@ pub type LedgerId = Rc<Hash>;
  * ownership of an abstract, singly-created and mutually-agreed-upon number,
  * which can represent a quantity of anything that can be owned and exchanged.
  */
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Ledger {
     // TODO: can the strings be Rc<Hash>?
     latest_tx_entry_hash: Rc<Hash>, // TODO: is this necessary?
