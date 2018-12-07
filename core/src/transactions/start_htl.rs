@@ -1,11 +1,13 @@
 use std::rc::Rc;
-use crate::ledger::LedgerId;
-use crate::types::*;
+use crate::{
+    ledger::LedgerId,
+    types::*,
+};
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StartHTLTransaction {
-    id: LedgerId,
+    id: TransactionId, // TODO: could this be the hashlock itself?
     sender: Rc<Hash>,
     seq_nos: SequenceNumbers,
     destination: Hash,

@@ -1,9 +1,15 @@
-use std::collections::HashSet;
-use std::rc::Rc;
-use crate::ledger::LedgerId;
-use crate::types::*;
-use super::base::*;
-use super::start_htl::StartHTLTransaction;
+use std::{
+    collections::HashSet,
+    rc::Rc,
+};
+use crate::{
+    ledger::LedgerId,
+    types::*,
+};
+use super::{
+    base::*,
+    start_htl::StartHTLTransaction,
+};
 
 lazy_static! {
     static ref EMPTY_OP_LIST: Operations = Vec::new();
@@ -11,7 +17,9 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EndHTLTransaction {
-    id: LedgerId,
+    // TODO: could this be the start_htl_txid?
+    // TODO: could this be the start_htl_txid AND the hashlock?
+    id: TransactionId,
     sender: Rc<Hash>,
     seq_nos: SequenceNumbers,
     start_tx_hash: Rc<Hash>,

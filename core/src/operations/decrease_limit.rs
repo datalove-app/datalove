@@ -2,16 +2,16 @@ use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct IncreaseLimitOperation { // vostro only, unless in HTL
+pub struct DecreaseLimitOperation { // vostro only, unless in HTL
     ledger_id: Hash,
     amount: u128,
 }
 
-impl IncreaseLimitOperation {
+impl DecreaseLimitOperation {
 
 }
 
-impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
+impl<'a> Operation<'a, Error> for DecreaseLimitOperation {
     fn ledger_id(&self) -> &Hash { &self.ledger_id }
 
     fn validate(
@@ -20,7 +20,7 @@ impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
-                Err(Error::LedgerIdMismatch),
+                Err(Error::InvalidLimit),
             _ =>
                 Ok(self),
         }
@@ -38,8 +38,8 @@ impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
-        LedgerIdMismatch {
-            description("Operation is intended for another ledger")
+        InvalidLimit {
+            description("Limit would fall below current balance")
         }
     }
 }

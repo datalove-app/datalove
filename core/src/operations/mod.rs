@@ -1,9 +1,11 @@
 use crate::types::*;
-use self::base::*;
-use self::set_exchange_rate::{Error as SetExchangeRateError, *};
-use self::increase_limit::{Error as IncreaseLimitError, *};
-use self::decrease_limit::{Error as DecreaseLimitError, *};
-use self::payment::{Error as PaymentError, *};
+use self::{
+    base::*,
+    set_exchange_rate::{Error as SetExchangeRateError, *},
+    increase_limit::{Error as IncreaseLimitError, *},
+    decrease_limit::{Error as DecreaseLimitError, *},
+    payment::{Error as PaymentError, *},
+};
 
 pub mod base;
 pub mod set_exchange_rate;
@@ -71,12 +73,7 @@ impl<'a> Operation<'a, Error> for LedgerOperation {
                 .mut_apply(mut_ledger_history),
             LedgerOperation::Payment(op) => op
                 .mut_apply(mut_ledger_history),
-        };
-
-        mut_ledger_history
-            .mut_ledger()
-            .bump_seq_no(None);
-        mut_ledger_history
+        }
     }
 }
 

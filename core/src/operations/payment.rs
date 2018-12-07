@@ -6,7 +6,14 @@ use super::base::*;
 pub struct PaymentOperation { // vostro only, unless in HTL
     ledger_id: Hash,
     sender: Hash,
+
+    /// Amount to send, denominated in receiver's ledger units.
+    /// If in a basic tx, units also the current ledger's units
     amount: u128,
+
+    /// Maximum amount to send, denominated in current ledger units.
+    /// Used as a reference point of the amount not to exceed while calculating
+    /// available liquidity at a local exchange rate.
     max_amount: Option<u128>,
 }
 
@@ -21,7 +28,7 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
-                Err(Error::LedgerIdMismatch),
+                Err(Error::InvalidPayment),
             _ =>
                 Ok(self),
         }
@@ -39,8 +46,8 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
-        LedgerIdMismatch {
-            description("Operation is intended for another ledger")
+        InvalidPayment {
+            description("Limit would fall below current balance")
         }
     }
 }

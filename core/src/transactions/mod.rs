@@ -1,10 +1,14 @@
-use std::collections::HashMap;
-use std::rc::Rc;
+use std::{
+    collections::HashMap,
+    rc::Rc,
+};
 use crate::types::*;
-use self::base::*;
-use self::basic::{Error as BasicError, *};
-use self::start_htl::{Error as StartHTLError, *};
-use self::end_htl::{Error as EndHTLError, *};
+use self::{
+    base::*,
+    basic::{Error as BasicError, *},
+    start_htl::{Error as StartHTLError, *},
+    end_htl::{Error as EndHTLError, *},
+};
 
 pub mod base;
 pub mod basic;

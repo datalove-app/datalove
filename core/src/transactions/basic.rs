@@ -5,7 +5,7 @@ use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BasicTransaction {
-    id: LedgerId,
+    id: TransactionId,
     sender: Rc<Hash>,
     seq_nos: SequenceNumbers,
     metadata: Option<TransactionMetadata>,

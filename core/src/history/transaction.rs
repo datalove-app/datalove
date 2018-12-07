@@ -23,8 +23,10 @@
 
 use std::collections::{hash_map::Iter, HashMap};
 use std::rc::Rc;
-use crate::ledger::*;
-use crate::transactions::{*, base::{MultiLedgerHistory, *}};
+use crate::{
+    ledger::*,
+    transactions::{*, base::{MultiLedgerHistory, *}}
+};
 use super::operation::*;
 
 /**

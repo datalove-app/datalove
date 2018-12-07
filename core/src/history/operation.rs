@@ -1,9 +1,11 @@
 use std::collections::HashMap;
-use crate::ledger::*;
-use crate::operations::{
-    LedgerOperation,
-    Error as LedgerOperationError,
-    base::{LedgerEffects, LedgerHistory, Operation},
+use crate::{
+    ledger::*,
+    operations::{
+        LedgerOperation,
+        Error as LedgerOperationError,
+        base::{LedgerEffects, LedgerHistory, Operation},
+    },
 };
 
 /**

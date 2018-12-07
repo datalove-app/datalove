@@ -1,10 +1,14 @@
-use std::collections::{hash_map::Iter, HashMap, HashSet};
-use std::error::Error;
-use std::rc::Rc;
-use crate::ledger::LedgerId;
-use crate::types::*;
-use crate::history::operation::OperationHistory;
-use crate::operations::{*, base::*};
+use std::{
+    collections::{hash_map::Iter, HashMap, HashSet},
+    error::Error,
+    rc::Rc,
+};
+use crate::{
+    history::operation::OperationHistory,
+    ledger::LedgerId,
+    operations::{*, base::*},
+    types::*,
+};
 
 pub type LedgerIds = HashSet<LedgerId>;
 pub type Operations = Vec<LedgerOperation>;

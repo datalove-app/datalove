@@ -8,7 +8,7 @@ pub type LedgerId = Rc<Hash>;
  *
  * The core purpose of a `Ledger` is to track the evolving existance and
  * ownership of an abstract, singly-created and mutually-agreed-upon number,
- * which can represent anything that can be owned and exchanged.
+ * which can represent a quantity of anything that can be owned and exchanged.
  */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Ledger {

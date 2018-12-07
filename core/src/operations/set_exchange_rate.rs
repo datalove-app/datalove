@@ -1,5 +1,7 @@
-use crate::ledger::*;
-use crate::types::*;
+use crate::{
+    ledger::*,
+    types::*,
+};
 use super::base::*;
 
 const ZERO: u64 = 0;
@@ -62,9 +64,6 @@ impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
-        MismatchLedgerIdError {
-            description("Operation is intended for another ledger")
-        }
         MalformedExchangeRateError {
             description("Malformed exchange rate")
         }
