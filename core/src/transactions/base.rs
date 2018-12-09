@@ -85,7 +85,7 @@ pub enum HashedTimeLockFailureReason {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransactionMetadata {
     app_hash: Hash,
-    entry_hash: Hash,
+    entry_hash: Hash, // TODO: entry_id_anchor instead?
 }
 
 /**

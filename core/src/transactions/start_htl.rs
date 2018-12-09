@@ -13,7 +13,13 @@ pub struct StartHTLTransaction {
     sender: Rc<Hash>,
     seq_nos: SequenceNumbers,
     destination: Hash,
-    hashlock: Hash,
+
+    /// a sender-specified seed to be concatenated with the preimage to
+    /// generate the hashlock
+    // hashlock_seed: Option<Hash>,
+    // hashlock: Hash,
+
+    // TODO: could this be used as a hashlock seed?
     metadata: Option<TransactionMetadata>,
     operations: Operations,
 }
