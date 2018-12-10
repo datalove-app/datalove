@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
 use crate::ledger::*;
-use crate::types::*;
 
+pub type OperationLedgerId<'a> = &'a str;
 pub type LedgerEffectKey = (&'static str, String);
 pub type LedgerEffects = HashMap<LedgerEffectKey, String>;
 
@@ -22,7 +22,7 @@ pub trait LedgerHistory {
  */
 pub trait Operation<'a, OpError: Error> {
     /// `LedgerId` of the ledger to which the operation should be applied.
-    fn ledger_id(&self) -> &Hash;
+    fn ledger_id(&self) -> OperationLedgerId<'a>;
 
     /// Determines if the operation can be applied to a given `LedgerHistory`.
     fn validate(

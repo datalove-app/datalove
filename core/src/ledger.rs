@@ -1,8 +1,16 @@
 use std::rc::Rc;
+use hdk::holochain_core_types::{
+    error::HolochainError,
+    json::JsonString,
+};
+use holochain_core_types_derive::DefaultJson;
 use serde_derive::{Serialize, Deserialize};
 use crate::types::*;
 
 pub type LedgerId = Rc<Hash>;
+pub type LedgerMetadata = Rc<String>;
+
+pub const EntryType: &'static str = "ledger";
 
 /**
  * The main struct to which all operations and transactions are applied.
@@ -11,7 +19,7 @@ pub type LedgerId = Rc<Hash>;
  * ownership of an abstract, singly-created and mutually-agreed-upon number,
  * which can represent a quantity of anything that can be owned and exchanged.
  */
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, DefaultJson, Debug, Clone)]
 pub struct Ledger {
     // TODO: can the strings be Rc<Hash>?
     latest_tx_entry_hash: Rc<Hash>, // TODO: is this necessary?
@@ -21,14 +29,14 @@ pub struct Ledger {
     max_pending_htls: u8,
     max_ops_per_transaction: u8,
 
-    id: Rc<Hash>,
+    id: LedgerId,
     issuer: Rc<Hash>,
     owner: Rc<Hash>,
     limit: u128,
     balance: u128,
     exchange_rate_n: u64,
     exchange_rate_d: u64,
-    metadata: String,
+    metadata: LedgerMetadata,
 }
 
 // TODO: needs logic to:
@@ -86,7 +94,7 @@ impl Ledger {
             balance,
             exchange_rate_n,
             exchange_rate_d,
-            metadata,
+            metadata: Rc::new(metadata),
             latest_tx_entry_hash: Rc::new(latest_tx_entry_hash),
         }
     }

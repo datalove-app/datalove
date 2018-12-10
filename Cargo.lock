@@ -53,6 +53,7 @@ name = "datalove-core"
 version = "0.0.1"
 dependencies = [
  "hdk 0.0.2 (git+https://github.com/holochain/holochain-rust)",
+ "holochain_core_types_derive 0.0.2 (git+https://github.com/holochain/holochain-rust)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",

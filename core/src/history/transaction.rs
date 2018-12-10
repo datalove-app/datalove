@@ -25,9 +25,14 @@ use std::collections::{hash_map::Iter, HashMap};
 use std::rc::Rc;
 use crate::{
     ledger::*,
+    operations::base::OperationLedgerId,
     transactions::{*, base::{MultiLedgerHistory, *}}
 };
 use super::operation::*;
+
+pub type OperationHistories = HashMap<LedgerId, OperationHistory>;
+pub type TransactionOrder<'a> = Vec<TransactionId<'a>>;
+pub type TransactionOrders<'a> = HashMap<LedgerId, TransactionOrder<'a>>;
 
 /**
  * Stores a hashmap of `OperationHistory`s and any side effects of applying a
@@ -53,16 +58,18 @@ impl MultiLedgerState {
 }
 
 impl MultiLedgerHistory for MultiLedgerState {
-    fn has_history(&self, ledger_id: &LedgerId) -> bool {
-        self.histories.contains_key(ledger_id)
+    fn has_history(&self, ledger_id: OperationLedgerId) -> bool {
+        // TODO: do we have to use `to_string`?
+        self.histories.contains_key(&ledger_id.to_string())
     }
 
     fn has_all_histories(&self, required_ids: &LedgerIds) -> bool {
         required_ids.iter().all(|id| self.get(id).is_some())
     }
 
-    fn get(&self, ledger_id: &LedgerId) -> Option<&OperationHistory> {
-        self.histories.get(ledger_id)
+    fn get(&self, ledger_id: OperationLedgerId) -> Option<&OperationHistory> {
+        // TODO: do we have to use `to_string`?
+        self.histories.get(&ledger_id.to_string())
     }
 
     fn iter(&self) -> Iter<LedgerId, OperationHistory> {
@@ -73,35 +80,31 @@ impl MultiLedgerHistory for MultiLedgerState {
     fn mut_effects(&mut self) -> &mut TransactionEffects { &mut self.effects }
 }
 
-pub type OperationHistories = HashMap<LedgerId, OperationHistory>;
-pub type TransactionOrder = Vec<TransactionId>;
-pub type TransactionOrders = HashMap<LedgerId, TransactionOrder>;
-
 /**
  * Contains:
  * - a `MultiLedgerState`,
  * - a map of `Transaction`s
  */
-pub struct TransactionHistory {
+pub struct TransactionHistory<'a> {
     // a set of all affected ledger ids (for convenience)
     // ledger_ids: LedgerIds,
     // a set of all affected ledgers and their potential histories
-    multiledger_historys: MultiLedgerState,
+    multiledger_histories: MultiLedgerState,
     // a list of all transactions
-    transactions: TransactionMap,
+    transactions: TransactionMap<'a>,
     // an ordering of transactions for each ledger
-    transaction_orders: TransactionOrders,
+    transaction_orders: TransactionOrders<'a>,
 }
 
 // PUBLIC METHODS
-impl TransactionHistory {
+impl<'a> TransactionHistory<'a> {
     // initializes a history around a new transaction
-    pub fn from_transaction(tx: MultiLedgerTransaction) -> Result<Self, ()> {
+    pub fn from_transaction(tx: MultiLedgerTransaction<'a>) -> Result<Self, ()> {
         let mut tx_map = HashMap::new();
         tx_map.insert(tx.id(), tx);
 
         Ok(TransactionHistory {
-            multiledger_historys: MultiLedgerState::new(),
+            multiledger_histories: MultiLedgerState::new(),
             transactions: tx_map,
             transaction_orders: HashMap::new(),
         })
@@ -125,7 +128,7 @@ impl TransactionHistory {
 }
 
 // PRIVATE METHODS
-impl TransactionHistory {
+impl<'a> TransactionHistory<'a> {
     fn validate_transaction(
         &self,
         transaction: &MultiLedgerTransaction

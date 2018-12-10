@@ -1,20 +1,20 @@
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DecreaseLimitOperation { // vostro only, unless in HTL
-    ledger_id: Hash,
+pub struct DecreaseLimitOperation<'a> { // vostro only, unless in HTL
+    #[serde(borrow)]
+    ledger_id: OperationLedgerId<'a>,
     amount: u128,
 }
 
-impl DecreaseLimitOperation {
+impl<'a> DecreaseLimitOperation<'a> {
 
 }
 
-impl<'a> Operation<'a, Error> for DecreaseLimitOperation {
-    fn ledger_id(&self) -> &Hash { &self.ledger_id }
+impl<'a> Operation<'a, Error> for DecreaseLimitOperation<'a> {
+    fn ledger_id(&self) -> OperationLedgerId<'a> { &self.ledger_id }
 
     fn validate(
         &self,

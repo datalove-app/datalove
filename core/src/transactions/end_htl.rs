@@ -2,35 +2,34 @@ use std::{
     collections::HashSet,
     rc::Rc,
 };
-use lazy_static::lazy_static;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::{
-    ledger::LedgerId,
-    types::*,
-};
+use crate::types::*;
 use super::{
     base::*,
     start_htl::StartHTLTransaction,
 };
 
-lazy_static! {
-    static ref EMPTY_OP_LIST: Operations = Vec::new();
-}
-
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EndHTLTransaction {
+pub struct EndHTLTransaction<'a> {
     // TODO: could this be the start_htl_txid?
     // TODO: could this be the start_htl_txid AND the hashlock?
-    id: TransactionId,
+    #[serde(borrow)]
+    id: TransactionId<'a>,
+
     sender: Rc<Hash>,
-    seq_nos: SequenceNumbers,
-    start_tx_hash: Rc<Hash>,
+
+    #[serde(borrow)]
+    seq_nos: SequenceNumbers<'a>,
+
+    #[serde(borrow)]
+    start_htl_id: TransactionId<'a>,
+
     proof: HashedTimeLockProof,
 }
 
-impl EndHTLTransaction {
-    pub fn start_htl_hash(&self) -> Rc<Hash> { Rc::clone(&self.start_tx_hash) }
+impl<'a> EndHTLTransaction<'a> {
+    pub fn start_htl_id(&self) -> TransactionId<'a> { &self.start_htl_id }
 
     pub fn validate_and_apply<H: MultiLedgerHistory>(
         &self,
@@ -55,13 +54,13 @@ impl EndHTLTransaction {
     }
 }
 
-impl Transaction<Error> for EndHTLTransaction {
-    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
-    fn operations(&self) -> &Operations { &EMPTY_OP_LIST }
-    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+impl<'a> Transaction<'a, Error> for EndHTLTransaction<'a> {
+    fn id(&self) -> TransactionId<'a> { &self.id }
+    fn seq_nos(&self) -> &SequenceNumbers<'a> { &self.seq_nos }
+    fn operations(&self) -> Option<&Operations<'a>> { None }
 
-    fn operation_ledger_ids(&self) -> LedgerIds { HashSet::new() }
-    fn required_ledger_ids(&self) -> Option<LedgerIds> {
+    fn operation_ledger_ids(&self) -> LedgerIds<'a> { HashSet::new() }
+    fn required_ledger_ids(&self) -> Option<LedgerIds<'a>> {
         panic!("Use `required_ledger_ids(&self, start_htl: &StartHTLTransaction)");
     }
 }

@@ -1,10 +1,11 @@
-use std::{
-    collections::HashMap,
-    rc::Rc,
+use std::collections::HashMap;
+use hdk::holochain_core_types::{
+    error::HolochainError,
+    json::JsonString,
 };
+use holochain_core_types_derive::DefaultJson;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use self::{
     base::*,
     basic::{Error as BasicError, *},
@@ -18,17 +19,24 @@ pub mod start_htl;
 pub mod end_htl;
 
 /// Stores all transactions relevant to multiple ledgers' histories
-pub type TransactionMap = HashMap<Rc<Hash>, MultiLedgerTransaction>;
+pub type TransactionMap<'a> =
+    HashMap<TransactionId<'a>, MultiLedgerTransaction<'a>>;
 
+pub const EntryType: &'static str = "transaction";
+
+// TODO: #[derive(Serialize, Deserialize, DefaultJson, Debug)]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-pub enum MultiLedgerTransaction {
-    Basic(BasicTransaction),
-    StartHTL(StartHTLTransaction),
-    EndHTL(EndHTLTransaction),
+pub enum MultiLedgerTransaction<'a> {
+    #[serde(borrow)]
+    Basic(BasicTransaction<'a>),
+    #[serde(borrow)]
+    StartHTL(StartHTLTransaction<'a>),
+    #[serde(borrow)]
+    EndHTL(EndHTLTransaction<'a>),
 }
 
-impl MultiLedgerTransaction {
+impl<'a> MultiLedgerTransaction<'a> {
     /// Validates and applies the transaction and it's operations against the
     /// ledgers available in `MultiLedgerHistory`
     pub fn validate_and_apply<H: MultiLedgerHistory>(
@@ -46,7 +54,7 @@ impl MultiLedgerTransaction {
                 .validate_and_apply(multiledger_history)
                 .map_err(Error::StartHTLError),
             MultiLedgerTransaction::EndHTL(tx) => transactions
-                .get(&tx.start_htl_hash())
+                .get(&tx.start_htl_id())
                 .and_then(|start_htl| start_htl.unwrap_start_htl())
                 .ok_or(Error::InvalidStartHTLError)
                 .and_then(|start_htl| tx
@@ -116,7 +124,7 @@ impl MultiLedgerTransaction {
             MultiLedgerTransaction::Basic(tx) => tx.required_ledger_ids(),
             MultiLedgerTransaction::StartHTL(tx) => tx.required_ledger_ids(),
             MultiLedgerTransaction::EndHTL(tx) => transactions
-                .get(&tx.start_htl_hash())
+                .get(&tx.start_htl_id())
                 .and_then(|start_htl_mlt| start_htl_mlt.unwrap_start_htl())
                 .and_then(|start_htl| tx.required_ledger_ids(start_htl)),
         }
@@ -132,8 +140,8 @@ impl MultiLedgerTransaction {
     }
 }
 
-impl Transaction<Error> for MultiLedgerTransaction {
-    fn id(&self) -> TransactionId {
+impl<'a> Transaction<'a, Error> for MultiLedgerTransaction<'a> {
+    fn id(&self) -> TransactionId<'a> {
         match self {
             MultiLedgerTransaction::Basic(tx) => tx.id(),
             MultiLedgerTransaction::StartHTL(tx) => tx.id(),
@@ -141,15 +149,7 @@ impl Transaction<Error> for MultiLedgerTransaction {
         }
     }
 
-    fn operations(&self) -> &Operations {
-        match self {
-            MultiLedgerTransaction::Basic(tx) => tx.operations(),
-            MultiLedgerTransaction::StartHTL(tx) => tx.operations(),
-            MultiLedgerTransaction::EndHTL(tx) => tx.operations(),
-        }
-    }
-
-    fn seq_nos(&self) -> &SequenceNumbers {
+    fn seq_nos(&self) -> &SequenceNumbers<'a> {
         match self {
             MultiLedgerTransaction::Basic(tx) => tx.seq_nos(),
             MultiLedgerTransaction::StartHTL(tx) => tx.seq_nos(),
@@ -157,7 +157,15 @@ impl Transaction<Error> for MultiLedgerTransaction {
         }
     }
 
-    fn operation_ledger_ids(&self) -> LedgerIds {
+    fn operations(&self) -> Option<&Operations<'a>> {
+        match self {
+            MultiLedgerTransaction::Basic(tx) => tx.operations(),
+            MultiLedgerTransaction::StartHTL(tx) => tx.operations(),
+            MultiLedgerTransaction::EndHTL(tx) => tx.operations(),
+        }
+    }
+
+    fn operation_ledger_ids(&self) -> LedgerIds<'a> {
         match self {
             MultiLedgerTransaction::Basic(tx) =>
                 tx.operation_ledger_ids(),
@@ -168,7 +176,7 @@ impl Transaction<Error> for MultiLedgerTransaction {
         }
     }
 
-    fn required_ledger_ids(&self) -> Option<LedgerIds> {
+    fn required_ledger_ids(&self) -> Option<LedgerIds<'a>> {
         panic!("Use `required_ledger_ids(&self, txs: &TransactionMap)");
     }
 }

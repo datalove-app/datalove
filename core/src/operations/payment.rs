@@ -1,12 +1,12 @@
-use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PaymentOperation { // vostro only, unless in HTL
-    ledger_id: Hash,
+pub struct PaymentOperation<'a> { // vostro only, unless in HTL
+    #[serde(borrow)]
+    ledger_id: OperationLedgerId<'a>,
     sender: Hash,
 
     /// Amount to send, denominated in receiver's ledger units.
@@ -19,10 +19,10 @@ pub struct PaymentOperation { // vostro only, unless in HTL
     max_amount: Option<u128>,
 }
 
-impl PaymentOperation {}
+impl<'a> PaymentOperation<'a> {}
 
-impl<'a> Operation<'a, Error> for PaymentOperation {
-    fn ledger_id(&self) -> &Hash { &self.ledger_id }
+impl<'a> Operation<'a, Error> for PaymentOperation<'a> {
+    fn ledger_id(&self) -> OperationLedgerId<'a> { &self.ledger_id }
 
     fn validate(
         &self,

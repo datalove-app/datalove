@@ -1,20 +1,26 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::ledger::LedgerId;
 use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct BasicTransaction {
-    id: TransactionId,
+pub struct BasicTransaction<'a> {
+    #[serde(borrow)]
+    id: TransactionId<'a>,
+
     sender: Rc<Hash>,
-    seq_nos: SequenceNumbers,
+
+    #[serde(borrow)]
+    seq_nos: SequenceNumbers<'a>,
+
     metadata: Option<TransactionMetadata>,
-    operations: Operations,
+
+    #[serde(borrow)]
+    operations: Operations<'a>,
 }
 
-impl BasicTransaction {
+impl<'a> BasicTransaction<'a> {
     pub fn validate_and_apply<H: MultiLedgerHistory>(
         &self,
         _multiledger_history: H,
@@ -28,10 +34,10 @@ impl BasicTransaction {
     }
 }
 
-impl Transaction<Error> for BasicTransaction {
-    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
-    fn operations(&self) -> &Operations { &self.operations }
-    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+impl<'a> Transaction<'a, Error> for BasicTransaction<'a> {
+    fn id(&self) -> TransactionId<'a> { &self.id }
+    fn seq_nos(&self) -> &SequenceNumbers<'a> { &self.seq_nos }
+    fn operations(&self) -> Option<&Operations<'a>> { Some(&self.operations) }
 }
 
 quick_error! {

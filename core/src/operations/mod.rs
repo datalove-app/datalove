@@ -1,6 +1,5 @@
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use self::{
     base::*,
     set_exchange_rate::{Error as SetExchangeRateError, *},
@@ -17,15 +16,19 @@ pub mod payment;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-pub enum LedgerOperation {
-    SetExchangeRate(SetExchangeRateOperation),
-    IncreaseLimit(IncreaseLimitOperation),
-    DecreaseLimit(DecreaseLimitOperation),
-    Payment(PaymentOperation),
+pub enum LedgerOperation<'a> {
+    #[serde(borrow)]
+    SetExchangeRate(SetExchangeRateOperation<'a>),
+    #[serde(borrow)]
+    IncreaseLimit(IncreaseLimitOperation<'a>),
+    #[serde(borrow)]
+    DecreaseLimit(DecreaseLimitOperation<'a>),
+    #[serde(borrow)]
+    Payment(PaymentOperation<'a>),
 }
 
-impl<'a> Operation<'a, Error> for LedgerOperation {
-    fn ledger_id(&self) -> &Hash {
+impl<'a> Operation<'a, Error> for LedgerOperation<'a> {
+    fn ledger_id(&self) -> OperationLedgerId<'a> {
         match self {
             LedgerOperation::SetExchangeRate(op) => op.ledger_id(),
             LedgerOperation::IncreaseLimit(op) => op.ledger_id(),

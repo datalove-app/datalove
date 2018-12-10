@@ -3,5 +3,4 @@
 members = [
   "core",
   "dna/zomes/core/code",
-  # "dna/zomes/api/code",
 ]

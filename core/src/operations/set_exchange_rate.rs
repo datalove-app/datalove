@@ -1,21 +1,19 @@
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::{
-    ledger::*,
-    types::*,
-};
+use crate::ledger::*;
 use super::base::*;
 
 const ZERO: u64 = 0;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SetExchangeRateOperation {
-    ledger_id: Hash,
+pub struct SetExchangeRateOperation<'a> {
+    #[serde(borrow)]
+    ledger_id: OperationLedgerId<'a>,
     n: u64, // counterparty units
     d: u64, // ledger owner units
 }
 
-impl SetExchangeRateOperation {
+impl<'a> SetExchangeRateOperation<'a> {
     fn is_rate_malformed(&self) -> bool { self.d.eq(&ZERO) }
 
     // to sell one of the ledger owner's units, the amount of receiving counterparty units would exceed the limit
@@ -36,8 +34,8 @@ impl SetExchangeRateOperation {
     }
 }
 
-impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
-    fn ledger_id(&self) -> &Hash { &self.ledger_id }
+impl<'a> Operation<'a, Error> for SetExchangeRateOperation<'a> {
+    fn ledger_id(&self) -> OperationLedgerId<'a> { &self.ledger_id }
 
     fn validate(
         &self,

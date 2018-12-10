@@ -8,6 +8,8 @@ use crate::{
     },
 };
 
+pub type SingleLedgerStates = Vec<SingleLedgerState>;
+
 /**
  * Stores the ledger state and any side effects of applying an operation
  */
@@ -32,8 +34,6 @@ impl LedgerHistory for SingleLedgerState {
     fn mut_ledger(&mut self) -> &mut Ledger { &mut self.ledger }
     fn mut_effects(&mut self) -> &mut LedgerEffects { &mut self.effects }
 }
-
-pub type SingleLedgerStates = Vec<SingleLedgerState>;
 
 /**
  * Contains a list of `SingleLedgerState`s, i.e. the entire potential history
