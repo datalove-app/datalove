@@ -1,5 +1,6 @@
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
+use crate::ledger::*;
 use self::{
     base::*,
     set_exchange_rate::{Error as SetExchangeRateError, *},
@@ -14,21 +15,34 @@ pub mod increase_limit;
 pub mod decrease_limit;
 pub mod payment;
 
+/**
+ *
+ */
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
-pub enum LedgerOperation<'a> {
-    #[serde(borrow)]
-    SetExchangeRate(SetExchangeRateOperation<'a>),
-    #[serde(borrow)]
-    IncreaseLimit(IncreaseLimitOperation<'a>),
-    #[serde(borrow)]
-    DecreaseLimit(DecreaseLimitOperation<'a>),
-    #[serde(borrow)]
-    Payment(PaymentOperation<'a>),
+pub enum LedgerOperation {
+    SetExchangeRate(SetExchangeRateOperation),
+    IncreaseLimit(IncreaseLimitOperation),
+    DecreaseLimit(DecreaseLimitOperation),
+    Payment(PaymentOperation),
 }
 
-impl<'a> Operation<'a, Error> for LedgerOperation<'a> {
-    fn ledger_id(&self) -> OperationLedgerId<'a> {
+impl LedgerOperation {
+    /// Determines if operation is destined for this ledger, or for another.
+    fn validate_ledger_id_match(
+        &self,
+        ledger_history: &LedgerHistory,
+    ) -> Result<&Self, Error> {
+        if ledger_history.ledger().id().eq(&self.ledger_id()) {
+            Ok(self)
+        } else {
+            Err(Error::LedgerIdMismatch)
+        }
+    }
+}
+
+impl<'a> Operation<'a, Error> for LedgerOperation {
+    fn ledger_id(&self) -> LedgerId {
         match self {
             LedgerOperation::SetExchangeRate(op) => op.ledger_id(),
             LedgerOperation::IncreaseLimit(op) => op.ledger_id(),
@@ -41,9 +55,7 @@ impl<'a> Operation<'a, Error> for LedgerOperation<'a> {
         &self,
         ledger_history: &LedgerHistory,
     ) -> Result<&Self, Error> {
-        if self.is_ledger_mismatched(ledger_history) {
-            return Err(Error::LedgerIdMismatch);
-        }
+        self.validate_ledger_id_match(ledger_history)?;
 
         match self {
             LedgerOperation::SetExchangeRate(op) => op

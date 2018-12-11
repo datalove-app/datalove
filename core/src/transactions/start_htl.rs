@@ -5,15 +5,10 @@ use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct StartHTLTransaction<'a> {
-    #[serde(borrow)]
-    id: TransactionId<'a>, // TODO: could this be the hashlock itself?
-
+pub struct StartHTLTransaction {
+    id: TransactionId, // TODO: could this be the hashlock itself?
     sender: Rc<Hash>,
-
-    #[serde(borrow)]
-    seq_nos: SequenceNumbers<'a>,
-
+    seq_nos: SequenceNumbers,
     destination: Hash,
 
     /// a sender-specified seed to be concatenated with the preimage to
@@ -23,13 +18,11 @@ pub struct StartHTLTransaction<'a> {
 
     // TODO: could this be used as a hashlock seed?
     metadata: Option<TransactionMetadata>,
-
-    #[serde(borrow)]
-    operations: Operations<'a>,
+    operations: Operations,
 }
 
-impl<'a> StartHTLTransaction<'a> {
-    pub fn validate_and_apply<H: MultiLedgerHistory>(
+impl StartHTLTransaction {
+    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
         &self,
         _multiledger_history: H,
     ) -> Result<H, Error> {
@@ -41,10 +34,10 @@ impl<'a> StartHTLTransaction<'a> {
     }
 }
 
-impl<'a> Transaction<'a, Error> for StartHTLTransaction<'a> {
-    fn id(&self) -> TransactionId<'a> { &self.id }
-    fn seq_nos(&self) -> &SequenceNumbers<'a> { &self.seq_nos }
-    fn operations(&self) -> Option<&Operations<'a>> { Some(&self.operations) }
+impl Transaction<Error> for StartHTLTransaction {
+    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
+    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+    fn operations(&self) -> Option<&Operations> { Some(&self.operations) }
 }
 
 quick_error! {

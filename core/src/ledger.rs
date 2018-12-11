@@ -10,7 +10,7 @@ use crate::types::*;
 pub type LedgerId = Rc<Hash>;
 pub type LedgerMetadata = Rc<String>;
 
-pub const EntryType: &'static str = "ledger";
+pub const ENTRY_TYPE: &'static str = "ledger";
 
 /**
  * The main struct to which all operations and transactions are applied.
@@ -21,14 +21,13 @@ pub const EntryType: &'static str = "ledger";
  */
 #[derive(Serialize, Deserialize, DefaultJson, Debug, Clone)]
 pub struct Ledger {
-    // TODO: can the strings be Rc<Hash>?
-    latest_tx_entry_hash: Rc<Hash>, // TODO: is this necessary?
-    seq_no: u64, // TODO: is this necessary?
+    // configuration state
     min_timeout: u32, // TODO: could these be in seq_no units?
     max_timeout: u32,
     max_pending_htls: u8,
     max_ops_per_transaction: u8,
 
+    // ledger (app) state
     id: LedgerId,
     issuer: Rc<Hash>,
     owner: Rc<Hash>,
@@ -37,6 +36,11 @@ pub struct Ledger {
     exchange_rate_n: u64,
     exchange_rate_d: u64,
     metadata: LedgerMetadata,
+
+    // ledger (history) state
+    seq_no: u64, // TODO: is this necessary?
+    // TODO: can the strings be Rc<Hash>?
+    latest_tx_entry_hash: Rc<Hash>, // TODO: is this necessary?
 }
 
 // TODO: needs logic to:

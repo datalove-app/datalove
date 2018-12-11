@@ -11,27 +11,19 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct EndHTLTransaction<'a> {
+pub struct EndHTLTransaction {
     // TODO: could this be the start_htl_txid?
     // TODO: could this be the start_htl_txid AND the hashlock?
-    #[serde(borrow)]
-    id: TransactionId<'a>,
-
+    id: TransactionId,
     sender: Rc<Hash>,
-
-    #[serde(borrow)]
-    seq_nos: SequenceNumbers<'a>,
-
-    #[serde(borrow)]
-    start_htl_id: TransactionId<'a>,
-
+    seq_nos: SequenceNumbers,
+    start_htl_id: TransactionId,
     proof: HashedTimeLockProof,
 }
 
-impl<'a> EndHTLTransaction<'a> {
-    pub fn start_htl_id(&self) -> TransactionId<'a> { &self.start_htl_id }
-
-    pub fn validate_and_apply<H: MultiLedgerHistory>(
+impl EndHTLTransaction {
+    ///
+    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
         &self,
         _start_htl: &StartHTLTransaction,
         _multiledger_history: H,
@@ -40,6 +32,11 @@ impl<'a> EndHTLTransaction<'a> {
         // ensure this txn's seq_no is one greater than seq_no in ledger
 
         Err(Error::InvalidTransaction)
+    }
+
+    ///
+    pub fn start_htl_id(&self) -> TransactionId {
+        Rc::clone(&self.start_htl_id)
     }
 
     pub fn required_ledger_ids(
@@ -54,13 +51,13 @@ impl<'a> EndHTLTransaction<'a> {
     }
 }
 
-impl<'a> Transaction<'a, Error> for EndHTLTransaction<'a> {
-    fn id(&self) -> TransactionId<'a> { &self.id }
-    fn seq_nos(&self) -> &SequenceNumbers<'a> { &self.seq_nos }
-    fn operations(&self) -> Option<&Operations<'a>> { None }
+impl Transaction<Error> for EndHTLTransaction {
+    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
+    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+    fn operations(&self) -> Option<&Operations> { None }
 
-    fn operation_ledger_ids(&self) -> LedgerIds<'a> { HashSet::new() }
-    fn required_ledger_ids(&self) -> Option<LedgerIds<'a>> {
+    fn operation_ledger_ids(&self) -> LedgerIds { HashSet::new() }
+    fn required_ledger_ids(&self) -> Option<LedgerIds> {
         panic!("Use `required_ledger_ids(&self, start_htl: &StartHTLTransaction)");
     }
 }

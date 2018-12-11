@@ -5,23 +5,16 @@ use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct BasicTransaction<'a> {
-    #[serde(borrow)]
-    id: TransactionId<'a>,
-
+pub struct BasicTransaction {
+    id: TransactionId,
     sender: Rc<Hash>,
-
-    #[serde(borrow)]
-    seq_nos: SequenceNumbers<'a>,
-
+    seq_nos: SequenceNumbers,
     metadata: Option<TransactionMetadata>,
-
-    #[serde(borrow)]
-    operations: Operations<'a>,
+    operations: Operations,
 }
 
-impl<'a> BasicTransaction<'a> {
-    pub fn validate_and_apply<H: MultiLedgerHistory>(
+impl BasicTransaction {
+    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
         &self,
         _multiledger_history: H,
     ) -> Result<H, Error> {
@@ -34,10 +27,10 @@ impl<'a> BasicTransaction<'a> {
     }
 }
 
-impl<'a> Transaction<'a, Error> for BasicTransaction<'a> {
-    fn id(&self) -> TransactionId<'a> { &self.id }
-    fn seq_nos(&self) -> &SequenceNumbers<'a> { &self.seq_nos }
-    fn operations(&self) -> Option<&Operations<'a>> { Some(&self.operations) }
+impl Transaction<Error> for BasicTransaction {
+    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
+    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+    fn operations(&self) -> Option<&Operations> { Some(&self.operations) }
 }
 
 quick_error! {
