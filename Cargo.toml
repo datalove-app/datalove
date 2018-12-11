@@ -2,5 +2,5 @@
 
 members = [
   "core",
-  "dna/zomes/core/code",
+  "genomes/datalove/zomes/core/code",
 ]

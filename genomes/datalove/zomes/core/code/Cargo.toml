@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 hdk = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
 holochain_core_types_derive = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
-datalove-core = { path = "../../../../core" }
+datalove-core = { path = "../../../../../core" }
 serde = { version = "1.0", features = ["rc"] }
 serde_derive = "1.0"
 serde_json = "1.0"

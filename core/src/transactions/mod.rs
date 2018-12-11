@@ -14,7 +14,6 @@ use self::{
 };
 
 pub mod base;
-pub mod id;
 pub mod basic;
 pub mod start_htl;
 pub mod end_htl;
