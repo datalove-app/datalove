@@ -69,7 +69,7 @@ impl OperationHistory {
             .iter()
             .fold(Ok(()), |ledger_states_are_valid, ledger_states| {
                 ledger_states_are_valid
-                    .and(operation.validate(ledger_states))
+                    .and_then(|_| operation.validate(ledger_states))
                     .and(Ok(()))
             })
             .map(|_| self)

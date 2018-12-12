@@ -1,13 +1,12 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BasicTransaction {
     id: TransactionId,
-    sender: Rc<Hash>,
+    sender: TransactionAgent,
     seq_nos: SequenceNumbers,
     metadata: Option<TransactionMetadata>,
     operations: Operations,

@@ -30,7 +30,7 @@ pub trait Operation<'a, OpError: Error> {
      */
     fn validate(
         &self,
-        // tx_sender: &Hash,
+        // tx_sender: &String,
         ledger_history: &LedgerHistory,
     ) -> Result<&Self, OpError>;
 
@@ -39,7 +39,7 @@ pub trait Operation<'a, OpError: Error> {
      */
     fn mut_apply(
         &'a self,
-        // tx_sender: &Hash,
+        // tx_sender: &String,
         mut_ledger_history: &'a mut LedgerHistory,
     ) -> &'a mut LedgerHistory;
 }

@@ -4,7 +4,6 @@ use std::{
 };
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use super::{
     base::*,
     start_htl::StartHTLTransaction,
@@ -14,8 +13,9 @@ use super::{
 pub struct EndHTLTransaction {
     // TODO: could this be the start_htl_txid?
     // TODO: could this be the start_htl_txid AND the hashlock?
+    // TODO: it can be both, just prefixed or suffixed with another identifier
     id: TransactionId,
-    sender: Rc<Hash>,
+    sender: TransactionAgent,
     seq_nos: SequenceNumbers,
     start_htl_id: TransactionId,
     proof: HashedTimeLockProof,

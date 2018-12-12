@@ -1,13 +1,7 @@
 use std::rc::Rc;
-use hdk::holochain_core_types::{
-    error::HolochainError,
-    json::JsonString,
-};
-use holochain_core_types_derive::DefaultJson;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 
-pub type LedgerId = Rc<Hash>;
+pub type LedgerId = Rc<String>;
 pub type LedgerMetadata = Rc<String>;
 
 pub const ENTRY_TYPE: &'static str = "ledger";
@@ -19,7 +13,7 @@ pub const ENTRY_TYPE: &'static str = "ledger";
  * ownership of an abstract, singly-created and mutually-agreed-upon number,
  * which can represent a quantity of anything that can be owned and exchanged.
  */
-#[derive(Serialize, Deserialize, DefaultJson, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Ledger {
     // configuration state
     min_timeout: u32, // TODO: could these be in seq_no units?
@@ -29,8 +23,8 @@ pub struct Ledger {
 
     // ledger (app) state
     id: LedgerId,
-    issuer: Rc<Hash>,
-    owner: Rc<Hash>,
+    issuer: Rc<String>,
+    owner: Rc<String>,
     limit: u128,
     balance: u128,
     exchange_rate_n: u64,
@@ -39,8 +33,8 @@ pub struct Ledger {
 
     // ledger (history) state
     seq_no: u64, // TODO: is this necessary?
-    // TODO: can the strings be Rc<Hash>?
-    latest_tx_entry_hash: Rc<Hash>, // TODO: is this necessary?
+    // TODO: can the strings be Rc<String>?
+    latest_tx_entry_hash: Rc<String>, // TODO: is this necessary?
 }
 
 // TODO: needs logic to:
@@ -71,10 +65,10 @@ pub struct Ledger {
  */
 impl Ledger {
     pub fn new(
-        id: Hash,
-        owner: Hash,
-        issuer: Hash,
-        latest_tx_entry_hash: Hash,
+        id: String,
+        owner: String,
+        issuer: String,
+        latest_tx_entry_hash: String,
         min_timeout: u32,
         max_timeout: u32,
         max_pending_htls: u8,
@@ -105,8 +99,8 @@ impl Ledger {
 
     // GETTERS
     pub fn id(&self) -> LedgerId { Rc::clone(&self.id) }
-    pub fn owner(&self) -> Rc<Hash> { Rc::clone(&self.owner) }
-    pub fn issuer(&self) -> Rc<Hash> { Rc::clone(&self.issuer) }
+    pub fn owner(&self) -> Rc<String> { Rc::clone(&self.owner) }
+    pub fn issuer(&self) -> Rc<String> { Rc::clone(&self.issuer) }
 
     pub fn seq_no(&self) -> u64 { self.seq_no }
     pub fn limit(&self) -> u128 { self.limit }

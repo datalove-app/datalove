@@ -8,13 +8,13 @@ use crate::{
     history::operation::OperationHistory,
     ledger::LedgerId,
     operations::{*, base::*},
-    types::*,
 };
 
 pub type LedgerIds = HashSet<LedgerId>;
 pub type Operations = Vec<LedgerOperation>;
 pub type SequenceNumbers = HashMap<LedgerId, u64>;
-pub type TransactionId = Rc<Hash>;
+pub type TransactionId = Rc<String>;
+pub type TransactionAgent = Rc<String>;
 
 pub type TransactionEffectKey = (&'static str, String);
 pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
@@ -73,7 +73,7 @@ pub enum HashedTimeLockProof {
     /**
      * Contains the preimage necessary to fulfill an HTL transaction.
      */
-    Fulfilled(Hash),
+    Fulfilled(String),
 }
 
 /**
@@ -96,8 +96,8 @@ pub enum HashedTimeLockFailureReason {
 /// TODO: is this necessary??
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransactionMetadata {
-    app_hash: Hash,
-    entry_hash: Hash, // TODO: entry_id_anchor instead?
+    app_hash: String,
+    entry_hash: String, // TODO: entry_id_anchor instead?
 }
 
 /**

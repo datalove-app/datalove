@@ -1,9 +1,4 @@
 use std::collections::HashMap;
-use hdk::holochain_core_types::{
-    error::HolochainError,
-    json::JsonString,
-};
-use holochain_core_types_derive::DefaultJson;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use self::{
@@ -26,7 +21,7 @@ pub const ENTRY_TYPE: &'static str = "multiledger_transaction";
 /**
  *
  */
-#[derive(Serialize, Deserialize, DefaultJson, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum MultiLedgerTransaction {
     Basic(BasicTransaction),

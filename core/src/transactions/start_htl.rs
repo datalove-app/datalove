@@ -1,20 +1,19 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StartHTLTransaction {
     id: TransactionId, // TODO: could this be the hashlock itself?
-    sender: Rc<Hash>,
+    sender: TransactionAgent,
     seq_nos: SequenceNumbers,
-    destination: Hash,
+    destination: TransactionAgent,
 
     /// a sender-specified seed to be concatenated with the preimage to
     /// generate the hashlock
-    // hashlock_seed: Option<Hash>,
-    // hashlock: Hash,
+    // hashlock_seed: Option<String>,
+    // hashlock: String,
 
     // TODO: could this be used as a hashlock seed?
     metadata: Option<TransactionMetadata>,

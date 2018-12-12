@@ -2,13 +2,12 @@ use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use crate::ledger::*;
-use crate::types::*;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PaymentOperation { // vostro only, unless in HTL
     ledger_id: LedgerId,
-    sender: Hash,
+    sender: String,
 
     /// Amount to send, denominated in receiver's ledger units.
     /// If in a basic tx, units also the current ledger's units
