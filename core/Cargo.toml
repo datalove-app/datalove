@@ -1,5 +1,5 @@
 [package]
-name = "datalove-core"
+name = "datalove_core"
 version = "0.0.1"
 authors = ["Sunny G <sunny.gonna@gmail.com>"]
 readme = "README.md"

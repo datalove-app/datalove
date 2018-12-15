@@ -49,7 +49,7 @@ version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "datalove-core"
+name = "datalove_core"
 version = "0.0.1"
 dependencies = [
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -60,10 +60,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "datalove-zome-core"
+name = "datalove_genome_utils"
 version = "0.0.1"
 dependencies = [
- "datalove-core 0.0.1",
+ "datalove_core 0.0.1",
+ "hdk 0.0.2",
+ "holochain_core_types_derive 0.0.2",
+]
+
+[[package]]
+name = "datalove_zome_core"
+version = "0.0.1"
+dependencies = [
+ "datalove_core 0.0.1",
  "hdk 0.0.2",
  "holochain_core_types_derive 0.0.2",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
