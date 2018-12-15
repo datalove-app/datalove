@@ -13,10 +13,10 @@ pub struct BasicTransaction {
 }
 
 impl BasicTransaction {
-    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
+    pub fn mut_validate_and_apply<S: MultiLedgerState>(
         &self,
-        _multiledger_history: H,
-    ) -> Result<H, Error> {
+        _multiledger_state: S,
+    ) -> Result<S, Error> {
         // ensure no ops require ledgers not listed in seq_nos
         // ensure sender is owner on all used ledgers
         // ensure this txn's seq_no is one greater than seq_no in ledger

@@ -26,7 +26,7 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
 
     fn validate(
         &self,
-        _ledger_history: &LedgerHistory,
+        _ledger_state: &LedgerState,
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
@@ -38,10 +38,10 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
 
     fn mut_apply(
         &'a self,
-        mut_ledger_history: &'a mut LedgerHistory,
-    ) -> &'a mut LedgerHistory {
-        mut_ledger_history.mut_ledger().set_balance(self.amount);
-        mut_ledger_history
+        mut_ledger_state: &'a mut LedgerState,
+    ) -> &'a mut LedgerState {
+        mut_ledger_state.mut_ledger().set_balance(self.amount);
+        mut_ledger_state
     }
 }
 

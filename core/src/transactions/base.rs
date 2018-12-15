@@ -5,7 +5,7 @@ use std::{
 };
 use serde_derive::{Serialize, Deserialize};
 use crate::{
-    history::operation::OperationHistory,
+    history::ledger::SingleLedgerStates,
     ledger::LedgerId,
     operations::{*, base::*},
 };
@@ -20,37 +20,37 @@ pub type TransactionEffectKey = (&'static str, String);
 pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
 
 /**
- * Provides access to the set of `OperationHistory`s and any effects a
+ * Provides access to the set of `SingleLedgerStates`s and any effects a
  * transaction may have.
  */
-pub trait MultiLedgerHistory {
+pub trait MultiLedgerState {
     /**
-     * Determines if the `MultiLedgerHistory` already contains a given
-     * `OperationHistory`.
+     * Determines if the `MultiLedgerState` already contains the given set of
+     * `LedgerState`s.
      *
      * Useful during history reconstruction when deciding whether or not to
      * skip validation and application of a given operation (since it's
      * validation and application won't be relevant to the newest transaction).
      */
-    fn has_history(&self, ledger_id: &LedgerId) -> bool;
+    fn has_ledger(&self, ledger_id: &LedgerId) -> bool;
 
     /**
-     * Determines if the `MultiLedgerHistory` contains all `OperationHistory`s
+     * Determines if the `MultiLedgerState` contains all `SingleLedgerStates`'
      * necessary to validate a given transaction.
      *
      * Useful during validation and application of a new transaction.
      */
-    fn has_all_histories(&self, ids: &LedgerIds) -> bool;
+    fn has_all_ledgers(&self, ids: &LedgerIds) -> bool;
 
     /**
-     * Retrieves the `OperationHistory` for a given `LedgerId`.
+     * Retrieves the `SingleLedgerStates` for a given `LedgerId`.
      */
-    fn get(&self, ledger_id: &LedgerId) -> Option<&OperationHistory>;
+    fn ledger(&self, ledger_id: &LedgerId) -> Option<&SingleLedgerStates>;
 
     /**
-     * Returns an iterator over the containing ledgers' `OperationHistory`s.
+     * Returns an iterator over the containing ledgers' `SingleLedgerStates`.
      */
-    fn iter(&self) -> Iter<LedgerId, OperationHistory>;
+    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerStates>;
 
     fn effects(&self) -> &TransactionEffects;
     fn mut_effects(&mut self) -> &mut TransactionEffects;

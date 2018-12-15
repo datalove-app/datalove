@@ -31,46 +31,46 @@ pub enum MultiLedgerTransaction {
 
 impl MultiLedgerTransaction {
     /// Validates and applies the transaction and it's operations against the
-    /// ledgers available in `MultiLedgerHistory`
-    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
+    /// ledgers available in `MultiLedgerState`
+    pub fn mut_validate_and_apply<S: MultiLedgerState>(
         &self,
         transactions: &TransactionMap,
-        multiledger_history: H,
-    ) -> Result<H, Error> {
-        self.validate_seq_no(&multiledger_history)?;
+        multiledger_state: S,
+    ) -> Result<S, Error> {
+        self.validate_seq_no(&multiledger_state)?;
 
         match self {
             MultiLedgerTransaction::Basic(tx) => tx
-                .mut_validate_and_apply(multiledger_history)
+                .mut_validate_and_apply(multiledger_state)
                 .map_err(Error::BasicTransactionError),
             MultiLedgerTransaction::StartHTL(tx) => tx
-                .mut_validate_and_apply(multiledger_history)
+                .mut_validate_and_apply(multiledger_state)
                 .map_err(Error::StartHTLTransactionError),
             MultiLedgerTransaction::EndHTL(tx) => transactions
                 .get(&tx.start_htl_id())
                 .and_then(|start_htl| start_htl.unwrap_start_htl())
                 .ok_or(Error::InvalidStartHTLError)
                 .and_then(|start_htl| tx
-                    .mut_validate_and_apply(start_htl, multiledger_history)
+                    .mut_validate_and_apply(start_htl, multiledger_state)
                     .map_err(Error::EndHTLTransactionError)
                 ),
         }
     }
 
     /// Validates and applies the transaction and it's operations against the
-    /// ledgers available in `MultiLedgerHistory`, but also guarantees that all
+    /// ledgers available in `MultiLedgerState`, but also guarantees that all
     /// ledgers required by the transaction are available.
-    pub fn mut_validate_and_apply_new<H: MultiLedgerHistory>(
+    pub fn mut_validate_and_apply_new<S: MultiLedgerState>(
         &self,
         transactions: &TransactionMap,
-        multiledger_history: H,
-    ) -> Result<H, Error> {
-        // ensure no ops require ledgers not in multiledger_history
+        multiledger_state: S,
+    ) -> Result<S, Error> {
+        // ensure no ops require ledgers not in multiledger_state
         self.required_ledger_ids(transactions)
             .ok_or(Error::InvalidEndHTLError)
             .and_then(|ref required_ledger_ids| {
-                if multiledger_history.has_all_histories(required_ledger_ids) {
-                    self.mut_validate_and_apply(transactions, multiledger_history)
+                if multiledger_state.has_all_ledgers(required_ledger_ids) {
+                    self.mut_validate_and_apply(transactions, multiledger_state)
                 } else {
                     Err(Error::InvalidEndHTLError)
                 }
@@ -81,17 +81,17 @@ impl MultiLedgerTransaction {
     /// against multi ledger history.
     ///
     /// NOTE: only checks against `MultiLedgerState`s present in
-    /// `multiledger_history`
-    fn validate_seq_no<H: MultiLedgerHistory>(
+    /// `multiledger_state`
+    fn validate_seq_no<S: MultiLedgerState>(
         &self,
-        multiledger_history: &H,
+        multiledger_state: &S,
     ) -> Result<(), Error> {
         self.seq_nos()
             .iter()
-            .filter(|(id, _)| multiledger_history.has_history(id))
-            .map(|(ledger_id, tx_seq_no)| multiledger_history
-                .get(ledger_id)
-                .and_then(|op_history| op_history.current_seq_no())
+            .filter(|(id, _)| multiledger_state.has_ledger(id))
+            .map(|(ledger_id, tx_seq_no)| multiledger_state
+                .ledger(ledger_id)
+                .and_then(|ledger_state| ledger_state.current_seq_no())
                 .map(|ledger_seq_no| (ledger_seq_no, tx_seq_no))
             )
             .fold(Ok(()), |seq_nos_are_valid, seq_nos| seq_nos_are_valid

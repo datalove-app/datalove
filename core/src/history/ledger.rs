@@ -4,59 +4,59 @@ use crate::{
     operations::{
         LedgerOperation,
         Error as LedgerOperationError,
-        base::{LedgerEffects, LedgerHistory, Operation},
+        base::{
+            OperationEffects,
+            LedgerState as ILedgerState,
+            Operation,
+        },
     },
 };
-
-pub type SingleLedgerStates = Vec<SingleLedgerState>;
 
 /**
  * Stores the ledger state and any side effects of applying an operation
  */
-pub struct SingleLedgerState {
+pub struct LedgerState {
     ledger: Ledger,
-    effects: LedgerEffects,
+    effects: OperationEffects,
 }
 
-impl SingleLedgerState {
+impl LedgerState {
     pub fn new(ledger: Ledger) -> Self {
-        SingleLedgerState {
+        LedgerState {
             ledger,
             effects: HashMap::new()
         }
     }
 }
 
-impl LedgerHistory for SingleLedgerState {
+impl ILedgerState for LedgerState {
     fn ledger(&self) -> &Ledger { &self.ledger }
-    fn effects(&self) -> &LedgerEffects { &self.effects }
+    fn effects(&self) -> &OperationEffects { &self.effects }
 
     fn mut_ledger(&mut self) -> &mut Ledger { &mut self.ledger }
-    fn mut_effects(&mut self) -> &mut LedgerEffects { &mut self.effects }
+    fn mut_effects(&mut self) -> &mut OperationEffects { &mut self.effects }
 }
 
 /**
- * Contains a list of `SingleLedgerState`s, i.e. the entire potential history
+ * Contains a list of `LedgerState`s, i.e. the entire potential history
  * of a single ledger.
  *
  * Since operations within HTL transactions can succeed or fail
- * `SingleLedgerState`s are either cloned or removed from the
- * `OperationHistory` before the newer operations are applied. This allows
+ * `LedgerState`s are either cloned or removed from the
+ * `SingleLedgerStates` before the newer operations are applied. This allows
  * certain operations to be applied on top of currently unresolved operations.
  */
-pub struct OperationHistory {
-    ledger_states: SingleLedgerStates,
-}
+pub struct SingleLedgerStates(Vec<LedgerState>);
 
-impl OperationHistory {
-    pub fn new(ledger: Ledger) -> Self {
+impl SingleLedgerStates {
+    pub fn from(ledger: Ledger) -> Self {
         let mut ledger_states = Vec::new();
-        ledger_states.push(SingleLedgerState::new(ledger));
-        OperationHistory { ledger_states }
+        ledger_states.push(LedgerState::new(ledger));
+        SingleLedgerStates(ledger_states)
     }
 
     pub fn current_seq_no(&self) -> Option<u64> {
-        self.ledger_states
+        self.0
             .first()
             .map(|ledger_states| ledger_states.ledger().seq_no())
     }
@@ -65,7 +65,7 @@ impl OperationHistory {
         &self,
         operation: &LedgerOperation,
     ) -> Result<&Self, LedgerOperationError> {
-        self.ledger_states
+        self.0
             .iter()
             .fold(Ok(()), |ledger_states_are_valid, ledger_states| {
                 ledger_states_are_valid
@@ -79,7 +79,7 @@ impl OperationHistory {
         &mut self,
         operation: &LedgerOperation,
     ) -> &mut Self {
-        self.ledger_states
+        self.0
             .iter_mut()
             .for_each(|mut_ls| { operation.mut_apply(mut_ls); });
 

@@ -29,54 +29,54 @@ use crate::{
         *,
         base::{
             *,
-            MultiLedgerHistory,
+            MultiLedgerState as IMultiLedgerState,
         },
     },
 };
-use super::operation::*;
+use super::ledger::*;
 
-pub type OperationHistories = HashMap<LedgerId, OperationHistory>;
+pub type LedgerStates = HashMap<LedgerId, SingleLedgerStates>;
 pub type TransactionOrder = Vec<TransactionId>;
 pub type TransactionOrders = HashMap<LedgerId, TransactionOrder>;
 
 /**
- * Stores a hashmap of `OperationHistory`s and any side effects of applying a
+ * Stores a hashmap of `SingleLedgerStates`s and any side effects of applying a
  * transaction.
  */
 pub struct MultiLedgerState {
-    histories: OperationHistories,
+    ledger_states: LedgerStates,
     effects: TransactionEffects,
 }
 
 impl MultiLedgerState {
     pub fn new() -> Self {
         MultiLedgerState{
-            histories: HashMap::new(),
+            ledger_states: HashMap::new(),
             effects: HashMap::new(),
         }
     }
 
     pub fn add_ledger(&mut self, ledger: Ledger) -> &mut Self {
-        self.histories.insert(ledger.id(), OperationHistory::new(ledger));
+        self.ledger_states.insert(ledger.id(), SingleLedgerStates::from(ledger));
         self
     }
 }
 
-impl MultiLedgerHistory for MultiLedgerState {
-    fn has_history(&self, ledger_id: &LedgerId) -> bool {
-        self.histories.contains_key(ledger_id)
+impl IMultiLedgerState for MultiLedgerState {
+    fn has_ledger(&self, ledger_id: &LedgerId) -> bool {
+        self.ledger_states.contains_key(ledger_id)
     }
 
-    fn has_all_histories(&self, required_ids: &LedgerIds) -> bool {
-        required_ids.iter().all(|id| self.has_history(id))
+    fn has_all_ledgers(&self, required_ids: &LedgerIds) -> bool {
+        required_ids.iter().all(|id| self.has_ledger(id))
     }
 
-    fn get(&self, ledger_id: &LedgerId) -> Option<&OperationHistory> {
-        self.histories.get(ledger_id)
+    fn ledger(&self, ledger_id: &LedgerId) -> Option<&SingleLedgerStates> {
+        self.ledger_states.get(ledger_id)
     }
 
-    fn iter(&self) -> Iter<LedgerId, OperationHistory> {
-        self.histories.iter()
+    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerStates> {
+        self.ledger_states.iter()
     }
 
     fn effects(&self) -> &TransactionEffects { &self.effects }
@@ -84,6 +84,7 @@ impl MultiLedgerHistory for MultiLedgerState {
 }
 
 /**
+ * TODO: rename
  * Contains:
  * - a `MultiLedgerState`,
  * - a map of `Transaction`s
@@ -91,7 +92,7 @@ impl MultiLedgerHistory for MultiLedgerState {
 pub struct TransactionHistory {
     // a set of all affected ledger ids (for convenience)
     // ledger_ids: LedgerIds,
-    // a set of all affected ledgers and their potential histories
+    // a set of all affected ledgers and their potential ledger_states
     multiledger_histories: MultiLedgerState,
     // a list of all transactions
     transactions: TransactionMap,

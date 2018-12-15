@@ -16,11 +16,11 @@
 //! 		- get (from storage) latest version of that ledger that doesnt include any htls
 //! 		- get (from storage) all transactions for this ledger since it's sequence number
 //!
-//! - MultiLedgerHistory Generation (`new(tx)`)
+//! - MultiLedgerState Generation (`new(tx)`)
 //! 	- inits a HashMap of trees (one for each unique ledger in tx)
 //! 	- inits HashMap<ID, MultiLedgerTransaction>
 //!
-//! - MultiLedgerHistory addition (`add_ledger(ledger, tx_list)`)
+//! - MultiLedgerState addition (`add_ledger(ledger, tx_list)`)
 //! 	- moves new (unseen) txs to the hashmap
 //! 	-
 //!
@@ -29,5 +29,5 @@
 //! 	-
 //! 	- ?? filter out operations that don't apply to that ledger
 
-pub mod operation;
-pub mod transaction;
+pub mod ledger;
+pub mod multiledger;

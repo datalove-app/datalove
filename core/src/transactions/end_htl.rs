@@ -22,19 +22,21 @@ pub struct EndHTLTransaction {
 }
 
 impl EndHTLTransaction {
-    ///
-    pub fn mut_validate_and_apply<H: MultiLedgerHistory>(
+    /**
+     */
+    pub fn mut_validate_and_apply<S: MultiLedgerState>(
         &self,
         _start_htl: &StartHTLTransaction,
-        _multiledger_history: H,
-    ) -> Result<H, Error> {
+        _multiledger_state: S,
+    ) -> Result<S, Error> {
         // ensure all seq_ledger_ids in start_htl are listed in &self
         // ensure this txn's seq_no is one greater than seq_no in ledger
 
         Err(Error::InvalidTransaction)
     }
 
-    ///
+    /**
+     */
     pub fn start_htl_id(&self) -> TransactionId {
         Rc::clone(&self.start_htl_id)
     }

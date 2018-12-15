@@ -2,18 +2,18 @@ use std::collections::HashMap;
 use std::error::Error;
 use crate::ledger::*;
 
-pub type LedgerEffectKey = (&'static str, String);
-pub type LedgerEffects = HashMap<LedgerEffectKey, String>;
+pub type OperationEffectKey = (&'static str, String);
+pub type OperationEffects = HashMap<OperationEffectKey, String>;
 
 /**
  * Provides access to the ledger and any effects an operation may have.
  */
-pub trait LedgerHistory {
+pub trait LedgerState {
     fn ledger(&self) -> &Ledger;
-    fn effects(&self) -> &LedgerEffects;
+    fn effects(&self) -> &OperationEffects;
 
     fn mut_ledger(&mut self) -> &mut Ledger;
-    fn mut_effects(&mut self) -> &mut LedgerEffects;
+    fn mut_effects(&mut self) -> &mut OperationEffects;
 }
 
 /**
@@ -26,20 +26,20 @@ pub trait Operation<'a, OpError: Error> {
     fn ledger_id(&self) -> LedgerId;
 
     /**
-     * Determines if the operation can be applied to a given `LedgerHistory`.
+     * Determines if the operation can be applied to a given `LedgerState`.
      */
     fn validate(
         &self,
         // tx_sender: &String,
-        ledger_history: &LedgerHistory,
+        ledger_state: &LedgerState,
     ) -> Result<&Self, OpError>;
 
     /**
-     * Applies the operation's changes to the underlying `LedgerHistory`.
+     * Applies the operation's changes to the underlying `LedgerState`.
      */
     fn mut_apply(
         &'a self,
         // tx_sender: &String,
-        mut_ledger_history: &'a mut LedgerHistory,
-    ) -> &'a mut LedgerHistory;
+        mut_ledger_state: &'a mut LedgerState,
+    ) -> &'a mut LedgerState;
 }

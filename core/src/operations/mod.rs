@@ -31,9 +31,9 @@ impl LedgerOperation {
     /// Determines if operation is destined for this ledger, or for another.
     fn validate_ledger_id_match(
         &self,
-        ledger_history: &LedgerHistory,
+        ledger_state: &LedgerState,
     ) -> Result<&Self, Error> {
-        if ledger_history.ledger().id().eq(&self.ledger_id()) {
+        if ledger_state.ledger().id().eq(&self.ledger_id()) {
             Ok(self)
         } else {
             Err(Error::LedgerIdMismatch)
@@ -53,25 +53,25 @@ impl<'a> Operation<'a, Error> for LedgerOperation {
 
     fn validate(
         &self,
-        ledger_history: &LedgerHistory,
+        ledger_state: &LedgerState,
     ) -> Result<&Self, Error> {
-        self.validate_ledger_id_match(ledger_history)?;
+        self.validate_ledger_id_match(ledger_state)?;
 
         match self {
             LedgerOperation::SetExchangeRate(op) => op
-                .validate(ledger_history)
+                .validate(ledger_state)
                 .and(Ok(self))
                 .map_err(Error::SetExchangeRateError),
             LedgerOperation::IncreaseLimit(op) => op
-                .validate(ledger_history)
+                .validate(ledger_state)
                 .and(Ok(self))
                 .map_err(Error::IncreaseLimitError),
             LedgerOperation::DecreaseLimit(op) => op
-                .validate(ledger_history)
+                .validate(ledger_state)
                 .and(Ok(self))
                 .map_err(Error::DecreaseLimitError),
             LedgerOperation::Payment(op) => op
-                .validate(ledger_history)
+                .validate(ledger_state)
                 .and(Ok(self))
                 .map_err(Error::PaymentError),
         }
@@ -79,17 +79,17 @@ impl<'a> Operation<'a, Error> for LedgerOperation {
 
     fn mut_apply(
         &'a self,
-        mut_ledger_history: &'a mut LedgerHistory,
-    ) -> &'a mut LedgerHistory {
+        mut_ledger_state: &'a mut LedgerState,
+    ) -> &'a mut LedgerState {
         match self {
             LedgerOperation::SetExchangeRate(op) => op
-                .mut_apply(mut_ledger_history),
+                .mut_apply(mut_ledger_state),
             LedgerOperation::IncreaseLimit(op) => op
-                .mut_apply(mut_ledger_history),
+                .mut_apply(mut_ledger_state),
             LedgerOperation::DecreaseLimit(op) => op
-                .mut_apply(mut_ledger_history),
+                .mut_apply(mut_ledger_state),
             LedgerOperation::Payment(op) => op
-                .mut_apply(mut_ledger_history),
+                .mut_apply(mut_ledger_state),
         }
     }
 }

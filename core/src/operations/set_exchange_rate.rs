@@ -39,13 +39,13 @@ impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
 
     fn validate(
         &self,
-        ledger_history: &LedgerHistory,
+        ledger_state: &LedgerState,
     ) -> Result<&Self, Error> {
         if self.is_rate_malformed() {
             Err(Error::MalformedExchangeRateError)
-        } else if self.is_ledger_capacity_exceeded(&ledger_history.ledger()) {
+        } else if self.is_ledger_capacity_exceeded(&ledger_state.ledger()) {
             Err(Error::ExceededLedgerCapacityError)
-        } else if self.is_ledger_underfunded(&ledger_history.ledger()) {
+        } else if self.is_ledger_underfunded(&ledger_state.ledger()) {
             Err(Error::UnderfundedLedgerError)
         } else {
             Ok(self)
@@ -54,10 +54,10 @@ impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
 
     fn mut_apply(
         &'a self,
-        mut_ledger_history: &'a mut LedgerHistory,
-    ) -> &'a mut LedgerHistory {
-        mut_ledger_history.mut_ledger().set_exchange_rate((self.n, self.d));
-        mut_ledger_history
+        mut_ledger_state: &'a mut LedgerState,
+    ) -> &'a mut LedgerState {
+        mut_ledger_state.mut_ledger().set_exchange_rate((self.n, self.d));
+        mut_ledger_state
     }
 }
 
