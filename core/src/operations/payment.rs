@@ -4,7 +4,7 @@ use serde_derive::{Serialize, Deserialize};
 use crate::ledger::*;
 use super::base::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaymentOperation { // vostro only, unless in HTL
     ledger_id: LedgerId,
     sender: String,
@@ -26,7 +26,7 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
 
     fn validate(
         &self,
-        _ledger_state: &LedgerState,
+        context: &OperationContext,
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
@@ -38,10 +38,12 @@ impl<'a> Operation<'a, Error> for PaymentOperation {
 
     fn mut_apply(
         &'a self,
-        mut_ledger_state: &'a mut LedgerState,
-    ) -> &'a mut LedgerState {
-        mut_ledger_state.mut_ledger().set_balance(self.amount);
-        mut_ledger_state
+        mut_context: &'a mut OperationContext,
+    ) -> &'a mut OperationContext {
+        mut_context
+            .mut_ledger()
+            .set_balance(self.amount);
+        mut_context
     }
 }
 

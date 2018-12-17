@@ -6,7 +6,7 @@ use super::base::*;
 
 const ZERO: u64 = 0;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SetExchangeRateOperation {
     ledger_id: LedgerId,
     n: u64, // counterparty units
@@ -39,13 +39,13 @@ impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
 
     fn validate(
         &self,
-        ledger_state: &LedgerState,
+        context: &OperationContext,
     ) -> Result<&Self, Error> {
         if self.is_rate_malformed() {
             Err(Error::MalformedExchangeRateError)
-        } else if self.is_ledger_capacity_exceeded(&ledger_state.ledger()) {
+        } else if self.is_ledger_capacity_exceeded(&context.ledger()) {
             Err(Error::ExceededLedgerCapacityError)
-        } else if self.is_ledger_underfunded(&ledger_state.ledger()) {
+        } else if self.is_ledger_underfunded(&context.ledger()) {
             Err(Error::UnderfundedLedgerError)
         } else {
             Ok(self)
@@ -54,10 +54,12 @@ impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
 
     fn mut_apply(
         &'a self,
-        mut_ledger_state: &'a mut LedgerState,
-    ) -> &'a mut LedgerState {
-        mut_ledger_state.mut_ledger().set_exchange_rate((self.n, self.d));
-        mut_ledger_state
+        mut_context: &'a mut OperationContext,
+    ) -> &'a mut OperationContext {
+        mut_context
+            .mut_ledger()
+            .set_exchange_rate((self.n, self.d));
+        mut_context
     }
 }
 

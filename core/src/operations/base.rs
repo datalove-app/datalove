@@ -8,7 +8,8 @@ pub type OperationEffects = HashMap<OperationEffectKey, String>;
 /**
  * Provides access to the ledger and any effects an operation may have.
  */
-pub trait LedgerState {
+pub trait OperationContext {
+    fn sender(&self) -> &str;
     fn ledger(&self) -> &Ledger;
     fn effects(&self) -> &OperationEffects;
 
@@ -30,8 +31,7 @@ pub trait Operation<'a, OpError: Error> {
      */
     fn validate(
         &self,
-        // tx_sender: &String,
-        ledger_state: &LedgerState,
+        context: &OperationContext,
     ) -> Result<&Self, OpError>;
 
     /**
@@ -39,7 +39,6 @@ pub trait Operation<'a, OpError: Error> {
      */
     fn mut_apply(
         &'a self,
-        // tx_sender: &String,
-        mut_ledger_state: &'a mut LedgerState,
-    ) -> &'a mut LedgerState;
+        mut_context: &'a mut OperationContext
+    ) -> &'a mut OperationContext;
 }
