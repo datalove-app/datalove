@@ -1,35 +1,37 @@
 use std::collections::HashMap;
 use crate::{
-    ledger::*,
+    ledger::Ledger,
     operations::{
+        base::{
+            OperationContext as IOperationContext,
+            OperationEffects,
+        },
         LedgerOperation,
         Error as LedgerOperationError,
-        base::{
-            OperationEffects,
-            LedgerState as ILedgerState,
-            Operation,
-        },
     },
 };
 
 /**
  * Stores the ledger state and any side effects of applying an operation
  */
-pub struct LedgerState {
+pub struct OperationContext {
+    sender: &'static str,
     ledger: Ledger,
     effects: OperationEffects,
 }
 
-impl LedgerState {
+impl OperationContext {
     pub fn new(ledger: Ledger) -> Self {
-        LedgerState {
+        OperationContext {
+            sender: "",
             ledger,
             effects: HashMap::new()
         }
     }
 }
 
-impl ILedgerState for LedgerState {
+impl IOperationContext for OperationContext {
+    fn sender(&self) -> &str { &self.sender }
     fn ledger(&self) -> &Ledger { &self.ledger }
     fn effects(&self) -> &OperationEffects { &self.effects }
 
@@ -38,27 +40,27 @@ impl ILedgerState for LedgerState {
 }
 
 /**
- * Contains a list of `LedgerState`s, i.e. the entire potential history
+ * Contains a list of `OperationContext`s, i.e. the entire potential history
  * of a single ledger.
  *
  * Since operations within HTL transactions can succeed or fail
- * `LedgerState`s are either cloned or removed from the
- * `SingleLedgerStates` before the newer operations are applied. This allows
+ * `OperationContext`s are either cloned or removed from the
+ * `SingleLedgerContexts` before the newer operations are applied. This allows
  * certain operations to be applied on top of currently unresolved operations.
  */
-pub struct SingleLedgerStates(Vec<LedgerState>);
+pub struct SingleLedgerContexts(Vec<OperationContext>);
 
-impl SingleLedgerStates {
+impl SingleLedgerContexts {
     pub fn from(ledger: Ledger) -> Self {
-        let mut ledger_states = Vec::new();
-        ledger_states.push(LedgerState::new(ledger));
-        SingleLedgerStates(ledger_states)
+        let mut contexts = Vec::new();
+        contexts.push(OperationContext::new(ledger));
+        SingleLedgerContexts(contexts)
     }
 
     pub fn current_seq_no(&self) -> Option<u64> {
         self.0
             .first()
-            .map(|ledger_states| ledger_states.ledger().seq_no())
+            .map(|context| context.ledger().seq_no())
     }
 
     pub fn validate(
@@ -67,9 +69,9 @@ impl SingleLedgerStates {
     ) -> Result<&Self, LedgerOperationError> {
         self.0
             .iter()
-            .fold(Ok(()), |ledger_states_are_valid, ledger_states| {
-                ledger_states_are_valid
-                    .and_then(|_| operation.validate(ledger_states))
+            .fold(Ok(()), |contexts_are_valid, context| {
+                contexts_are_valid
+                    .and_then(|_| operation.validate(context))
                     .and(Ok(()))
             })
             .map(|_| self)
@@ -82,7 +84,6 @@ impl SingleLedgerStates {
         self.0
             .iter_mut()
             .for_each(|mut_ls| { operation.mut_apply(mut_ls); });
-
         self
     }
 

@@ -1,5 +1,7 @@
 //!
 
+#![feature(try_from)]
+
 pub mod history;
 pub mod ledger;
 pub mod operations;

@@ -22,80 +22,145 @@
  */
 
 use std::collections::{hash_map::Iter, HashMap};
-use std::rc::Rc;
 use crate::{
-    ledger::*,
+    ledger::{Ledger, LedgerId},
     transactions::{
-        *,
         base::{
-            *,
-            MultiLedgerState as IMultiLedgerState,
+            LedgerIds,
+            TransactionContext as ITransactionContext,
+            TransactionEffects,
+            TransactionId,
         },
+        basic::BasicTransaction,
+        start_htl::StartHTLTransaction,
+        end_htl::EndHTLTransaction,
+        MultiLedgerTransaction,
+        Error as MultiLedgerTransactionError,
+        TransactionsMap as ITransactionsMap,
     },
 };
 use super::ledger::*;
 
-pub type LedgerStates = HashMap<LedgerId, SingleLedgerStates>;
+pub type LedgerContexts = HashMap<LedgerId, SingleLedgerContexts>;
 pub type TransactionOrder = Vec<TransactionId>;
 pub type TransactionOrders = HashMap<LedgerId, TransactionOrder>;
 
 /**
- * Stores a hashmap of `SingleLedgerStates`s and any side effects of applying a
- * transaction.
+ * Stores a hashmap of `SingleLedgerContexts`s and any side effects of applying
+ * a transaction.
  */
-pub struct MultiLedgerState {
-    ledger_states: LedgerStates,
+pub struct MultiLedgerContext {
+    ledger_contexts: LedgerContexts,
     effects: TransactionEffects,
 }
 
-impl MultiLedgerState {
+impl MultiLedgerContext {
     pub fn new() -> Self {
-        MultiLedgerState{
-            ledger_states: HashMap::new(),
+        MultiLedgerContext {
+            ledger_contexts: HashMap::new(),
             effects: HashMap::new(),
         }
     }
 
     pub fn add_ledger(&mut self, ledger: Ledger) -> &mut Self {
-        self.ledger_states.insert(ledger.id(), SingleLedgerStates::from(ledger));
+        self.ledger_contexts
+            .insert(ledger.id(), SingleLedgerContexts::from(ledger));
         self
     }
 }
 
-impl IMultiLedgerState for MultiLedgerState {
+impl ITransactionContext for MultiLedgerContext {
     fn has_ledger(&self, ledger_id: &LedgerId) -> bool {
-        self.ledger_states.contains_key(ledger_id)
+        self.ledger_contexts.contains_key(ledger_id)
     }
 
     fn has_all_ledgers(&self, required_ids: &LedgerIds) -> bool {
         required_ids.iter().all(|id| self.has_ledger(id))
     }
 
-    fn ledger(&self, ledger_id: &LedgerId) -> Option<&SingleLedgerStates> {
-        self.ledger_states.get(ledger_id)
+    fn ledger_context(
+        &self,
+        ledger_id: &LedgerId
+    ) -> Option<&SingleLedgerContexts> {
+        self.ledger_contexts.get(ledger_id)
     }
 
-    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerStates> {
-        self.ledger_states.iter()
+    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerContexts> {
+        self.ledger_contexts.iter()
     }
 
     fn effects(&self) -> &TransactionEffects { &self.effects }
     fn mut_effects(&mut self) -> &mut TransactionEffects { &mut self.effects }
 }
 
+pub struct TransactionsMap(HashMap<TransactionId, MultiLedgerTransaction>);
+
+impl TransactionsMap {
+    pub fn new() -> Self { TransactionsMap(HashMap::new()) }
+
+    pub fn insert(
+        &mut self,
+        tx: MultiLedgerTransaction
+    ) -> Option<MultiLedgerTransaction> {
+        self.0.insert(tx.id(), tx)
+    }
+}
+
+impl ITransactionsMap for TransactionsMap {
+    fn get(&self, id: &TransactionId) -> Option<&MultiLedgerTransaction> {
+        self.0.get(id)
+    }
+
+    fn get_basic(
+        &self,
+        id: &TransactionId
+    ) -> Option<&BasicTransaction> {
+        self.0
+            .get(id)
+            .and_then(|tx| match tx {
+                MultiLedgerTransaction::Basic(tx) => Some(tx),
+                _ => None,
+            })
+    }
+
+    fn get_start_htl(
+        &self,
+        id: &TransactionId
+    ) -> Option<&StartHTLTransaction> {
+        self.0
+            .get(id)
+            .and_then(|tx| match tx {
+                MultiLedgerTransaction::StartHTL(tx) => Some(tx),
+                _ => None,
+            })
+    }
+
+    fn get_end_htl(
+        &self,
+        id: &TransactionId
+    ) -> Option<&EndHTLTransaction> {
+        self.0
+            .get(id)
+            .and_then(|tx| match tx {
+                MultiLedgerTransaction::EndHTL(tx) => Some(tx),
+                _ => None,
+            })
+    }
+}
+
 /**
  * TODO: rename
  * Contains:
- * - a `MultiLedgerState`,
+ * - a `MultiLedgerContext`,
  * - a map of `Transaction`s
  */
 pub struct TransactionHistory {
     // a set of all affected ledger ids (for convenience)
     // ledger_ids: LedgerIds,
-    // a set of all affected ledgers and their potential ledger_states
-    multiledger_histories: MultiLedgerState,
+    // a set of all affected ledgers and their potential ledger_contexts
+    multiledger_histories: MultiLedgerContext,
     // a list of all transactions
-    transactions: TransactionMap,
+    transactions: TransactionsMap,
     // an ordering of transactions for each ledger
     transaction_orders: TransactionOrders,
 }
@@ -104,11 +169,11 @@ pub struct TransactionHistory {
 impl TransactionHistory {
     // initializes a history around a new transaction
     pub fn from_transaction(tx: MultiLedgerTransaction) -> Result<Self, ()> {
-        let mut tx_map = HashMap::new();
-        tx_map.insert(tx.id(), tx);
+        let mut tx_map = TransactionsMap::new();
+        tx_map.insert(tx);
 
         Ok(TransactionHistory {
-            multiledger_histories: MultiLedgerState::new(),
+            multiledger_histories: MultiLedgerContext::new(),
             transactions: tx_map,
             transaction_orders: HashMap::new(),
         })
