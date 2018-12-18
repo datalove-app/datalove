@@ -75,7 +75,9 @@ impl<'a> LedgerOperation {
         }
     }
 
-    /// Determines if operation is destined for this ledger, or for another.
+    /**
+     * Determines if operation is destined for this ledger, or for another.
+     */
     fn validate_ledger_id_match(
         &self,
         context: &OperationContext,
