@@ -9,7 +9,7 @@ use super::{
     start_htl::StartHTLTransaction,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EndHTLTransaction {
     // TODO: could this be the start_htl_txid?
     // TODO: could this be the start_htl_txid AND the hashlock?
@@ -24,21 +24,19 @@ pub struct EndHTLTransaction {
 impl EndHTLTransaction {
     /**
      */
-    pub fn mut_validate_and_apply<S: MultiLedgerState>(
+    pub fn start_htl_id(&self) -> TransactionId {
+        Rc::clone(&self.start_htl_id)
+    }
+
+    pub fn mut_validate_and_apply<C: TransactionContext>(
         &self,
-        _start_htl: &StartHTLTransaction,
-        _multiledger_state: S,
-    ) -> Result<S, Error> {
+        start_htl: &StartHTLTransaction,
+        context: C,
+    ) -> Result<C, Error> {
         // ensure all seq_ledger_ids in start_htl are listed in &self
         // ensure this txn's seq_no is one greater than seq_no in ledger
 
         Err(Error::InvalidTransaction)
-    }
-
-    /**
-     */
-    pub fn start_htl_id(&self) -> TransactionId {
-        Rc::clone(&self.start_htl_id)
     }
 
     pub fn required_ledger_ids(
@@ -56,7 +54,14 @@ impl EndHTLTransaction {
 impl Transaction<Error> for EndHTLTransaction {
     fn id(&self) -> TransactionId { Rc::clone(&self.id) }
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
-    fn operations(&self) -> Option<&Operations> { None }
+    fn operations(&self) -> Option<&LedgerOperations> { None }
+
+    fn mut_validate_and_apply<C: TransactionContext>(
+        &self,
+        context: C,
+    ) -> Result<C, Error> {
+        panic!("Use `mut_validate_and_apply(&self, start_htl: &StartHTLTransaction, context: C)");
+    }
 
     fn operation_ledger_ids(&self) -> LedgerIds { HashSet::new() }
     fn required_ledger_ids(&self) -> Option<LedgerIds> {

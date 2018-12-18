@@ -3,7 +3,7 @@ use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use super::base::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StartHTLTransaction {
     id: TransactionId, // TODO: could this be the hashlock itself?
     sender: TransactionAgent,
@@ -17,26 +17,24 @@ pub struct StartHTLTransaction {
 
     // TODO: could this be used as a hashlock seed?
     metadata: Option<TransactionMetadata>,
-    operations: Operations,
+    operations: LedgerOperations,
 }
 
-impl StartHTLTransaction {
-    pub fn mut_validate_and_apply<S: MultiLedgerState>(
+impl Transaction<Error> for StartHTLTransaction {
+    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
+    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
+    fn operations(&self) -> Option<&LedgerOperations> { Some(&self.operations) }
+
+    fn mut_validate_and_apply<C: TransactionContext>(
         &self,
-        _multiledger_state: S,
-    ) -> Result<S, Error> {
+        context: C,
+    ) -> Result<C, Error> {
         // ensure no ops require ledgers not listed in seq_nos
         // ensure this txn's seq_no is one greater than seq_no in ledger
         // ensure that each operation is valid and applied
 
         Err(Error::InvalidTransaction)
     }
-}
-
-impl Transaction<Error> for StartHTLTransaction {
-    fn id(&self) -> TransactionId { Rc::clone(&self.id) }
-    fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
-    fn operations(&self) -> Option<&Operations> { Some(&self.operations) }
 }
 
 quick_error! {
