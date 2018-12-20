@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
-use crate::ledger::*;
+use crate::ledger::{Ledger, LedgerIdRc};
 
 pub type OperationEffectKey = (&'static str, String);
 pub type OperationEffects = HashMap<OperationEffectKey, String>;
@@ -22,9 +22,9 @@ pub trait OperationContext {
  */
 pub trait Operation<'a, OpError: Error> {
     /**
-     * `LedgerId` of the ledger to which the operation should be applied.
+     * `LedgerIdRc` of the ledger to which the operation should be applied.
      */
-    fn ledger_id(&self) -> LedgerId;
+    fn ledger_id(&self) -> LedgerIdRc;
 
     /**
      * Determines if the operation can be applied to a given `LedgerState`.

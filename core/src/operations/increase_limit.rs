@@ -1,12 +1,12 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::ledger::*;
+use crate::ledger::LedgerIdRc;
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct IncreaseLimitOperation { // vostro only, unless in HTL
-    ledger_id: LedgerId,
+    ledger_id: LedgerIdRc,
     amount: u128,
 }
 
@@ -15,7 +15,7 @@ impl IncreaseLimitOperation {
 }
 
 impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
-    fn ledger_id(&self) -> LedgerId { Rc::clone(&self.ledger_id) }
+    fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(
         &self,

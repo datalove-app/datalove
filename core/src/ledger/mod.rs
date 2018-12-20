@@ -1,10 +1,20 @@
 use std::rc::Rc;
+use holochain_core_types::{
+    error::HolochainError,
+    hash::HashString,
+    json::JsonString,
+};
+use holochain_core_types_derive::DefaultJson;
 use serde_derive::{Serialize, Deserialize};
+use crate::types::{AgentAddress, AgentAddressRc};
 
-pub type LedgerId = Rc<String>;
-pub type LedgerMetadata = Rc<String>;
+pub type LedgerId = HashString;
+pub type LedgerMetadata = HashString;
+pub type LedgerExchangeRate = (u64, u64);
+pub type LedgerIdRc = Rc<LedgerId>;
+pub type LedgerMetadataRc = Rc<LedgerMetadata>;
 
-pub const ENTRY_TYPE: &'static str = "ledger";
+pub const ENTRY_TYPE_NAME: &'static str = "ledger";
 
 /**
  * The main struct to which all operations and transactions are applied.
@@ -13,7 +23,7 @@ pub const ENTRY_TYPE: &'static str = "ledger";
  * ownership of an abstract, singly-created and mutually-agreed-upon number,
  * which can represent a quantity of anything that can be owned and exchanged.
  */
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, DefaultJson, Clone, Debug)]
 pub struct Ledger {
     // configuration state
     min_timeout: u32, // TODO: could these be in seq_no units?
@@ -22,19 +32,18 @@ pub struct Ledger {
     max_ops_per_transaction: u8,
 
     // ledger (app) state
-    id: LedgerId,
-    issuer: Rc<String>,
-    owner: Rc<String>,
+    id: LedgerIdRc,
+    issuer: AgentAddressRc,
+    owner: AgentAddressRc,
     limit: u128,
     balance: u128,
-    exchange_rate_n: u64,
-    exchange_rate_d: u64,
-    metadata: LedgerMetadata,
+    exchange_rate: LedgerExchangeRate,
+    metadata: LedgerMetadataRc,
 
     // ledger (history) state
     seq_no: u64, // TODO: is this necessary?
     // TODO: can the strings be Rc<String>?
-    latest_tx_entry_hash: Rc<String>, // TODO: is this necessary?
+    latest_tx_entry_hash: Option<Rc<HashString>>, // TODO: is this necessary?
 }
 
 // TODO: needs logic to:
@@ -64,51 +73,16 @@ pub struct Ledger {
             - remove it from list
  */
 impl Ledger {
-    pub fn new(
-        id: String,
-        owner: String,
-        issuer: String,
-        latest_tx_entry_hash: String,
-        min_timeout: u32,
-        max_timeout: u32,
-        max_pending_htls: u8,
-        max_ops_per_transaction: u8,
-        limit: u128,
-        balance: u128,
-        exchange_rate_n: u64,
-        exchange_rate_d: u64,
-        metadata: String,
-    ) -> Ledger {
-        Ledger {
-            id: Rc::new(id),
-            owner: Rc::new(owner),
-            issuer: Rc::new(issuer),
-            seq_no: 0,
-            min_timeout,
-            max_timeout,
-            max_pending_htls,
-            max_ops_per_transaction,
-            limit,
-            balance,
-            exchange_rate_n,
-            exchange_rate_d,
-            metadata: Rc::new(metadata),
-            latest_tx_entry_hash: Rc::new(latest_tx_entry_hash),
-        }
-    }
-
     // GETTERS
-    pub fn id(&self) -> LedgerId { Rc::clone(&self.id) }
-    pub fn owner(&self) -> Rc<String> { Rc::clone(&self.owner) }
-    pub fn issuer(&self) -> Rc<String> { Rc::clone(&self.issuer) }
+    pub fn id(&self) -> LedgerIdRc { Rc::clone(&self.id) }
+    pub fn owner(&self) -> AgentAddressRc { Rc::clone(&self.owner) }
+    pub fn issuer(&self) -> AgentAddressRc { Rc::clone(&self.issuer) }
 
     pub fn seq_no(&self) -> u64 { self.seq_no }
     pub fn limit(&self) -> u128 { self.limit }
     pub fn balance(&self) -> u128 { self.balance }
-    pub fn exchange_rate(&self) -> (u64, u64) {
-        (self.exchange_rate_n, self.exchange_rate_d)
-    }
-    pub fn metadata(&self) -> &str { &self.metadata }
+    pub fn exchange_rate(&self) -> &LedgerExchangeRate { &self.exchange_rate }
+    pub fn metadata(&self) -> LedgerMetadataRc { Rc::clone(&self.metadata) }
 
     // SETTERS
     pub fn bump_seq_no(&mut self, new_seq_no: Option<u64>) -> u64 {
@@ -126,9 +100,11 @@ impl Ledger {
         self.balance = balance;
         self
     }
-    pub fn set_exchange_rate(&mut self, rate: (u64, u64)) -> &mut Self {
-        self.exchange_rate_n = rate.0;
-        self.exchange_rate_d = rate.1;
+    pub fn set_exchange_rate(
+        &mut self,
+        exchange_rate: LedgerExchangeRate
+    ) -> &mut Self {
+        self.exchange_rate = exchange_rate;
         self
     }
 
@@ -149,24 +125,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let ledger = Ledger::new(
-            String::from("randomID"),
-            String::from("alice"),
-            String::from("bob"),
-            String::from(""),
-            30000,
-            60000,
-            5,
-            5,
-            u128::max_value(),
-            u128::max_value(),
-            1,
-            1,
-            String::from("")
-        );
-
-        println!("res: {:#?}", &ledger);
-
         assert!(true);
     }
 }

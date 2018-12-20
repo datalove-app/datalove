@@ -1,14 +1,14 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::ledger::*;
+use crate::ledger::{Ledger, LedgerIdRc};
 use super::base::*;
 
 const ZERO: u64 = 0;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SetExchangeRateOperation {
-    ledger_id: LedgerId,
+    ledger_id: LedgerIdRc,
     n: u64, // counterparty units
     d: u64, // ledger owner units
 }
@@ -35,7 +35,7 @@ impl SetExchangeRateOperation {
 }
 
 impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
-    fn ledger_id(&self) -> LedgerId { Rc::clone(&self.ledger_id) }
+    fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(
         &self,

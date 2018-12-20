@@ -28,7 +28,7 @@ pub enum LedgerOperation {
 }
 
 impl<'a> LedgerOperation {
-    pub fn ledger_id(&self) -> LedgerId {
+    pub fn ledger_id(&self) -> LedgerIdRc {
         match self {
             LedgerOperation::SetExchangeRate(op) => op.ledger_id(),
             LedgerOperation::IncreaseLimit(op) => op.ledger_id(),

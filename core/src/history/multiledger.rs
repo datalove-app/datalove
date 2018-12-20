@@ -23,7 +23,7 @@
 
 use std::collections::{hash_map::Iter, HashMap};
 use crate::{
-    ledger::{Ledger, LedgerId},
+    ledger::{Ledger, LedgerIdRc},
     transactions::{
         base::{
             LedgerIds,
@@ -41,9 +41,9 @@ use crate::{
 };
 use super::ledger::*;
 
-pub type LedgerContexts = HashMap<LedgerId, SingleLedgerContexts>;
+pub type LedgerContexts = HashMap<LedgerIdRc, SingleLedgerContexts>;
 pub type TransactionOrder = Vec<TransactionId>;
-pub type TransactionOrders = HashMap<LedgerId, TransactionOrder>;
+pub type TransactionOrders = HashMap<LedgerIdRc, TransactionOrder>;
 
 /**
  * Stores a hashmap of `SingleLedgerContexts`s and any side effects of applying
@@ -70,7 +70,7 @@ impl MultiLedgerContext {
 }
 
 impl ITransactionContext for MultiLedgerContext {
-    fn has_ledger(&self, ledger_id: &LedgerId) -> bool {
+    fn has_ledger(&self, ledger_id: &LedgerIdRc) -> bool {
         self.ledger_contexts.contains_key(ledger_id)
     }
 
@@ -80,12 +80,12 @@ impl ITransactionContext for MultiLedgerContext {
 
     fn ledger_context(
         &self,
-        ledger_id: &LedgerId
+        ledger_id: &LedgerIdRc
     ) -> Option<&SingleLedgerContexts> {
         self.ledger_contexts.get(ledger_id)
     }
 
-    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerContexts> {
+    fn ledger_iter(&self) -> Iter<LedgerIdRc, SingleLedgerContexts> {
         self.ledger_contexts.iter()
     }
 

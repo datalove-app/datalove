@@ -3,18 +3,22 @@ use std::{
     error::Error,
     rc::Rc,
 };
+use holochain_core_types::hash::HashString;
 use serde_derive::{Serialize, Deserialize};
 use crate::{
     history::ledger::SingleLedgerContexts,
-    ledger::LedgerId,
+    ledger::LedgerIdRc,
     operations::LedgerOperation,
+    types::AgentAddressRc,
 };
 
-pub type LedgerIds = HashSet<LedgerId>;
+pub type HashedTimelockPreimage = String;
+pub type LedgerIds = HashSet<LedgerIdRc>;
 pub type LedgerOperations = Vec<LedgerOperation>;
-pub type SequenceNumbers = HashMap<LedgerId, u64>;
-pub type TransactionId = Rc<String>;
-pub type TransactionAgent = Rc<String>;
+pub type SequenceNumbers = HashMap<LedgerIdRc, u64>;
+pub type TransactionAgent = AgentAddressRc;
+pub type TransactionId = Rc<HashString>;
+pub type TransactionMetadata = Rc<HashString>;
 
 pub type TransactionEffectKey = (&'static str, String);
 pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
@@ -36,7 +40,7 @@ pub enum HashedTimeLockProof {
     /**
      * Contains the preimage necessary to fulfill an HTL transaction.
      */
-    Fulfilled(String),
+    Fulfilled(HashedTimelockPreimage),
 }
 
 /**
@@ -56,13 +60,6 @@ pub enum HashedTimeLockFailureReason {
     Timeout(String),
 }
 
-/// TODO: is this necessary??
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TransactionMetadata {
-    app_hash: String,
-    entry_hash: String, // TODO: entry_id_anchor instead?
-}
-
 /**
  * Provides access to the set of `SingleLedgerContexts`s and any effects a
  * transaction may have.
@@ -76,7 +73,7 @@ pub trait TransactionContext {
      * skip validation and application of a given operation (since it's
      * validation and application won't be relevant to the newest transaction).
      */
-    fn has_ledger(&self, ledger_id: &LedgerId) -> bool;
+    fn has_ledger(&self, ledger_id: &LedgerIdRc) -> bool;
 
     /**
      * Determines if the `TransactionContext` contains all
@@ -87,17 +84,17 @@ pub trait TransactionContext {
     fn has_all_ledgers(&self, ids: &LedgerIds) -> bool;
 
     /**
-     * Retrieves the `SingleLedgerContexts` for a given `LedgerId`.
+     * Retrieves the `SingleLedgerContexts` for a given `LedgerIdRc`.
      */
     fn ledger_context(
         &self,
-        ledger_id: &LedgerId
+        ledger_id: &LedgerIdRc
     ) -> Option<&SingleLedgerContexts>;
 
     /**
      * Returns an iterator over the containing ledgers' `SingleLedgerContexts`.
      */
-    fn ledger_iter(&self) -> Iter<LedgerId, SingleLedgerContexts>;
+    fn ledger_iter(&self) -> Iter<LedgerIdRc, SingleLedgerContexts>;
 
     fn effects(&self) -> &TransactionEffects;
     fn mut_effects(&mut self) -> &mut TransactionEffects;
@@ -133,7 +130,7 @@ pub trait Transaction<TxError: Error> {
     ) -> Result<C, TxError>;
 
     /**
-     * Retrives the set of all `LedgerId`s explicitly listed alongside their
+     * Retrives the set of all `LedgerIdRc`s explicitly listed alongside their
      * new sequence numbers in a given transaction.
      */
     fn seq_ledger_ids(&self) -> LedgerIds {
@@ -146,7 +143,7 @@ pub trait Transaction<TxError: Error> {
     }
 
     /**
-     * Retrives the set of all `LedgerId`s explicitly listed within the given
+     * Retrives the set of all `LedgerIdRc`s explicitly listed within the given
      * transaction's list of contained `LedgerOperation`s.
      */
     fn operation_ledger_ids(&self) -> LedgerIds {

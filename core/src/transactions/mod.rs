@@ -1,4 +1,9 @@
 use std::convert::TryFrom;
+use holochain_core_types::{
+    error::HolochainError,
+    json::JsonString,
+};
+use holochain_core_types_derive::DefaultJson;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use self::{
@@ -12,6 +17,8 @@ pub mod base;
 pub mod basic;
 pub mod start_htl;
 pub mod end_htl;
+
+pub const ENTRY_TYPE_NAME: &'static str = "transaction";
 
 /**
  * Stores all transactions relevant to multiple ledgers' histories
@@ -27,12 +34,10 @@ pub trait TransactionsMap {
         Option<&EndHTLTransaction>;
 }
 
-pub const ENTRY_TYPE: &'static str = "multiledger_transaction";
-
 /**
  *
  */
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, DefaultJson, Clone, Debug)]
 #[serde(tag = "type")]
 pub enum MultiLedgerTransaction {
     Basic(BasicTransaction),
@@ -41,6 +46,9 @@ pub enum MultiLedgerTransaction {
 }
 
 impl MultiLedgerTransaction {
+    /**
+     * Retrieves the `Transaction`'s id.
+     */
     pub fn id(&self) -> TransactionId {
         match self {
             MultiLedgerTransaction::Basic(tx) => tx.id(),
@@ -52,17 +60,16 @@ impl MultiLedgerTransaction {
     /**
      * Validates and applies the transaction and it's operations against the
      * ledgers available in `MultiLedgerState`, but also guarantees that all
-     * ledgers required by the transaction are available.
+     * ledgers required by the transaction are available in `context`.
      */
     pub fn mut_validate_and_apply_new<C: TransactionContext + TransactionsMap>(
         &self,
         context: C,
     ) -> Result<C, Error> {
-        // ensure no ops require ledgers not in multiledger_state
         self.required_ledger_ids(&context)
             .ok_or(Error::InvalidEndHTLError)
-            .and_then(|ref required_ledger_ids| {
-                if context.has_all_ledgers(required_ledger_ids) {
+            .and_then(|required_ledger_ids| {
+                if context.has_all_ledgers(&required_ledger_ids) {
                     self.mut_validate_and_apply(context)
                 } else {
                     Err(Error::InvalidEndHTLError)
@@ -90,10 +97,10 @@ impl MultiLedgerTransaction {
             MultiLedgerTransaction::EndHTL(tx) => context
                 .get_start_htl(&tx.start_htl_id())
                 .ok_or(Error::InvalidStartHTLError)
-                .map(|start_htl| start_htl.clone())
+                .map(|start_htl| start_htl.to_owned())
                 .and_then(|start_htl| tx
                     // TODO: avoid cloning if possible
-                    .mut_validate_and_apply(&start_htl.clone(), context)
+                    .mut_validate_and_apply(&start_htl, context)
                     .map_err(Error::EndHTLTransactionError)
                 ),
         }

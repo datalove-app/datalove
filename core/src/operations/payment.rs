@@ -1,13 +1,16 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::ledger::*;
+use crate::{
+    ledger::LedgerIdRc,
+    types::AgentAddress,
+};
 use super::base::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaymentOperation { // vostro only, unless in HTL
-    ledger_id: LedgerId,
-    sender: String,
+    ledger_id: LedgerIdRc,
+    payer: AgentAddress,
 
     /**
      * Amount to send, denominated in receiver's ledger units.
@@ -26,7 +29,7 @@ pub struct PaymentOperation { // vostro only, unless in HTL
 impl PaymentOperation {}
 
 impl<'a> Operation<'a, Error> for PaymentOperation {
-    fn ledger_id(&self) -> LedgerId { Rc::clone(&self.ledger_id) }
+    fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(
         &self,
