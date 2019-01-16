@@ -2,46 +2,30 @@
  * Zome required callback interfaces
  */
 
-interface IGenesis {
-  (): boolean,
-}
-interface IValidateCommit<TEntry, TPackage extends null | IPackage> {
-  (entryType: string, entry: TEntry, header: IHeader, pkg: TPackage, sources: Sources): boolean,
-}
-interface IValidatePut<TEntry, TPackage extends null | IPackage> {
-  (entryType: string, entry: TEntry, header: IHeader, pkg: TPackage, sources: Sources): boolean,
-}
-interface IValidateMod<TEntry, TPackage extends null | IPackage> {
-  (entryType: string, entry: TEntry, header: IHeader, replaces: Hash, pkg: TPackage, sources: Sources): boolean,
-}
-interface IValidateDel<TPackage extends null | IPackage> {
-  (entryType: string, header: IHeader, pkg: TPackage, sources: Sources): boolean,
-}
-interface IValidateLink<TPackage extends null | IPackage> {
-  (entryType: string, links: ILink[], header: IHeader, pkg: TPackage, sources: Sources): boolean,
-}
-interface IValidatePutPkg<TPackage extends null | IPackage> {
-  (entryType: string): TPackage | null,
-}
-interface IValidateModPkg<TPackage extends null | IPackage> {
-  (entryType: string): TPackage | null,
-}
-interface IValidateDelPkg<TPackage extends null | IPackage> {
-  (entryType: string): TPackage | null,
-}
-interface IValidateLinkPkg<TPackage extends null | IPackage> {
-  (entryType: string): TPackage | null,
+/* eslint-disable space-infix-ops */
+
+type TGenesis = () => boolean;
+type TValidateCommit<TEntry, TPackage extends null | IBasePackageRequest = null> = (entryType: string, entry: TEntry, header: IHeader, pkg: IBasePackageRequest, sources: Sources) => boolean;
+type TValidatePut<TEntry, TPackage extends null | IBasePackageRequest = null> = (entryType: string, entry: TEntry, header: IHeader, pkg: IBasePackageRequest, sources: Sources) => boolean;
+type TValidateMod<TEntry, TPackage extends null | IBasePackageRequest = null> = (entryType: string, entry: TEntry, header: IHeader, replaces: Hash, pkg: IBasePackageRequest, sources: Sources) => boolean;
+type TValidateDel<TPackage extends null | IBasePackageRequest = null> = (entryType: string, header: IHeader, pkg: TPackage, sources: Sources) => boolean;
+type TValidateLink<TPackage extends null | IBasePackageRequest = null> = (entryType: string, links: ILink[], header: IHeader, pkg: TPackage, sources: Sources) => boolean;
+type TValidatePutPkg<TPackage extends null | IBasePackageRequest = null> = (entryType: string) => TPackage | null;
+type TValidateModPkg<TPackage extends null | IBasePackageRequest = null> = (entryType: string) => TPackage | null;
+type TValidateDelPkg<TPackage extends null | IBasePackageRequest = null> = (entryType: string) => TPackage | null;
+type TValidateLinkPkg<TPackage extends null | IBasePackageRequest = null> = (entryType: string) => TPackage | null;
+
+interface IZomeRequiredCallbacks<TEntry, TPackage extends null | IBasePackageRequest> {
+  genesis: TGenesis,
+  validateCommit: TValidateCommit<TEntry, TPackage>,
+  validatePut: TValidatePut<TEntry, TPackage>,
+  validateMod: TValidateMod<TEntry, TPackage>,
+  validateDel: TValidateDel<TPackage>,
+  validateLink: TValidateLink<TPackage>,
+  validatePutPkg: TValidatePutPkg<TPackage>,
+  validateModPkg: TValidateModPkg<TPackage>,
+  validateDelPkg: TValidateDelPkg<TPackage>,
+  validateLinkPkg: TValidateLinkPkg<TPackage>,
 }
 
-interface IZomeRequiredCallbacks<TEntry, TPackage extends null | IPackage> {
-  genesis: IGenesis,
-  validateCommit: IValidateCommit<TEntry, TPackage>,
-  validatePut: IValidatePut<TEntry, TPackage>,
-  validateMod: IValidateMod<TEntry, TPackage>,
-  validateDel: IValidateDel<TPackage>,
-  validateLink: IValidateLink<TPackage>,
-  validatePutPkg: IValidatePutPkg<TPackage>,
-  validateModPkg: IValidateModPkg<TPackage>,
-  validateDelPkg: IValidateDelPkg<TPackage>,
-  validateLinkPkg: IValidateLinkPkg<TPackage>,
-}
+/* eslint-enable */

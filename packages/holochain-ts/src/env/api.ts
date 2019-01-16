@@ -2,6 +2,8 @@
  * Method interfaces
  */
 
+/* eslint-disable no-unused-vars */
+
 interface IEntryWithHash<TEntry> extends IHash, IEntry<TEntry>{}
 
 interface IUpdateAgentOptionsIdentity {
@@ -147,7 +149,7 @@ declare function getBridges(): IBridge[];
  * @param {IGetLinksOptions} options
  * @returns {TReturn} TReturn extends IHash[] | Either<IHash[]> = Either<IHash[]>
  */
-declare function getLinks<TReturn extends IHash[] | Either<IHash[]> = Either<IHash[]>>(base: Hash, tag: string, options: IGetLinksOptions): TReturn;
+declare function getLinks<TReturn extends IHash[] | Either<IHash[]> = Either<IHash[]>>(base: Hash, tag: string, options?: IGetLinksOptions): TReturn;
 
 /**
  * @see getLinks
@@ -177,11 +179,12 @@ declare function get<TReturn>(hash: Hash, options?: IGetOptions): HashNotFound |
 //  * @param {IQueryOptionsHashes} options
 //  * @returns {IQueryResponseHash[] | IError}
 //  */
-// declare function query(options?: IQueryOptionsHashes): IQueryResponseHash[] | IError;
-// declare function query(options?: IQueryOptionsHeaders): IQueryResponseHeader[] | IError;
+// declare function query(options?: IQueryOptionsHashes): Either<IQueryResponseHash[]>;
+// declare function query(options?: IQueryOptionsHeaders): Either<IQueryResponseHeader[]>;
+// declare function query<TEntry>(options?: IQueryOptionsEntries): Either<IQueryResponseEntry<TEntry>[]>;
+// declare function query<TEntry>(options?: IQueryOptionsEntries & IQueryOptionsHashes): Either<IQueryResponseHashAndEntry<TEntry>[]>;
+
 // declare function query(options?: IQueryOptionsHashes & IQueryOptionsHeaders): IError; // FIXME: what does it look like to return hashes and headers?
-// declare function query<TEntry>(options?: IQueryOptionsEntries): IQueryResponseEntry<TEntry>[] | IError;
-// declare function query<TEntry>(options?: IQueryOptionsEntries & IQueryOptionsHashes): IQueryResponseHashAndEntry<TEntry>[] | IError;
 // declare function query<TEntry>(options?: IQueryOptionsEntries & IQueryOptionsHeaders): IError
 // declare function query<TEntry>(options?: IQueryOptionsEntries & IQueryOptionsHashes & IQueryOptionsHeaders): IError
 
@@ -246,3 +249,5 @@ declare function bundleStart<TBundleStartParam>(timeout: Integer, userParam: TBu
  * @param {boolean} commit
  */
 declare function bundleClose(commit: boolean): void;
+
+/* eslint-enable */

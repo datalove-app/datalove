@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "target": "es5",
+    "typeRoots": [
+      "src/types"
+    ],
+    "types": [],
+
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true
+  },
+  "include": [
+    "src/env/*.ts",
+    "src/*.ts"
+  ],
+  "exclude": [
+    "dist/"
+  ]
+}

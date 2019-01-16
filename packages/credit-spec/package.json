@@ -1,0 +1,14 @@
+{
+  "name": "@datalove-network/credit-spec",
+  "version": "0.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sunny G <sunny.gonna@gmail.com> (http://blog.sunnyg.io)",
+  "license": "MIT",
+  "dependencies": {
+    "cytoscape": "^3.2.14"
+  }
+}

@@ -118,8 +118,8 @@ interface IHeader {
 
 interface ILink {
   Base: Hash,
-  Link: Hash,
   Tag: LinkTag,
+  Link: Hash,
   LinkAction?: HCLinkAction.Del,
 }
 
@@ -136,6 +136,11 @@ interface IPackage {
     Hmap?: { [hash: string]: Integer, },
     TypeTops?: { [hcSysEntry: string]: Integer, },
   },
+}
+
+interface IBasePackageRequest {
+  [HC.PkgReq.Chain]?: HCPkgReqChainOpts,
+  [HC.PkgReq.EntryTypes]?: string[],
 }
 
 /* eslint-enable */

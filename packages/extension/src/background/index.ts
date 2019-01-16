@@ -3,11 +3,11 @@
 import { setup } from '@cycle/most-run';
 import { makeHTTPDriver } from '@cycle/http';
 // import { timeDriver } from '@cycle/time/most';
-import { rerunner, restartable } from 'cycle-restart';
 import { wrapStore } from '@sunny-g/react-chrome-redux';
+import { createCycleMiddleware } from '@sunny-g/redux-cycles';
+import { rerunner, restartable } from 'cycle-restart';
 import { applyMiddleware, createStore } from 'redux';
 import { composeWithDevTools } from 'remote-redux-devtools';
-import { createCycleMiddleware } from '@sunny-g/redux-cycles';
 
 import App from './App';
 
@@ -22,14 +22,14 @@ const composeEnhancers = composeWithDevTools({
 const store = createStore(
   (state = 1) => state,
   composeEnhancers(
-    applyMiddleware(cycleMiddleware)
+    applyMiddleware(cycleMiddleware),
   ),
 );
 wrapStore(store, { portName: 'MY_APP' }); // make sure portName matches
 
 const makeDrivers = () => ({
   ACTION: restartable(makeActionDriver()),
-  STORE: restartable(makeStateDriver()),
+  STATE: restartable(makeStateDriver()),
   HTTP: restartable(makeHTTPDriver()),
   // Time: timeDriver,
 });

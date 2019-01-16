@@ -1,0 +1,10 @@
+{
+  "name": "@astro-network/astro-core",
+  "version": "0.0.0",
+  "description": "",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

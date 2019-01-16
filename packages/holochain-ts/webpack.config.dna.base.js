@@ -54,17 +54,17 @@ module.exports.makeWebpackConfig = (opts) => {
   const { dnaDir, srcDir, zomes: zomeNames } = opts;
 
   const entries = zomeNames
-    .reduce((allEntries, name) => ({
+    .reduce((allEntries, zomeName) => ({
       ...allEntries,
-      [name]: path.resolve(srcDir, 'zomes', name, 'index.ts'),
+      [zomeName]: path.resolve(srcDir, zomeName, 'index.ts'),
     }), {});
 
   const outputs = zomeNames
-    .reduce((allOutputs, name) => ({
+    .reduce((allOutputs, zomeName) => ({
       ...allOutputs,
-      [name]: {
-        path: path.resolve(dnaDir, name),
-        filename: `${name}.js`,
+      [zomeName]: {
+        path: path.resolve(dnaDir, zomeName),
+        filename: `${zomeName}.js`,
         libraryTarget: 'this',
       },
     }), {});

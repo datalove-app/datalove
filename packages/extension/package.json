@@ -5,10 +5,9 @@
   "license": "MIT",
   "main": "src/index.js",
   "scripts": {
-    "build:dev": "NODE_ENV=development webpack --config scripts/webpack.config.dev.js",
-    "build:dev:watch": "run-p -r remotedev \"build:dev -- --watch\"",
     "remotedev": "remotedev",
     "serve": "NODE_ENV=development webpack-dev-server --config scripts/webpack.config.dev.js",
+    "serve:dev": "run-p -r remotedev serve",
     "test": "BABEL_ENV=test jest"
   },
   "jest": {
@@ -19,6 +18,7 @@
   },
   "devDependencies": {
     "html-webpack-plugin": "^2.30.1",
+    "npm-run-all": "^4.1.2",
     "webpack-chrome-extension-reloader": "^0.7.0"
   }
 }

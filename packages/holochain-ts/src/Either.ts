@@ -1,3 +1,5 @@
+export const newError = (): IError => ({ name: 'HolochainError' });
+
 export function isError<T extends any = any>(result: Either<T, IError>): result is IError {
   return typeof result === 'object' &&
     Object.prototype.hasOwnProperty.call(result, 'name') &&

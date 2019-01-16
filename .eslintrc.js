@@ -20,7 +20,9 @@ module.exports = {
   rules: {
     // file
     'eol-last': 'error',
-    'indent': ['error', 2],
+    'indent': ['error', 2, {
+      ignoreComments: true,
+    }],
     'max-len': ['warn', {
       code: 80,
       tabWidth: 2,
@@ -45,8 +47,11 @@ module.exports = {
       capIsNew: false,
     }],
     'no-nested-ternary': 'off',
-    'no-plusplus': 'error',
+    'no-plusplus': ['error', {
+      allowForLoopAfterthoughts: true,
+    }],
     'no-restricted-global': 'warn',
+    'no-shadow': 'warn',
     'no-undef': 'off',  // TODO: see https://github.com/eslint/typescript-eslint-parser/issues/77
     'no-undefined': 'error',
     'no-underscore-dangle': ['warn', {
@@ -59,9 +64,7 @@ module.exports = {
       ignoreRestSiblings: true,
       varsIgnorePattern: '^_',
     }],
-    'no-use-before-define': ['warn', {
-      functions: false,
-    }],
+    'no-use-before-define': ['warn'],
     'no-void': 'off',
     'object-curly-newline': 'off',
     'prefer-arrow-callback': 'off',
@@ -99,10 +102,11 @@ module.exports = {
     }],
     'typescript/no-angle-bracket-type-assertion': 'error',
     'typescript/no-array-constructor': 'error',
-    'typescript/no-empty-interface': 'error',
+    'typescript/no-empty-interface': 'warn',
     'typescript/no-explicit-any': 'warn',
     'typescript/no-triple-slash-reference': 'error',
-    'typescript/no-use-before-define': 'error',
+    'typescript/no-unused-vars': 'warn',
+    'typescript/no-use-before-define': 'warn',
 
     // react/jsx
     'react/boolean-prop-naming': ['error', {
@@ -150,5 +154,8 @@ module.exports = {
     'react/jsx-tag-spacing': ['error', {
       beforeClosing: 'never',
     }],
+
+    // custom plugins
+    // 'no-use-before-define': () => {},
   },
 };
