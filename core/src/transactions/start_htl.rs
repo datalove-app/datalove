@@ -20,7 +20,9 @@ pub struct StartHTLTransaction {
     operations: LedgerOperations,
 }
 
-impl Transaction<Error> for StartHTLTransaction {
+impl Transaction for StartHTLTransaction {
+    type Error = Error;
+
     fn id(&self) -> TransactionId { Rc::clone(&self.id) }
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
     fn operations(&self) -> Option<&LedgerOperations> { Some(&self.operations) }

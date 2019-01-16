@@ -41,7 +41,7 @@ impl<'a> LedgerOperation {
         &self,
         context: &OperationContext,
     ) -> Result<&Self, Error> {
-        self.validate_ledger_id_match(context)?;
+        self.verify_ledger_id_match(context)?;
 
         match self {
             LedgerOperation::SetExchangeRate(op) => op
@@ -78,7 +78,7 @@ impl<'a> LedgerOperation {
     /**
      * Determines if operation is destined for this ledger, or for another.
      */
-    fn validate_ledger_id_match(
+    fn verify_ledger_id_match(
         &self,
         context: &OperationContext,
     ) -> Result<&Self, Error> {

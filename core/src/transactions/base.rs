@@ -3,13 +3,12 @@ use std::{
     error::Error,
     rc::Rc,
 };
-use holochain_core_types::hash::HashString;
 use serde_derive::{Serialize, Deserialize};
 use crate::{
     history::ledger::SingleLedgerContexts,
     ledger::LedgerIdRc,
     operations::LedgerOperation,
-    types::AgentAddressRc,
+    types::{AgentAddressRc, HashStringRc},
 };
 
 pub type HashedTimelockPreimage = String;
@@ -17,8 +16,8 @@ pub type LedgerIds = HashSet<LedgerIdRc>;
 pub type LedgerOperations = Vec<LedgerOperation>;
 pub type SequenceNumbers = HashMap<LedgerIdRc, u64>;
 pub type TransactionAgent = AgentAddressRc;
-pub type TransactionId = Rc<HashString>;
-pub type TransactionMetadata = Rc<HashString>;
+pub type TransactionId = HashStringRc;
+pub type TransactionMetadata = HashStringRc;
 
 pub type TransactionEffectKey = (&'static str, String);
 pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
@@ -103,7 +102,9 @@ pub trait TransactionContext {
 /**
  * Validation and application of changes to a set of ledgers.
  */
-pub trait Transaction<TxError: Error> {
+pub trait Transaction {
+    type Error;
+
     /**
      * Retrieves the `TransactionId` of a given transaction.
      */
@@ -127,7 +128,7 @@ pub trait Transaction<TxError: Error> {
     fn mut_validate_and_apply<C: TransactionContext>(
         &self,
         context: C
-    ) -> Result<C, TxError>;
+    ) -> Result<C, Self::Error>;
 
     /**
      * Retrives the set of all `LedgerIdRc`s explicitly listed alongside their

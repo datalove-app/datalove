@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::error::Error;
 use crate::ledger::{Ledger, LedgerIdRc};
 
 pub type OperationEffectKey = (&'static str, String);
@@ -20,7 +19,9 @@ pub trait OperationContext {
 /**
  * Validation and application of changes to a ledger.
  */
-pub trait Operation<'a, OpError: Error> {
+pub trait Operation<'a> {
+    type Error;
+
     /**
      * `LedgerIdRc` of the ledger to which the operation should be applied.
      */
@@ -32,7 +33,7 @@ pub trait Operation<'a, OpError: Error> {
     fn validate(
         &self,
         context: &OperationContext,
-    ) -> Result<&Self, OpError>;
+    ) -> Result<&Self, Self::Error>;
 
     /**
      * Applies the operation's changes to the underlying `LedgerState`.

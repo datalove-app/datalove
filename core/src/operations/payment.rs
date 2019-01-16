@@ -28,7 +28,9 @@ pub struct PaymentOperation { // vostro only, unless in HTL
 
 impl PaymentOperation {}
 
-impl<'a> Operation<'a, Error> for PaymentOperation {
+impl<'a> Operation<'a> for PaymentOperation {
+    type Error = Error;
+
     fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(

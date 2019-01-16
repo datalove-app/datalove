@@ -57,6 +57,17 @@ impl MultiLedgerTransaction {
         }
     }
 
+    /*
+     * TODO: update validation logic to support transactions with operations
+     * destined for multiple users
+     * i.e. when creating a __ tx:
+     *  - basic: ...
+     *  - start_htl: any op not for the counterparty must apply to owned ledger
+     * i.e. when receiving a __ tx:
+     *  - basic: ignore ops for ledgers that don't exist
+     *  - start_htl: any op not for ledger we possess is ignored
+     */
+
     /**
      * Validates and applies the transaction and it's operations against the
      * ledgers available in `MultiLedgerState`, but also guarantees that all
@@ -85,7 +96,7 @@ impl MultiLedgerTransaction {
         &self,
         context: C,
     ) -> Result<C, Error> {
-        self.validate_seq_no(&context)?;
+        self.validate_seq_nos(&context)?;
 
         match self {
             MultiLedgerTransaction::Basic(tx) => tx
@@ -97,9 +108,9 @@ impl MultiLedgerTransaction {
             MultiLedgerTransaction::EndHTL(tx) => context
                 .get_start_htl(&tx.start_htl_id())
                 .ok_or(Error::InvalidStartHTLError)
+                // TODO: avoid cloning if possible
                 .map(|start_htl| start_htl.to_owned())
                 .and_then(|start_htl| tx
-                    // TODO: avoid cloning if possible
                     .mut_validate_and_apply(&start_htl, context)
                     .map_err(Error::EndHTLTransactionError)
                 ),
@@ -113,7 +124,7 @@ impl MultiLedgerTransaction {
      * NOTE: only checks against `MultiLedgerState`s present in
      * `multiledger_state`
      */
-    fn validate_seq_no(
+    fn validate_seq_nos(
         &self,
         context: &TransactionContext,
     ) -> Result<(), Error> {

@@ -10,6 +10,8 @@ edition = "2018"
 [dependencies]
 # failure = "0.1.3"
 # failure_derive = "0.1.3"
+# holochain_core_types = { path = "../../holochain-stuff/holochain-rust/core_types" }
+# holochain_core_types_derive = { path = "../../holochain-stuff/holochain-rust/core_types_derive" }
 holochain_core_types = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
 holochain_core_types_derive = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
 lazy_static = "1.1.0"

@@ -14,7 +14,9 @@ impl IncreaseLimitOperation {
 
 }
 
-impl<'a> Operation<'a, Error> for IncreaseLimitOperation {
+impl<'a> Operation<'a> for IncreaseLimitOperation {
+    type Error = Error;
+
     fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(

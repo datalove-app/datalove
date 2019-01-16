@@ -149,7 +149,7 @@ impl ITransactionsMap for TransactionsMap {
 }
 
 /**
- * TODO: rename
+ * TODO: rename, possibly move this somewhere else (in DNA code perhaps?)
  * Contains:
  * - a `MultiLedgerContext`,
  * - a map of `Transaction`s

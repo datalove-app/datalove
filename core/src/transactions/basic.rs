@@ -12,7 +12,9 @@ pub struct BasicTransaction {
     operations: LedgerOperations,
 }
 
-impl Transaction<Error> for BasicTransaction {
+impl Transaction for BasicTransaction {
+    type Error = Error;
+
     fn id(&self) -> TransactionId { Rc::clone(&self.id) }
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
     fn operations(&self) -> Option<&LedgerOperations> { Some(&self.operations) }

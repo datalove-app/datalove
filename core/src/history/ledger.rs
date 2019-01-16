@@ -40,6 +40,7 @@ impl IOperationContext for OperationContext {
 }
 
 /**
+ * TODO: move this to multiledger.rs?
  * Contains a list of `OperationContext`s, i.e. the entire potential history
  * of a single ledger.
  *

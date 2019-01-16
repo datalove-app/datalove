@@ -51,7 +51,9 @@ impl EndHTLTransaction {
     }
 }
 
-impl Transaction<Error> for EndHTLTransaction {
+impl Transaction for EndHTLTransaction {
+    type Error = Error;
+
     fn id(&self) -> TransactionId { Rc::clone(&self.id) }
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
     fn operations(&self) -> Option<&LedgerOperations> { None }

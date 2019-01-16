@@ -34,7 +34,9 @@ impl SetExchangeRateOperation {
     }
 }
 
-impl<'a> Operation<'a, Error> for SetExchangeRateOperation {
+impl<'a> Operation<'a> for SetExchangeRateOperation {
+    type Error = Error;
+
     fn ledger_id(&self) -> LedgerIdRc { Rc::clone(&self.ledger_id) }
 
     fn validate(
