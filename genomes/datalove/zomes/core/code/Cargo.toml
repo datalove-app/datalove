@@ -1,0 +1,20 @@
+[package]
+name = "datalove_zome_core"
+version = "0.0.1"
+authors = ["Sunny G <sunny.gonna@gmail.com>"]
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+# hdk = { path = "../../../../../../holochain-stuff/holochain-rust/hdk-rust" }
+# holochain_core_types_derive = { path = "../../../../../../holochain-stuff/holochain-rust/core_types_derive" }
+hdk = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
+holochain_core_types_derive = { git = "https://github.com/holochain/holochain-rust" , branch = "develop" }
+datalove_core = { path = "../../../../../core" }
+serde = { version = "1.0", features = ["rc"] }
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
