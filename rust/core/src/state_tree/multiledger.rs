@@ -21,77 +21,22 @@
 
  */
 
-use std::collections::{hash_map::Iter, HashMap};
+use std::collections::HashMap;
 use crate::{
     ledger::{Ledger, LedgerIdRc},
     transactions::{
-        base::{
-            LedgerIds,
-            TransactionContext as ITransactionContext,
-            TransactionEffects,
-            TransactionId,
-        },
+        base::TransactionId,
+        context::MultiLedgerContext,
         basic::BasicTransaction,
         start_htl::StartHTLTransaction,
         end_htl::EndHTLTransaction,
         MultiLedgerTransaction,
-        Error as MultiLedgerTransactionError,
         TransactionsMap as ITransactionsMap,
     },
 };
-use super::ledger::*;
 
-pub type LedgerContexts = HashMap<LedgerIdRc, SingleLedgerContexts>;
 pub type TransactionOrder = Vec<TransactionId>;
 pub type TransactionOrders = HashMap<LedgerIdRc, TransactionOrder>;
-
-/**
- * Stores a hashmap of `SingleLedgerContexts`s and any side effects of applying
- * a transaction.
- */
-pub struct MultiLedgerContext {
-    ledger_contexts: LedgerContexts,
-    effects: TransactionEffects,
-}
-
-impl MultiLedgerContext {
-    pub fn new() -> Self {
-        MultiLedgerContext {
-            ledger_contexts: HashMap::new(),
-            effects: HashMap::new(),
-        }
-    }
-
-    pub fn add_ledger(&mut self, ledger: Ledger) -> &mut Self {
-        self.ledger_contexts
-            .insert(ledger.id(), SingleLedgerContexts::from(ledger));
-        self
-    }
-}
-
-impl ITransactionContext for MultiLedgerContext {
-    fn has_ledger(&self, ledger_id: &LedgerIdRc) -> bool {
-        self.ledger_contexts.contains_key(ledger_id)
-    }
-
-    fn has_all_ledgers(&self, required_ids: &LedgerIds) -> bool {
-        required_ids.iter().all(|id| self.has_ledger(id))
-    }
-
-    fn ledger_context(
-        &self,
-        ledger_id: &LedgerIdRc
-    ) -> Option<&SingleLedgerContexts> {
-        self.ledger_contexts.get(ledger_id)
-    }
-
-    fn ledger_iter(&self) -> Iter<LedgerIdRc, SingleLedgerContexts> {
-        self.ledger_contexts.iter()
-    }
-
-    fn effects(&self) -> &TransactionEffects { &self.effects }
-    fn mut_effects(&mut self) -> &mut TransactionEffects { &mut self.effects }
-}
 
 pub struct TransactionsMap(HashMap<TransactionId, MultiLedgerTransaction>);
 
@@ -154,31 +99,33 @@ impl ITransactionsMap for TransactionsMap {
  * - a `MultiLedgerContext`,
  * - a map of `Transaction`s
  */
-pub struct TransactionHistory {
+pub struct MultiLedgerStateTree {
     // a set of all affected ledger ids (for convenience)
     // ledger_ids: LedgerIds,
     // a set of all affected ledgers and their potential ledger_contexts
-    multiledger_histories: MultiLedgerContext,
-    // a list of all transactions
+    multiledger_context: MultiLedgerContext,
+    // collection of all transactions relevant to the new transaction
     transactions: TransactionsMap,
     // an ordering of transactions for each ledger
     transaction_orders: TransactionOrders,
 }
 
 // PUBLIC METHODS
-impl TransactionHistory {
+impl From<MultiLedgerTransaction> for MultiLedgerStateTree {
     // initializes a history around a new transaction
-    pub fn from_transaction(tx: MultiLedgerTransaction) -> Result<Self, ()> {
+    fn from(tx: MultiLedgerTransaction) -> Self {
         let mut tx_map = TransactionsMap::new();
         tx_map.insert(tx);
 
-        Ok(TransactionHistory {
-            multiledger_histories: MultiLedgerContext::new(),
+        MultiLedgerStateTree {
+            multiledger_context: MultiLedgerContext::new(),
             transactions: tx_map,
             transaction_orders: HashMap::new(),
-        })
+        }
     }
+}
 
+impl MultiLedgerStateTree {
     // creates a new LedgerOperationHistory, applying each transaction
     pub fn mut_apply_ledger(
         &mut self,
@@ -190,14 +137,14 @@ impl TransactionHistory {
         // validates new transaction against transaction history
             // are there gaps in seq_no, and if not, does it end in one less than current transactions seq_no?
         // if valid
-            // call LedgerOperationHistory::new; if successful, adds it to TransactionHistory
+            // call LedgerOperationHistory::new; if successful, adds it to MultiLedgerStateTree
 
         self
     }
 }
 
 // PRIVATE METHODS
-impl TransactionHistory {
+impl MultiLedgerStateTree {
     fn validate_transaction(
         &self,
         transaction: &MultiLedgerTransaction
@@ -295,7 +242,7 @@ impl TransactionHistory {
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    // validate the current transaction against the entire TransactionHistory
+    // validate the current transaction against the entire MultiLedgerStateTree
     pub fn validate(&self) -> Result<&Self, ()> {
         Err(())
     }
