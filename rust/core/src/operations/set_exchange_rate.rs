@@ -2,7 +2,7 @@ use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use crate::ledger::{Ledger, LedgerIdRc};
-use super::base::*;
+use super::base::{Context, Operation};
 
 const ZERO: u64 = 0;
 
@@ -41,7 +41,7 @@ impl<'a> Operation<'a> for SetExchangeRateOperation {
 
     fn validate(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Error> {
         if self.is_rate_malformed() {
             Err(Error::MalformedExchangeRateError)
@@ -56,8 +56,8 @@ impl<'a> Operation<'a> for SetExchangeRateOperation {
 
     fn mut_apply(
         &'a self,
-        mut_context: &'a mut OperationContext,
-    ) -> &'a mut OperationContext {
+        mut_context: &'a mut Context,
+    ) -> &'a mut Context {
         mut_context
             .mut_ledger()
             .set_exchange_rate((self.n, self.d));

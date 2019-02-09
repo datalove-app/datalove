@@ -2,7 +2,7 @@ use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use crate::ledger::LedgerIdRc;
-use super::base::*;
+use super::base::{Context, Operation};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DecreaseLimitOperation { // vostro only, unless in HTL
@@ -21,7 +21,7 @@ impl<'a> Operation<'a> for DecreaseLimitOperation {
 
     fn validate(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
@@ -33,8 +33,8 @@ impl<'a> Operation<'a> for DecreaseLimitOperation {
 
     fn mut_apply(
         &'a self,
-        mut_context: &'a mut OperationContext,
-    ) -> &'a mut OperationContext {
+        mut_context: &'a mut Context,
+    ) -> &'a mut Context {
         mut_context
             .mut_ledger()
             .set_limit(self.amount);

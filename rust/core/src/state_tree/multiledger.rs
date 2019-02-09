@@ -38,6 +38,7 @@ use crate::{
 pub type TransactionOrder = Vec<TransactionId>;
 pub type TransactionOrders = HashMap<LedgerIdRc, TransactionOrder>;
 
+#[derive(Default)]
 pub struct TransactionsMap(HashMap<TransactionId, MultiLedgerTransaction>);
 
 impl TransactionsMap {

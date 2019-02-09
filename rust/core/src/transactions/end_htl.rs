@@ -4,18 +4,30 @@ use std::{
 };
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
+use crate::types::AgentAddressRc;
 use super::{
-    base::*,
+    base::{
+        Context,
+        HashedTimeLockProof,
+        LedgerIds,
+        LedgerOperations,
+        SequenceNumbers,
+        Transaction,
+        TransactionId,
+    },
     start_htl::StartHTLTransaction,
 };
 
+/**
+ *
+ */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EndHTLTransaction {
     // TODO: could this be the start_htl_txid?
     // TODO: could this be the start_htl_txid AND the hashlock?
     // TODO: it can be both, just prefixed or suffixed with another identifier
     id: TransactionId,
-    sender: TransactionAgent,
+    sender: AgentAddressRc,
     seq_nos: SequenceNumbers,
     start_htl_id: TransactionId,
     proof: HashedTimeLockProof,
@@ -28,7 +40,7 @@ impl EndHTLTransaction {
         Rc::clone(&self.start_htl_id)
     }
 
-    pub fn mut_validate_and_apply<C: TransactionContext>(
+    pub fn mut_validate_and_apply<C: Context>(
         &self,
         start_htl: &StartHTLTransaction,
         context: C,
@@ -58,7 +70,7 @@ impl Transaction for EndHTLTransaction {
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
     fn operations(&self) -> Option<&LedgerOperations> { None }
 
-    fn mut_validate_and_apply<C: TransactionContext>(
+    fn mut_validate_and_apply<C: Context>(
         &self,
         context: C,
     ) -> Result<C, Error> {

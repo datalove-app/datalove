@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use crate::ledger::{Ledger, LedgerIdRc};
 
-pub type OperationEffectKey = (&'static str, String);
-pub type OperationEffects = HashMap<OperationEffectKey, String>;
+pub type EffectKey = (&'static str, String);
+pub type Effects = HashMap<EffectKey, String>;
 
 /**
  * Provides access to the ledger and any effects an operation may have.
  */
-pub trait OperationContext {
+pub trait Context {
     fn sender(&self) -> &str;
     fn ledger(&self) -> &Ledger;
-    fn effects(&self) -> &OperationEffects;
+    fn effects(&self) -> &Effects;
 
     fn mut_ledger(&mut self) -> &mut Ledger;
-    fn mut_effects(&mut self) -> &mut OperationEffects;
+    fn mut_effects(&mut self) -> &mut Effects;
 }
 
 /**
@@ -32,7 +32,7 @@ pub trait Operation<'a> {
      */
     fn validate(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Self::Error>;
 
     /**
@@ -40,6 +40,6 @@ pub trait Operation<'a> {
      */
     fn mut_apply(
         &'a self,
-        mut_context: &'a mut OperationContext
-    ) -> &'a mut OperationContext;
+        mut_context: &'a mut Context
+    ) -> &'a mut Context;
 }

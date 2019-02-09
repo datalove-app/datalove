@@ -1,14 +1,25 @@
 use std::rc::Rc;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use super::base::*;
+use crate::types::AgentAddressRc;
+use super::base::{
+    Context,
+    LedgerOperations,
+    SequenceNumbers,
+    Transaction,
+    TransactionId,
+    Metadata,
+};
 
+/**
+ *
+ */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StartHTLTransaction {
     id: TransactionId, // TODO: could this be the hashlock itself?
-    sender: TransactionAgent,
+    sender: AgentAddressRc,
     seq_nos: SequenceNumbers,
-    destination: TransactionAgent,
+    destination: AgentAddressRc,
 
     /// a sender-specified seed to be concatenated with the preimage to
     /// generate the hashlock
@@ -16,7 +27,7 @@ pub struct StartHTLTransaction {
     // hashlock: String,
 
     // TODO: could this be used as a hashlock seed?
-    metadata: Option<TransactionMetadata>,
+    metadata: Option<Metadata>,
     operations: LedgerOperations,
 }
 
@@ -27,7 +38,7 @@ impl Transaction for StartHTLTransaction {
     fn seq_nos(&self) -> &SequenceNumbers { &self.seq_nos }
     fn operations(&self) -> Option<&LedgerOperations> { Some(&self.operations) }
 
-    fn mut_validate_and_apply<C: TransactionContext>(
+    fn mut_validate_and_apply<C: Context>(
         &self,
         context: C,
     ) -> Result<C, Error> {

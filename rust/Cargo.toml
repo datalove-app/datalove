@@ -1,7 +1,7 @@
 [workspace]
-edition = "2018"
 members = [
   "core",
   "genome-utils",
-  "genomes/datalove/zomes/core/code",
+  "nodejs-conductor/native",
+  # "genomes/datalove/zomes/core/code",
 ]

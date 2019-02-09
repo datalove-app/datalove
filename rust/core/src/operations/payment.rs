@@ -5,7 +5,7 @@ use crate::{
     ledger::LedgerIdRc,
     types::AgentAddress,
 };
-use super::base::*;
+use super::base::{Context, Operation};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaymentOperation { // vostro only, unless in HTL
@@ -35,7 +35,7 @@ impl<'a> Operation<'a> for PaymentOperation {
 
     fn validate(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Error> {
         match () {
             _ if false =>
@@ -47,8 +47,8 @@ impl<'a> Operation<'a> for PaymentOperation {
 
     fn mut_apply(
         &'a self,
-        mut_context: &'a mut OperationContext,
-    ) -> &'a mut OperationContext {
+        mut_context: &'a mut Context,
+    ) -> &'a mut Context {
         mut_context
             .mut_ledger()
             .set_balance(self.amount);

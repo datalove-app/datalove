@@ -9,10 +9,10 @@ use serde_derive::{Serialize, Deserialize};
 use crate::types::{AgentAddress, AgentAddressRc};
 
 pub type LedgerId = HashString;
-pub type LedgerMetadata = HashString;
-pub type LedgerExchangeRate = (u64, u64);
 pub type LedgerIdRc = Rc<LedgerId>;
+pub type LedgerMetadata = HashString;
 pub type LedgerMetadataRc = Rc<LedgerMetadata>;
+pub type LedgerExchangeRate = (u64, u64);
 
 pub const ENTRY_TYPE_NAME: &'static str = "ledger";
 
