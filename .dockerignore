@@ -1,0 +1,7 @@
+**/target
+**/dist
+**/.cargo
+**/.git
+**/node_modules
+**/docker
+**/bin-package
