@@ -2,6 +2,11 @@
 members = [
   "core",
   "genome-utils",
-  "nodejs-conductor/native",
   # "genomes/datalove/zomes/core/code",
+  "nodejs-conductor/native",
 ]
+
+[patch.'https://github.com/holochain/holochain-rust']
+hdk = { path = "../deps/holochain-rust/hdk-rust" }
+holochain_core_types = { path = "../deps/holochain-rust/core_types" }
+holochain_core_types_derive = { path = "../deps/holochain-rust/core_types_derive" }
