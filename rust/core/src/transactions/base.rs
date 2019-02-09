@@ -5,22 +5,21 @@ use std::{
 };
 use serde_derive::{Serialize, Deserialize};
 use crate::{
-    history::ledger::SingleLedgerContexts,
+    state_tree::ledger::LedgerStateTree,
     ledger::LedgerIdRc,
     operations::LedgerOperation,
-    types::{AgentAddressRc, HashStringRc},
+    types::HashStringRc,
 };
 
 pub type HashedTimelockPreimage = String;
 pub type LedgerIds = HashSet<LedgerIdRc>;
 pub type LedgerOperations = Vec<LedgerOperation>;
+pub type Metadata = HashStringRc;
 pub type SequenceNumbers = HashMap<LedgerIdRc, u64>;
-pub type TransactionAgent = AgentAddressRc;
 pub type TransactionId = HashStringRc;
-pub type TransactionMetadata = HashStringRc;
 
-pub type TransactionEffectKey = (&'static str, String);
-pub type TransactionEffects = HashMap<TransactionEffectKey, String>;
+pub type EffectKey = (&'static str, String);
+pub type Effects = HashMap<EffectKey, String>;
 
 /**
  * Provides the proof justifying the failing or fulfilling of the hashed
@@ -60,12 +59,12 @@ pub enum HashedTimeLockFailureReason {
 }
 
 /**
- * Provides access to the set of `SingleLedgerContexts`s and any effects a
+ * Provides access to the set of `LedgerStateTree`s and any effects a
  * transaction may have.
  */
-pub trait TransactionContext {
+pub trait Context {
     /**
-     * Determines if the `TransactionContext` already contains the given set of
+     * Determines if the `Context` already contains the given set of
      * `LedgerState`s.
      *
      * Useful during history reconstruction when deciding whether or not to
@@ -75,28 +74,28 @@ pub trait TransactionContext {
     fn has_ledger(&self, ledger_id: &LedgerIdRc) -> bool;
 
     /**
-     * Determines if the `TransactionContext` contains all
-     * `SingleLedgerContexts` necessary to validate a given transaction.
+     * Determines if the `Context` contains all
+     * `LedgerStateTree`s necessary to validate a given transaction.
      *
      * Useful during validation and application of a new transaction.
      */
     fn has_all_ledgers(&self, ids: &LedgerIds) -> bool;
 
     /**
-     * Retrieves the `SingleLedgerContexts` for a given `LedgerIdRc`.
+     * Retrieves the `LedgerStateTree` for a given `ledger_id`.
      */
     fn ledger_context(
         &self,
         ledger_id: &LedgerIdRc
-    ) -> Option<&SingleLedgerContexts>;
+    ) -> Option<&LedgerStateTree>;
 
     /**
-     * Returns an iterator over the containing ledgers' `SingleLedgerContexts`.
+     * Returns an iterator over the containing ledgers' `LedgerStateTree`.
      */
-    fn ledger_iter(&self) -> Iter<LedgerIdRc, SingleLedgerContexts>;
+    fn ledger_iter(&self) -> Iter<LedgerIdRc, LedgerStateTree>;
 
-    fn effects(&self) -> &TransactionEffects;
-    fn mut_effects(&mut self) -> &mut TransactionEffects;
+    fn effects(&self) -> &Effects;
+    fn mut_effects(&mut self) -> &mut Effects;
 }
 
 /**
@@ -125,7 +124,7 @@ pub trait Transaction {
     /**
      *
      */
-    fn mut_validate_and_apply<C: TransactionContext>(
+    fn mut_validate_and_apply<C: Context>(
         &self,
         context: C
     ) -> Result<C, Self::Error>;

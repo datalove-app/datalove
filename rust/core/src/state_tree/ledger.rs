@@ -20,13 +20,15 @@ use crate::{
  */
 pub struct LedgerStateTree(Vec<OperationContext>);
 
-impl LedgerStateTree {
-    pub fn from(ledger: Ledger) -> Self {
+impl From<Ledger> for LedgerStateTree {
+    fn from(ledger: Ledger) -> Self {
         let mut contexts = Vec::new();
         contexts.push(OperationContext::new(ledger));
         LedgerStateTree(contexts)
     }
+}
 
+impl LedgerStateTree {
     pub fn current_seq_no(&self) -> Option<u64> {
         self.0
             .first()

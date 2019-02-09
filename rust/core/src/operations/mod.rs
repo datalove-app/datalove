@@ -1,8 +1,8 @@
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
-use crate::ledger::*;
+use crate::ledger::LedgerIdRc;
 use self::{
-    base::*,
+    base::{Context, Operation},
     set_exchange_rate::{Error as SetExchangeRateError, *},
     increase_limit::{Error as IncreaseLimitError, *},
     decrease_limit::{Error as DecreaseLimitError, *},
@@ -10,6 +10,7 @@ use self::{
 };
 
 pub mod base;
+pub mod context;
 pub mod set_exchange_rate;
 pub mod increase_limit;
 pub mod decrease_limit;
@@ -39,7 +40,7 @@ impl<'a> LedgerOperation {
 
     pub fn validate(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Error> {
         self.verify_ledger_id_match(context)?;
 
@@ -65,8 +66,8 @@ impl<'a> LedgerOperation {
 
     pub fn mut_apply(
         &'a self,
-        context: &'a mut OperationContext,
-    ) -> &'a mut OperationContext {
+        context: &'a mut Context,
+    ) -> &'a mut Context {
         match self {
             LedgerOperation::SetExchangeRate(op) => op.mut_apply(context),
             LedgerOperation::IncreaseLimit(op) => op.mut_apply(context),
@@ -80,7 +81,7 @@ impl<'a> LedgerOperation {
      */
     fn verify_ledger_id_match(
         &self,
-        context: &OperationContext,
+        context: &Context,
     ) -> Result<&Self, Error> {
         if context.ledger().id().eq(&self.ledger_id()) {
             Ok(self)

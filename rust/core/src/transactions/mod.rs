@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use holochain_core_types::{
     error::HolochainError,
     json::JsonString,
@@ -7,13 +6,21 @@ use holochain_core_types_derive::DefaultJson;
 use quick_error::quick_error;
 use serde_derive::{Serialize, Deserialize};
 use self::{
-    base::*,
+    base::{
+        Context,
+        LedgerIds,
+        LedgerOperations,
+        SequenceNumbers,
+        Transaction,
+        TransactionId,
+    },
     basic::{BasicTransaction, Error as BasicTransactionError},
     start_htl::{StartHTLTransaction, Error as StartHTLTransactionError},
     end_htl::{EndHTLTransaction, Error as EndHTLTransactionError},
 };
 
 pub mod base;
+pub mod context;
 pub mod basic;
 pub mod start_htl;
 pub mod end_htl;
@@ -73,7 +80,7 @@ impl MultiLedgerTransaction {
      * ledgers available in `MultiLedgerState`, but also guarantees that all
      * ledgers required by the transaction are available in `context`.
      */
-    pub fn mut_validate_and_apply_new<C: TransactionContext + TransactionsMap>(
+    pub fn mut_validate_and_apply_new<C: Context + TransactionsMap>(
         &self,
         context: C,
     ) -> Result<C, Error> {
@@ -92,7 +99,7 @@ impl MultiLedgerTransaction {
      * Validates and applies the transaction and it's operations against the
      * ledgers available in `MultiLedgerState`
      */
-    pub fn mut_validate_and_apply<C: TransactionContext + TransactionsMap>(
+    pub fn mut_validate_and_apply<C: Context + TransactionsMap>(
         &self,
         context: C,
     ) -> Result<C, Error> {
@@ -115,40 +122,6 @@ impl MultiLedgerTransaction {
                     .map_err(Error::EndHTLTransactionError)
                 ),
         }
-    }
-
-    /**
-     * Checks that the transaction's ledger sequence number bumps are valid
-     * against multi ledger history.
-     *
-     * NOTE: only checks against `MultiLedgerState`s present in
-     * `multiledger_state`
-     */
-    fn validate_seq_nos(
-        &self,
-        context: &TransactionContext,
-    ) -> Result<(), Error> {
-        self.seq_nos()
-            .iter()
-            .filter(|(id, _)| context.has_ledger(id))
-            .map(|(ledger_id, tx_seq_no)| context
-                .ledger_context(ledger_id)
-                .and_then(|ledger_context| ledger_context.current_seq_no())
-                .map(|ledger_seq_no| (ledger_seq_no, tx_seq_no))
-            )
-            .fold(Ok(()), |seq_nos_are_valid, seq_nos| seq_nos_are_valid
-                .and_then(|_| seq_nos.ok_or(Error::InvalidSequenceNumberError))
-                .and_then(|(ledger_seq_no, &tx_seq_no)| {
-                    let expected_seq_no = ledger_seq_no + 1;
-                    if tx_seq_no.lt(&expected_seq_no) {
-                        Err(Error::RepeatedSequenceNumberError)
-                    } else if tx_seq_no.gt(&expected_seq_no) {
-                        Err(Error::SkippedSequenceNumberError)
-                    } else {
-                        Ok(())
-                    }
-                })
-            )
     }
 }
 
@@ -180,7 +153,7 @@ impl MultiLedgerTransaction {
         }
     }
 
-    fn required_ledger_ids<C: TransactionContext + TransactionsMap>(
+    fn required_ledger_ids<C: Context + TransactionsMap>(
         &self,
         context: &C,
     ) -> Option<LedgerIds> {
@@ -191,6 +164,40 @@ impl MultiLedgerTransaction {
                 .get_start_htl(&tx.start_htl_id())
                 .and_then(|start_htl| tx.required_ledger_ids(start_htl)),
         }
+    }
+
+    /**
+     * Checks that the transaction's ledger sequence number bumps are valid
+     * against multi ledger history.
+     *
+     * NOTE: only checks against `MultiLedgerState`s present in
+     * `multiledger_state`
+     */
+    fn validate_seq_nos(
+        &self,
+        context: &Context,
+    ) -> Result<(), Error> {
+        self.seq_nos()
+            .iter()
+            .filter(|(id, _)| context.has_ledger(id))
+            .map(|(ledger_id, tx_seq_no)| context
+                .ledger_context(ledger_id)
+                .and_then(|ledger_context| ledger_context.current_seq_no())
+                .map(|ledger_seq_no| (ledger_seq_no, tx_seq_no))
+            )
+            .fold(Ok(()), |seq_nos_are_valid, seq_nos| seq_nos_are_valid
+                .and_then(|_| seq_nos.ok_or(Error::InvalidSequenceNumberError))
+                .and_then(|(ledger_seq_no, &tx_seq_no)| {
+                    let expected_seq_no = ledger_seq_no + 1;
+                    if tx_seq_no.lt(&expected_seq_no) {
+                        Err(Error::RepeatedSequenceNumberError)
+                    } else if tx_seq_no.gt(&expected_seq_no) {
+                        Err(Error::SkippedSequenceNumberError)
+                    } else {
+                        Ok(())
+                    }
+                })
+            )
     }
 }
 
