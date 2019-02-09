@@ -1,0 +1,35 @@
+.qmake.stash
+target
+.cargo
+**/*.sock
+package-lock.json
+**/*.rs.bk
+**/Cargo.lock
+Cargo.lock
+net_ipc/tests/node-p2p-ipc
+build_docs_key
+*.orig
+
+cobertura.xml
+
+.idea
+.DS_Store
+/**/Makefile
+!/Makefile
+.vs
+*.hcpkg
+# symlinked Makefile for docker hub
+!/docker/Makefile
+
+# Editor temporary files
+*~
+.\#*
+\#*\#
+
+# Things being generated on the FS that should not be
+conductor/example-config/tmp-storage/*
+conductor/tmp-storage/*
+conductor_api/tmp-storage/*
+conductor_api/tmp-test/*
+tmp-test-conductor-config.toml
+tmp-*-conductor-config.toml
