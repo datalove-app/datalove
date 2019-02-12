@@ -1,0 +1,21 @@
+[package]
+name = "nodejs-conductor"
+version = "0.0.1"
+authors = ["Sunny G <sunny.gonna@gmail.com>"]
+license = "MIT"
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "nodejs_conductor"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+holochain_conductor_api = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
+holochain_node_test_waiter = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
+lazy_static = "1.1.0"
+neon = "0.2.0"
+neon-serde = "0.1.1"
