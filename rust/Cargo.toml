@@ -8,5 +8,10 @@ members = [
 
 [patch.'https://github.com/holochain/holochain-rust']
 hdk = { path = "../deps/holochain-rust/hdk-rust" }
+holochain_conductor_api = { path = "../deps/holochain-rust/conductor_api" }
+holochain_cas_implementations = { path = "../deps/holochain-rust/cas_implementations" }
+holochain_core = { path = "../deps/holochain-rust/core" }
 holochain_core_types = { path = "../deps/holochain-rust/core_types" }
 holochain_core_types_derive = { path = "../deps/holochain-rust/core_types_derive" }
+holochain_net = { path = "../deps/holochain-rust/net" }
+holochain_node_test_waiter = { path = "../deps/holochain-rust/nodejs_waiter" }
