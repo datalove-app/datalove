@@ -1,15 +1,24 @@
-extern crate holochain_core_types;
-extern crate holochain_sodium;
+//! Provide a slightly higher-level abstraction over the raw sodium crypto functions for
+//! how we are going to be managing keys in Holochain.
+//!
+#![warn(unused_extern_crates)]
 
 #[macro_use]
-extern crate arrayref;
-extern crate base64;
-extern crate rustc_serialize;
+extern crate lazy_static;
 
-extern crate bip39;
-extern crate boolinator;
+pub const SEED_SIZE: usize = 32;
+pub(crate) const SIGNATURE_SIZE: usize = 64;
 
-pub mod bundle;
-pub mod error;
+lazy_static! {
+    pub static ref CODEC_HCS0: hcid::HcidEncoding =
+        hcid::with_hcs0().expect("HCID failed miserably with hcs0.");
+    pub static ref CODEC_HCK0: hcid::HcidEncoding =
+        hcid::with_hck0().expect("HCID failed miserably with_hck0.");
+}
+
+pub mod key_blob;
+pub mod key_bundle;
 pub mod keypair;
-pub mod util;
+pub mod password_encryption;
+pub mod seed;
+pub mod utils;

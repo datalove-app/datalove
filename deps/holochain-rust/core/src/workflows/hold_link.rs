@@ -4,9 +4,12 @@ use crate::{
     network::{
         actions::get_validation_package::get_validation_package, entry_with_header::EntryWithHeader,
     },
-    nucleus::actions::validate::validate_entry,
+    nucleus::validation::validate_entry,
 };
 
+use crate::nucleus::{
+    actions::add_pending_validation::add_pending_validation, validation::ValidationError,
+};
 use holochain_core_types::{
     entry::Entry,
     error::HolochainError,
@@ -33,10 +36,20 @@ pub async fn hold_link_workflow<'a>(
     context.log(format!(
         "debug/workflow/hold_link: getting validation package..."
     ));
-    let maybe_validation_package = await!(get_validation_package(header.clone(), &context))?;
-    let validation_package = maybe_validation_package
-        .ok_or("Could not get validation package from source".to_string())?;
-    context.log(format!("debug/workflow/hold_link: got validation package!"));
+    let maybe_validation_package = await!(get_validation_package(header.clone(), &context))
+        .map_err(|err| {
+            let message = "Could not get validation package from source! -> Add to pending...";
+            context.log(format!("debug/workflow/hold_link: {}", message));
+            context.log(format!("debug/workflow/hold_link: Error was: {:?}", err));
+            add_pending_validation(entry_with_header.to_owned(), Vec::new(), context);
+            HolochainError::ValidationPending
+        })?;
+    let validation_package = maybe_validation_package.ok_or({
+        let message = "Source did respond to request but did not deliver validation package! This is weird! Entry is not valid!";
+        context.log(format!("debug/workflow/hold_link: {}", message));
+        HolochainError::ValidationFailed("Entry not backed by source".to_string())
+    })?;
+    context.log(format!("debug/workflow/hold_link: got validation package"));
 
     // 2. Create validation data struct
     let validation_data = ValidationData {
@@ -49,7 +62,10 @@ pub async fn hold_link_workflow<'a>(
     context.log(format!("debug/workflow/hold_link: validate..."));
     await!(validate_entry(entry.clone(), validation_data, &context)).map_err(|err| {
         context.log(format!("debug/workflow/hold_link: invalid! {:?}", err));
-        err
+        if let ValidationError::UnresolvedDependencies(dependencies) = &err {
+            add_pending_validation(entry_with_header.to_owned(), dependencies.clone(), &context);
+        }
+        HolochainError::ValidationPending
     })?;
     context.log(format!("debug/workflow/hold_link: is valid!"));
 
@@ -68,7 +84,9 @@ pub mod tests {
         network::test_utils::*, nucleus::actions::tests::*, workflows::author_entry::author_entry,
     };
     use futures::executor::block_on;
-    use holochain_core_types::{entry::test_entry, link::link_add::LinkAdd};
+    use holochain_core_types::{
+        cas::content::AddressableContent, entry::test_entry, link::link_data::LinkData,
+    };
     use test_utils::*;
 
     #[test]
@@ -92,7 +110,8 @@ pub mod tests {
 
         let (_, context1) =
             test_instance_with_spoofed_dna(hacked_dna, dna_address, "alice").unwrap();
-        let (_instance2, context2) = instance_by_name("jack", dna);
+        let netname = Some("test_reject_invalid_link_on_remove_workflow");
+        let (_instance2, context2) = instance_by_name("jack", dna, netname);
 
         // Commit entry on attackers node
         let entry = test_entry();
@@ -100,7 +119,7 @@ pub mod tests {
             .block_on(author_entry(&entry, None, &context1))
             .unwrap();
 
-        let link_add = LinkAdd::new(&entry_address, &entry_address, "test-tag");
+        let link_add = LinkData::new_add(&entry_address, &entry_address, "test-tag");
         let link_entry = Entry::LinkAdd(link_add);
 
         let _ = context1

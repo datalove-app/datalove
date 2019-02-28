@@ -8,19 +8,7 @@ This crate implements a set of tools for building and running Holochain DNA from
 
 ## Install
 
-Our recommended pattern for the installation of `hc` command line tools is to download the binary for your platform from our [releases](https://github.com/holochain/holochain-rust/releases) page. Otherwise, you can proceed with the more complex instructions for building from source, below.  Note, on Mac and Linux as well as installing the binaries you will need to install the `zmq` dependency e.g.:
-
-On MacOS:
-
-```
-brew install zmq
-```
-
-On Ubuntu:
-
-```
-apt-get install libzmq3-dev
-```
+Our recommended pattern for the installation of `hc` command line tools is to download the binary for your platform from our [releases](https://github.com/holochain/holochain-rust/releases) page. Otherwise, you can proceed with the more complex instructions for building from source, below.
 
 ### Building From Source
 
@@ -36,10 +24,6 @@ These dependencies need to be installed in order to compile, and use `hc`:
 - [Node.js](https://nodejs.org) version 8 or higher
   - Tests for Holochain apps are now written in Javascript and executed in Nodejs
   - To read further, check out [the holochain-nodejs module](https://www.npmjs.com/package/@holochain/holochain-nodejs)
-- [Zmq](http://zeromq.org/intro:get-the-software)
-  - zeromq is a "distributed messaging" software package utilized in the networking stack of Holochain
-  - the link above has common platform installation instructions
-  - without ZMQ the installation command that follows will fail
 
 
 To install the latest version of the Holochain command line, run the following command in a terminal
@@ -69,7 +53,7 @@ If you want to use `hc run` with real (as opposed to mock) networking, you will 
 | unpack    | Unpacks a Holochain bundle into its original file system structure  |
 | test      | Runs tests written in the test folder                               |
 | run       | Starts a websocket server for the current Holochain app             |
-| agent (u) | Starts a Holochain node as an agent                                 |
+| keygen    | Creates a new passphrase encrypted agent key bundle                 |
 
 ### hc init & hc generate: How To Get Started Building An App
 
@@ -89,6 +73,11 @@ To read about `hc test`, used for running tests over your source code, see [http
 
 To read about `hc run`, used for spinning up a quick developement version of your app with an HTTP or Websocket interface, that you can connect to from a UI, or any client, see [https://developer.holochain.org/guide/latest/development_conductor.html](https://developer.holochain.org/guide/latest/development_conductor.html).
 
+### hc keygen: Create agent key pair
+
+Every agent is represented by a private/public key pair, which are used to author source chains.
+This command creates a new key pair by asking for a passphrase and writing a key bundle file that a Holochain Conductor
+can read when starting up an instance.
 
 ## Contribute
 Holochain is an open source project.  We welcome all sorts of participation and are actively working on increasing surface area to accept it.  Please see our [contributing guidelines](../CONTRIBUTING.md) for our general practices and protocols on participating in the community.
@@ -96,7 +85,7 @@ Holochain is an open source project.  We welcome all sorts of participation and 
 ## License
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0)
 
-Copyright (C) 2018, Holochain Trust
+Copyright (C) 2018, Holochain Foundation
 
 This program is free software: you can redistribute it and/or modify it under the terms of the license p
 rovided in the LICENSE file (GPLv3).  This program is distributed in the hope that it will be useful, bu
