@@ -3,9 +3,9 @@ use holochain_conductor_api::{
         AgentConfiguration, Configuration, DnaConfiguration, InstanceConfiguration,
         LoggerConfiguration, StorageConfiguration,
     },
+    key_loaders::test_keybundle,
     logger::LogRules,
 };
-use holochain_core_types::agent::AgentId;
 use neon::prelude::*;
 use std::{collections::HashMap, path::PathBuf};
 
@@ -42,9 +42,14 @@ pub fn js_make_config(mut cx: FunctionContext) -> JsResult<JsValue> {
     let logger = if opts.debug_log {
         Default::default()
     } else {
+        // creates a logger which just mutes all
+        let mut rules = LogRules::new();
+        rules
+            .add_rule("^*", true, None)
+            .expect("rule is valid");
         LoggerConfiguration {
-            logger_type: "simple".into(),
-            rules: LogRules::new(),
+            logger_type: "debug".into(),
+            rules,
         }
     };
     let config = make_config(instances, logger);
@@ -59,12 +64,13 @@ fn make_config(instance_data: Vec<InstanceData>, logger: LoggerConfiguration) ->
         let agent_name = instance.agent.name;
         let mut dna_data = instance.dna;
         let agent_config = agent_configs.entry(agent_name.clone()).or_insert_with(|| {
-            let agent_key = AgentId::generate_fake(&agent_name);
+            let keybundle = test_keybundle(&agent_name);
             let config = AgentConfiguration {
                 id: agent_name.clone(),
                 name: agent_name.clone(),
-                public_address: agent_key.key,
-                key_file: format!("fake/key/{}", agent_name),
+                public_address: keybundle.get_id(),
+                key_file: agent_name.clone(),
+                holo_remote_key: None,
             };
             config
         });
@@ -84,8 +90,8 @@ fn make_config(instance_data: Vec<InstanceData>, logger: LoggerConfiguration) ->
     }
 
     let config = Configuration {
-        agents: agent_configs.into_iter().map(|(_, v)| v).collect(),
-        dnas: dna_configs.into_iter().map(|(_, v)| v).collect(),
+        agents: agent_configs.values().cloned().collect(),
+        dnas: dna_configs.values().cloned().collect(),
         instances: instance_configs,
         logger,
         ..Default::default()
@@ -93,27 +99,16 @@ fn make_config(instance_data: Vec<InstanceData>, logger: LoggerConfiguration) ->
     config
 }
 
-fn instance_id(agent_id: &str, dna_id: &str) -> String {
-    format!("{}::{}", agent_id, dna_id)
-}
-
-pub fn js_instance_id(mut cx: FunctionContext) -> JsResult<JsString> {
-    let agent_id = cx.argument::<JsString>(0)?.to_string(&mut cx)?.value();
-    let dna_id = cx.argument::<JsString>(1)?.to_string(&mut cx)?.value();
-    let id = instance_id(&agent_id, &dna_id);
-    Ok(cx.string(id))
-}
-
 fn make_dna_config(dna: DnaData) -> Result<DnaConfiguration, String> {
     let path = dna.path.to_string_lossy().to_string();
     Ok(DnaConfiguration {
         id: dna.name.clone(),
-        hash: String::from("DONTCARE"),
         file: path,
+        hash: None,
     })
     // eventually can get actual file content to calculate hash and stuff,
     // but for now it doesn't matter so don't care...
 
-    // let temp = DnaConfiguration {id: "", hash: "", file: dna_path};
+    // let temp = DnaConfiguration {id: "", hash: None, file: dna_path};
     // let dna = Dna::try_from(temp).map_err(|e| e.to_string())?;
 }

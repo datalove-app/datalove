@@ -10,8 +10,9 @@ use std::{
 };
 
 use holochain_conductor_api::{
-    config::{load_configuration, Configuration},
     conductor::Conductor as RustConductor,
+    key_loaders::test_keybundle_loader,
+    config::{load_configuration, Configuration},
 };
 use holochain_core::{
     action::Action,
@@ -34,7 +35,6 @@ fn await_held_agent_ids(config: Configuration, signal_rx: &SignalReceiver) {
         .map(|c| c.public_address.to_string())
         .collect();
     loop {
-        println!("await_held_agent_ids");
         if let Ok(Signal::Internal(aw)) = signal_rx.recv_timeout(Duration::from_millis(10)) {
             let action = aw.action();
             if let Action::Hold(EntryWithHeader {
@@ -42,7 +42,7 @@ fn await_held_agent_ids(config: Configuration, signal_rx: &SignalReceiver) {
                 header: _,
             }) = action
             {
-                agent_addresses.remove(&id.key);
+                agent_addresses.remove(&id.pub_sign_key);
             }
             if agent_addresses.is_empty() {
                 break;
@@ -74,7 +74,8 @@ declare_types! {
             } else {
                 panic!("Invalid type specified for config, must be object or string");
             };
-            let conductor = RustConductor::from_config(config);
+            let mut conductor = RustConductor::from_config(config);
+            conductor.key_loader = test_keybundle_loader();
             let is_running = Arc::new(Mutex::new(false));
 
             Ok(TestConductor { conductor, sender_tx: None, is_running, is_started: false })
@@ -168,7 +169,8 @@ declare_types! {
             };
 
             let res_string = call_result.or_else(|e| {
-                let error_string = cx.string(format!("unable to call zome function: {:?}", &e));
+                let error_string = cx.string(format!("unable to call zome {:?} function {:?}: {:?}",
+                                                     zome, fn_name, &e));
                 cx.throw(error_string)
             })?;
 

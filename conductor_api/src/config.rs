@@ -13,7 +13,7 @@ use crate::logger::LogRules;
 use boolinator::*;
 use directories;
 use holochain_core_types::{
-    agent::AgentId,
+    agent::{AgentId, Base32},
     dna::Dna,
     error::{HcResult, HolochainError},
     json::JsonString,
@@ -61,6 +61,12 @@ pub struct Configuration {
     /// where to persist the config file and DNAs. Optional.
     #[serde(default = "default_persistence_dir")]
     pub persistence_dir: PathBuf,
+
+    /// Optional URI for a websocket connection to an outsourced signing service.
+    /// Bootstrapping step for Holo closed-alpha.
+    /// If set, all agents with holo_remote_key = true will be emulated by asking for signatures
+    /// over this websocket.
+    pub signing_service_uri: Option<String>,
 }
 
 pub fn default_persistence_dir() -> PathBuf {
@@ -298,12 +304,15 @@ impl Configuration {
 }
 
 /// An agent has a name/ID and is defined by a private key that resides in a file
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct AgentConfiguration {
     pub id: String,
     pub name: String,
-    pub public_address: String,
+    pub public_address: Base32,
     pub key_file: String,
+    /// If set to true conductor will ignore key_file and instead use the remote signer
+    /// accessible through signing_service_uri to request signatures.
+    pub holo_remote_key: Option<bool>,
 }
 
 impl From<AgentConfiguration> for AgentId {
@@ -314,12 +323,14 @@ impl From<AgentConfiguration> for AgentId {
 }
 
 /// A DNA is represented by a DNA file.
-/// A hash has to be provided for sanity check.
+/// A hash can optionally be provided, which could be used to validate that the DNA being installed
+/// is the DNA that was intended to be installed.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct DnaConfiguration {
     pub id: String,
     pub file: String,
-    pub hash: String,
+    #[serde(default)]
+    pub hash: Option<String>,
 }
 
 impl TryFrom<DnaConfiguration> for Dna {
@@ -334,7 +345,7 @@ impl TryFrom<DnaConfiguration> for Dna {
 
 /// An instance combines a DNA with an agent.
 /// Each instance has its own storage configuration.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct InstanceConfiguration {
     pub id: String,
     pub dna: String,
@@ -349,7 +360,7 @@ pub struct InstanceConfiguration {
 /// * file
 ///
 /// Projected are various DB adapters.
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum StorageConfiguration {
     Memory,
@@ -368,7 +379,7 @@ pub enum StorageConfiguration {
 /// The instances (referenced by ID) that are to be made available via that interface should be listed.
 /// An admin flag will enable conductor functions for programatically changing the configuration
 /// (e.g. installing apps)
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct InterfaceConfiguration {
     pub id: String,
     pub driver: InterfaceDriver,
@@ -378,7 +389,7 @@ pub struct InterfaceConfiguration {
     pub instances: Vec<InstanceReferenceConfiguration>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum InterfaceDriver {
     Websocket { port: u16 },
@@ -387,7 +398,7 @@ pub enum InterfaceDriver {
     Custom(toml::value::Value),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct InstanceReferenceConfiguration {
     pub id: String,
 }
@@ -400,7 +411,7 @@ pub struct Bridge {
     /// This instance depends on the callee.
     pub caller_id: String,
 
-    /// ID of the instance that exposes capabilities through this bridge.
+    /// ID of the instance that exposes traits through this bridge.
     /// This instance is used by the caller.
     pub callee_id: String,
 
@@ -411,11 +422,15 @@ pub struct Bridge {
     pub handle: String,
 }
 
+/// A UI Bundle is a folder containing static assets which can be served as a UI
+/// A hash can optionally be provided, which could be used to validate that the UI being installed
+/// is the UI bundle that was intended to be installed.
 #[derive(Deserialize, Serialize, PartialEq, Debug, Clone)]
 pub struct UiBundleConfiguration {
     pub id: String,
     pub root_dir: String,
-    pub hash: String,
+    #[serde(default)]
+    pub hash: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Debug, Clone)]
@@ -455,12 +470,21 @@ pub struct NetworkConfig {
     /// configs above. Default is None.
     #[serde(default)]
     pub n3h_ipc_uri: Option<String>,
+    /// filepath to the json file holding the network settings for n3h
+    #[serde(default)]
+    pub networking_config_file: Option<String>,
 }
 
+// note that this behaviour is documented within
+// holochain_common::env_vars module and should be updated
+// if this logic changes
 pub fn default_n3h_mode() -> String {
     String::from("HACK")
 }
 
+// note that this behaviour is documented within
+// holochain_common::env_vars module and should be updated
+// if this logic changes
 pub fn default_n3h_path() -> String {
     if let Some(user_dirs) = directories::UserDirs::new() {
         user_dirs
@@ -475,6 +499,9 @@ pub fn default_n3h_path() -> String {
     }
 }
 
+// note that this behaviour is documented within
+// holochain_common::env_vars module and should be updated
+// if this logic changes
 pub fn default_n3h_persistence_path() -> String {
     env::temp_dir().to_string_lossy().to_string()
 }
@@ -506,10 +533,10 @@ pub fn serialize_configuration(config: &Configuration) -> HcResult<String> {
 pub mod tests {
     use super::*;
     use crate::config::{load_configuration, Configuration, NetworkConfig};
-    use holochain_core::context::unique_memory_network_config;
+    use holochain_net::p2p_config::P2pConfig;
 
     pub fn example_serialized_network_config() -> String {
-        String::from(unique_memory_network_config())
+        String::from(JsonString::from(P2pConfig::new_with_unique_memory_backend()))
     }
 
     #[test]
@@ -559,14 +586,14 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
     "#;
         let dnas = load_configuration::<Configuration>(toml).unwrap().dnas;
         let dna_config = dnas.get(0).expect("expected at least 1 DNA");
         assert_eq!(dna_config.id, "app spec rust");
-        assert_eq!(dna_config.file, "app_spec.hcpkg");
-        assert_eq!(dna_config.hash, "Qm328wyq38924y");
+        assert_eq!(dna_config.file, "app_spec.dna.json");
+        assert_eq!(dna_config.hash, Some("Qm328wyq38924y".to_string()));
     }
 
     #[test]
@@ -580,7 +607,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -619,6 +646,7 @@ pub mod tests {
     bootstrap_nodes = ["/ip4/127.0.0.1/tcp/45737/ipfs/QmYaEMe288imZVHnHeNby75m9V6mwjqu6W71cEuziEBC5i"]
     n3h_path = "/Users/cnorris/.holochain/n3h"
     n3h_persistence_path = "/Users/cnorris/.holochain/n3h_persistence"
+    networking_config_file = "/Users/cnorris/.holochain/network_config.json"
     "#;
 
         let config = load_configuration::<Configuration>(toml).unwrap();
@@ -627,8 +655,8 @@ pub mod tests {
         let dnas = config.dnas;
         let dna_config = dnas.get(0).expect("expected at least 1 DNA");
         assert_eq!(dna_config.id, "app spec rust");
-        assert_eq!(dna_config.file, "app_spec.hcpkg");
-        assert_eq!(dna_config.hash, "Qm328wyq38924y");
+        assert_eq!(dna_config.file, "app_spec.dna.json");
+        assert_eq!(dna_config.hash, Some("Qm328wyq38924y".to_string()));
 
         let instances = config.instances;
         let instance_config = instances.get(0).unwrap();
@@ -646,6 +674,9 @@ pub mod tests {
                 n3h_mode: String::from("HACK"),
                 n3h_persistence_path: String::from("/Users/cnorris/.holochain/n3h_persistence"),
                 n3h_ipc_uri: None,
+                networking_config_file: Some(String::from(
+                    "/Users/cnorris/.holochain/network_config.json"
+                )),
             }
         );
     }
@@ -661,7 +692,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -721,8 +752,8 @@ pub mod tests {
         let dnas = config.dnas;
         let dna_config = dnas.get(0).expect("expected at least 1 DNA");
         assert_eq!(dna_config.id, "app spec rust");
-        assert_eq!(dna_config.file, "app_spec.hcpkg");
-        assert_eq!(dna_config.hash, "Qm328wyq38924y");
+        assert_eq!(dna_config.file, "app_spec.dna.json");
+        assert_eq!(dna_config.hash, Some("Qm328wyq38924y".to_string()));
 
         let instances = config.instances;
         let instance_config = instances.get(0).unwrap();
@@ -746,7 +777,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -776,7 +807,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -819,7 +850,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app-spec-rust.hcpkg"
+    file = "app-spec-rust.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -862,7 +893,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app-spec-rust.hcpkg"
+    file = "app-spec-rust.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
@@ -1040,7 +1071,7 @@ pub mod tests {
 
     [[dnas]]
     id = "app spec rust"
-    file = "app_spec.hcpkg"
+    file = "app_spec.dna.json"
     hash = "Qm328wyq38924y"
 
     [[instances]]
