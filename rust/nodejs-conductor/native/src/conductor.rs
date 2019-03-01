@@ -11,6 +11,10 @@ use holochain_conductor_api::{
     conductor::Conductor as RustConductor,
     config::{load_configuration, Configuration},
 };
+use holochain_core::{
+    action::Action,
+    signal::{signal_channel, Signal, SignalReceiver},
+}
 use holochain_node_test_waiter::waiter::{
     CallBlockingTask,
     ControlMsg,
@@ -57,6 +61,19 @@ declare_types! {
         }
 
         method start(mut cx) {
+            let js_callback: Handle<JsFunction> = cx.argument(0)?;
+            let mut this = cx.this();
+
+            let guard = cx.lock();
+            let tc = &mut *this.borrow_mut(&guard);
+            // tc.sender_tx = Some(sender_tx);
+            {
+                let mut is_running = tc.is_running.lock().unwrap();
+                *is_running = true;
+            }
+
+            // tc.conductor.load_config_with_signal()
+
             Ok(cx.undefined().upcast())
         }
 

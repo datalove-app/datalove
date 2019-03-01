@@ -1163,6 +1163,8 @@ name = "nodejs-conductor"
 version = "0.0.1"
 dependencies = [
  "holochain_conductor_api 0.0.3",
+ "holochain_core 0.0.3",
+ "holochain_core_types 0.0.3",
  "holochain_node_test_waiter 0.1.0",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "neon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

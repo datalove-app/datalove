@@ -5,6 +5,7 @@ authors = ["Sunny G <sunny.gonna@gmail.com>"]
 license = "MIT"
 build = "build.rs"
 exclude = ["artifacts.json", "index.node"]
+edition = "2018"
 
 [lib]
 name = "nodejs_conductor"
@@ -15,6 +16,8 @@ neon-build = "0.2.0"
 
 [dependencies]
 holochain_conductor_api = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
+holochain_core = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
+holochain_core_types = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
 holochain_node_test_waiter = { git = "https://github.com/holochain/holochain-rust", branch = "develop" }
 lazy_static = "1.1.0"
 neon = "0.2.0"
