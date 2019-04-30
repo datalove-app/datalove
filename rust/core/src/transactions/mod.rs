@@ -168,10 +168,10 @@ impl MultiLedgerTransaction {
 
     /**
      * Checks that the transaction's ledger sequence number bumps are valid
-     * against multi ledger history.
+     * against multi ledger state tree.
      *
-     * NOTE: only checks against `MultiLedgerState`s present in
-     * `multiledger_state`
+     * NOTE: only checks against `MultiLedgerState`s present in the
+     * multi ledger state tree.
      */
     fn validate_seq_nos(
         &self,

@@ -8,7 +8,8 @@ pub type Effects = HashMap<EffectKey, String>;
  * Provides access to the ledger and any effects an operation may have.
  */
 pub trait Context {
-    fn sender(&self) -> &str;
+    fn current_agent(&self) -> &static str;
+    fn creator_agent(&self) -> &str;
     fn ledger(&self) -> &Ledger;
     fn effects(&self) -> &Effects;
 
@@ -28,7 +29,7 @@ pub trait Operation<'a> {
     fn ledger_id(&self) -> LedgerIdRc;
 
     /**
-     * Determines if the operation can be applied to a given `LedgerState`.
+     * Determines if the operation can be applied to a given `Ledger`.
      */
     fn validate(
         &self,
@@ -36,7 +37,7 @@ pub trait Operation<'a> {
     ) -> Result<&Self, Self::Error>;
 
     /**
-     * Applies the operation's changes to the underlying `LedgerState`.
+     * Applies the operation's changes to the underlying `Ledger`.
      */
     fn mut_apply(
         &'a self,

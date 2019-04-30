@@ -39,6 +39,7 @@ pub struct Ledger {
     balance: u128,
     exchange_rate: LedgerExchangeRate,
     metadata: LedgerMetadataRc,
+    // latest_tx_entry_count
 
     // ledger (history) state
     seq_no: u64, // TODO: is this necessary?

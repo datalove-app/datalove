@@ -64,6 +64,11 @@ pub enum HashedTimeLockFailureReason {
  */
 pub trait Context {
     /**
+     * Retrives the validating agent's address.
+     */
+    fn current_agent(&self) -> &static str;
+
+    /**
      * Determines if the `Context` already contains the given set of
      * `LedgerState`s.
      *
