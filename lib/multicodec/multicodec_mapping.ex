@@ -8,7 +8,7 @@ defmodule Multicodec.MulticodecMapping do
   @typedoc """
   A codec used to encode a binary as a Multicodec.
   """
-  @type multi_codec() :: binary()
+  @type multi_codec() :: atom()
 
   @typedoc """
   A binary representation of a multicodec code encoded as an unsigned varint.
@@ -16,13 +16,13 @@ defmodule Multicodec.MulticodecMapping do
   @type prefix() :: binary()
 
   @type t :: %__MODULE__{
-               codec: multi_codec(),
-               code: non_neg_integer(),
-               prefix: prefix(),
-             }
+          codec: multi_codec(),
+          code: non_neg_integer(),
+          prefix: prefix()
+        }
 
   @spec new(multi_codec(), non_neg_integer()) :: t()
-  def new(codec, code) when is_integer(code) and is_binary(codec) do
+  def new(codec, code) when is_atom(codec) and is_integer(code) do
     prefix = prefix(code)
     struct(%__MODULE__{codec: codec, code: code, prefix: prefix})
   end
@@ -43,5 +43,4 @@ defmodule Multicodec.MulticodecMapping do
     {code, _data} = Varint.LEB128.decode(prefix)
     code
   end
-
 end

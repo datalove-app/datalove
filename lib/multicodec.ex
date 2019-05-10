@@ -74,7 +74,6 @@ defmodule Multicodec do
   """
   @type prefix() :: MulticodecMapping.prefix()
 
-
   @doc """
   Encodes a binary using Multicodec using the given codec name.
 
@@ -82,18 +81,18 @@ defmodule Multicodec do
 
   ## Examples
 
-      iex> Multicodec.encode!("d3:fool3:bar3:baze3:qux4:norfe", "bencode")
+      iex> Multicodec.encode!("d3:fool3:bar3:baze3:qux4:norfe", :bencode)
       "cd3:fool3:bar3:baze3:qux4:norfe"
 
-      iex> Multicodec.encode!(<<22, 68, 139, 191, 190, 36, 62, 35, 171, 224, 129, 249, 63, 46, 47, 7, 119, 7, 178, 223, 184, 3, 249, 238, 66, 166, 153, 175, 101, 42, 40, 29>>, "sha2-256")
+      iex> Multicodec.encode!(<<22, 68, 139, 191, 190, 36, 62, 35, 171, 224, 129, 249, 63, 46, 47, 7, 119, 7, 178, 223, 184, 3, 249, 238, 66, 166, 153, 175, 101, 42, 40, 29>>, :sha2_256)
       <<18, 22, 68, 139, 191, 190, 36, 62, 35, 171, 224, 129, 249, 63, 46, 47, 7, 119, 7, 178, 223, 184, 3, 249, 238, 66, 166, 153, 175, 101, 42, 40, 29>>
 
-      iex> Multicodec.encode!("legal_thing.torrent", "torrent-file")
+      iex> Multicodec.encode!("legal_thing.torrent", :torrent_file)
       "|legal_thing.torrent"
 
   """
   @spec encode!(binary(), multi_codec()) :: multicodec_binary()
-  def encode!(data, codec) when is_binary(data) and is_binary(codec) do
+  def encode!(data, codec) when is_binary(data) and is_atom(codec) do
     <<do_prefix_for(codec)::binary, data::binary>>
   end
 
@@ -108,23 +107,23 @@ defmodule Multicodec do
 
     ## Examples
 
-        iex> Multicodec.encode("EiC5TSe5k00", "protobuf")
+        iex> Multicodec.encode("EiC5TSe5k00", :protobuf)
         {:ok, "PEiC5TSe5k00"}
 
-        iex> :crypto.hash(:sha, "secret recipe") |> Multicodec.encode("sha1")
+        iex> :crypto.hash(:sha, "secret recipe") |> Multicodec.encode(:sha1)
         {:ok,
         <<17, 139, 95, 199, 243, 128, 172, 237, 254, 18, 189, 127, 227, 208, 152, 232,
          107, 238, 26, 35, 106>>}
 
-        iex> Multicodec.encode("Taco Tuesday", "mr-yotsuya-at-ikkoku")
-        {:error, "unsupported codec - \\"mr-yotsuya-at-ikkoku\\""}
+        iex> Multicodec.encode("Taco Tuesday", :"mr-yotsuya-at-ikkoku")
+        {:error, "unsupported codec - :\\"mr-yotsuya-at-ikkoku\\""}
 
   """
   @spec encode(binary(), multi_codec()) :: {:ok, multicodec_binary()} | {:error, term()}
   def encode(data, codec) do
     {:ok, encode!(data, codec)}
-    rescue
-      e in ArgumentError -> {:error, Exception.message(e)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
   @doc """
@@ -142,7 +141,7 @@ defmodule Multicodec do
       iex> Multicodec.decode!(<<51, 0, 99, 114, 105, 115, 112, 121>>)
       <<0, 99, 114, 105, 115, 112, 121>>
 
-      iex> :crypto.hash(:md5, "soup of the eon") |> Multicodec.encode!("md5") |> Multicodec.decode!()
+      iex> :crypto.hash(:md5, "soup of the eon") |> Multicodec.encode!(:md5) |> Multicodec.decode!()
       <<83, 202, 110, 26, 47, 119, 193, 71, 113, 201, 88, 92, 162, 222, 37, 108>>
 
   """
@@ -171,7 +170,7 @@ defmodule Multicodec do
       {:ok, "http://zombo.com"}
 
 
-      iex> :crypto.hash(:md4, "pass@word") |> Multicodec.encode!("md4") |> Multicodec.decode()
+      iex> :crypto.hash(:md4, "pass@word") |> Multicodec.encode!(:md4) |> Multicodec.decode()
       {:ok,
         <<110, 141, 9, 114, 67, 195, 143, 146, 109, 201, 188, 52, 200, 125, 93, 225>>}
 
@@ -182,8 +181,8 @@ defmodule Multicodec do
   @spec decode(multicodec_binary()) :: {:ok, binary()} | {:error, term()}
   def decode(data) when is_binary(data) do
     {:ok, decode!(data)}
-    rescue
-      e in ArgumentError -> {:error, Exception.message(e)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
   @doc """
@@ -194,13 +193,13 @@ defmodule Multicodec do
   ## Examples
 
       iex> Multicodec.codec_decode!(<<0, 87, 104, 101, 110, 32, 116, 104, 101, 32, 112, 101, 110, 100, 117, 108, 117, 109, 32, 115, 119, 105, 110, 103, 115, 44, 32, 105, 116, 32, 99, 117, 116, 115>>)
-      {"When the pendulum swings, it cuts", "identity"}
+      {"When the pendulum swings, it cuts", :identity}
 
       iex> Multicodec.codec_decode!(<<51, 0, 99, 114, 105, 115, 112, 121>>)
-      {<<0, 99, 114, 105, 115, 112, 121>>, "multibase"}
+      {<<0, 99, 114, 105, 115, 112, 121>>, :multibase}
 
-      iex> :crypto.hash(:md5, "soup of the eon") |> Multicodec.encode!("md5") |> Multicodec.codec_decode!()
-      {<<83, 202, 110, 26, 47, 119, 193, 71, 113, 201, 88, 92, 162, 222, 37, 108>>, "md5"}
+      iex> :crypto.hash(:md5, "soup of the eon") |> Multicodec.encode!(:md5) |> Multicodec.codec_decode!()
+      {<<83, 202, 110, 26, 47, 119, 193, 71, 113, 201, 88, 92, 162, 222, 37, 108>>, :md5}
 
   """
   @spec codec_decode!(multicodec_binary()) :: {binary(), multi_codec()}
@@ -220,19 +219,19 @@ defmodule Multicodec do
   ## Examples
 
       iex> Multicodec.codec_decode(<<0, 83, 108, 111, 119, 100, 105, 118, 101, 32, 116, 111, 32, 109, 121, 32, 100, 114, 101, 97, 109, 115>>)
-      {:ok, {"Slowdive to my dreams", "identity"}}
+      {:ok, {"Slowdive to my dreams", :identity}}
 
       iex> Multicodec.codec_decode(<<51, 0, 99, 114, 105, 115, 112, 121>>)
-      {:ok, {<<0, 99, 114, 105, 115, 112, 121>>, "multibase"}}
+      {:ok, {<<0, 99, 114, 105, 115, 112, 121>>, :multibase}}
 
       iex> Multicodec.codec_decode(<<>>)
       {:error, "data is not Multicodec encoded."}
 
   """
-  @spec codec_decode(multicodec_binary()) :: {:ok,{binary(), multi_codec()}} | {:error, term()}
+  @spec codec_decode(multicodec_binary()) :: {:ok, {binary(), multi_codec()}} | {:error, term()}
   def codec_decode(data) when is_binary(data) do
     {:ok, codec_decode!(data)}
-    rescue
+  rescue
     e in ArgumentError -> {:error, Exception.message(e)}
   end
 
@@ -244,13 +243,13 @@ defmodule Multicodec do
   ## Examples
 
       iex> Multicodec.codec!(<<0, 67, 105, 114, 99, 108, 101, 32, 116, 104, 101, 32, 111, 110, 101, 115, 32, 116, 104, 97, 116, 32, 99, 111, 109, 101, 32, 97, 108, 105, 118, 101>>)
-      "identity"
+      :identity
 
-      iex> :crypto.hash(:sha512, "F") |> Multicodec.encode!("sha2-512") |> Multicodec.codec!()
-      "sha2-512"
+      iex> :crypto.hash(:sha512, "F") |> Multicodec.encode!(:sha2_512) |> Multicodec.codec!()
+      :sha2_512
 
       iex> Multicodec.codec!("q")
-      "dag-cbor"
+      :dag_cbor
 
   """
   @spec codec!(multicodec_binary()) :: multi_codec()
@@ -267,13 +266,13 @@ defmodule Multicodec do
   ## Examples
 
       iex> Multicodec.codec(<<6, 73, 32, 97, 109, 32, 97, 32, 115, 99, 105, 101, 110, 116, 105, 115, 116>>)
-      {:ok, "tcp"}
+      {:ok, :tcp}
 
       iex> Multicodec.codec(<<0x22>>)
-      {:ok, "murmur3"}
+      {:ok, :murmur3}
 
-      iex> Multicodec.encode!("I am a scientist, I seek to understand me", "identity") |> Multicodec.codec()
-      {:ok, "identity"}
+      iex> Multicodec.encode!("I am a scientist, I seek to understand me", :identity) |> Multicodec.codec()
+      {:ok, :identity}
 
       iex> Multicodec.codec(<<>>)
       {:error, "data is not Multicodec encoded."}
@@ -282,8 +281,8 @@ defmodule Multicodec do
   @spec codec(multicodec_binary()) :: {:ok, multi_codec()} | {:error, term()}
   def codec(data) when is_binary(data) do
     {:ok, codec!(data)}
-    rescue
-      e in ArgumentError -> {:error, Exception.message(e)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
   @doc """
@@ -291,7 +290,7 @@ defmodule Multicodec do
   """
   @spec codecs() :: [multi_codec()]
   def codecs() do
-    unquote(Enum.map(CodecTable.codec_mappings(), fn(%{codec: codec}) -> codec end))
+    unquote(Enum.map(CodecTable.codec_mappings(), fn %{codec: codec} -> codec end))
   end
 
   @doc """
@@ -299,9 +298,9 @@ defmodule Multicodec do
 
   Each entry in the list is a mapping specification of how to encode data with Multicodec.
   """
-  @spec mappings() :: [MulticodecMapping.t()]
+  @spec mappings() :: [MulticodecMapping.t]
   def mappings() do
-    unquote(Macro.escape(CodecTable.codec_mappings))
+    unquote(Macro.escape(CodecTable.codec_mappings()))
   end
 
   @doc """
@@ -311,21 +310,20 @@ defmodule Multicodec do
 
   ## Examples
 
-      iex> Multicodec.prefix_for!("git-raw")
+      iex> Multicodec.prefix_for!(:git_raw)
       "x"
 
-      iex> Multicodec.prefix_for!("bitcoin-block")
+      iex> Multicodec.prefix_for!(:bitcoin_block)
       <<176, 1>>
 
-      iex> Multicodec.prefix_for!("skein1024-512")
+      iex> Multicodec.prefix_for!(:skein1024_512)
       <<160, 231, 2>>
 
   """
   @spec prefix_for!(multi_codec()) :: prefix()
-  def prefix_for!(codec) when is_binary(codec) do
+  def prefix_for!(codec) when is_atom(codec) do
     do_prefix_for(codec)
   end
-
 
   @doc """
   Returns the prefix that should be used with the given codec.
@@ -334,25 +332,25 @@ defmodule Multicodec do
 
   ## Examples
 
-      iex> Multicodec.prefix_for("blake2b-272")
+      iex> Multicodec.prefix_for(:blake2b_272)
       {:ok, <<162, 228, 2>>}
 
-      iex> Multicodec.prefix_for("bitcoin-block")
+      iex> Multicodec.prefix_for(:bitcoin_block)
       {:ok, <<176, 1>>}
 
-      iex> Multicodec.prefix_for("ip6")
+      iex> Multicodec.prefix_for(:ip6)
       {:ok, ")"}
 
-      iex> Multicodec.prefix_for("Glorious Leader")
-      {:error, "unsupported codec - \\"Glorious Leader\\""}
+      iex> Multicodec.prefix_for(:"Glorious Leader")
+      {:error, "unsupported codec - :\\"Glorious Leader\\""}
 
 
   """
   @spec prefix_for(multi_codec()) :: {:ok, prefix()} | {:error, term()}
   def prefix_for(codec) do
     {:ok, prefix_for!(codec)}
-    rescue
-      e in ArgumentError -> {:error, Exception.message(e)}
+  rescue
+    e in ArgumentError -> {:error, Exception.message(e)}
   end
 
   @doc """
@@ -360,13 +358,13 @@ defmodule Multicodec do
 
   ## Examples
 
-      iex> Multicodec.codec?("sha2-256")
+      iex> Multicodec.codec?(:sha2_256)
       true
 
-      iex> Multicodec.codec?("dag-pb")
+      iex> Multicodec.codec?(:dag_pb)
       true
 
-      iex> Multicodec.codec?("peanut brittle")
+      iex> Multicodec.codec?(:"peanut brittle")
       false
 
   """
@@ -378,39 +376,38 @@ defmodule Multicodec do
     end
   end
 
-#===============================================================================
-# Private
-#===============================================================================
+  # ===============================================================================
+  # Private
+  # ===============================================================================
 
   defp do_codec_decode(<<>>) do
     raise ArgumentError, "data is not Multicodec encoded."
   end
 
   defp do_codec_decode(data) do
-    {prefix, decoded_data} = decode_varint(data) #Varint.LEB128.decode(data)
+    # Varint.LEB128.decode(data)
+    {prefix, decoded_data} = decode_varint(data)
     {decoded_data, codec_for(prefix)}
   end
 
   defp do_prefix_for(codec)
+
   for %{prefix: prefix, codec: codec} <- CodecTable.codec_mappings() do
-    defp do_prefix_for(unquote(codec)) do
-      unquote(prefix)
-    end
+    defp do_prefix_for(unquote(codec)), do: unquote(prefix)
   end
 
-  defp do_prefix_for(codec) when is_binary(codec) do
-    raise ArgumentError, "unsupported codec - #{inspect codec, binaries: :as_strings}"
+  defp do_prefix_for(codec) when is_atom(codec) do
+    raise ArgumentError, "unsupported codec - #{inspect(codec)}"
   end
 
   defp codec_for(code)
+
   for %{codec: codec, code: code} <- CodecTable.codec_mappings() do
-    defp codec_for(unquote(code)) do
-      unquote(codec)
-    end
+    defp codec_for(unquote(code)), do: unquote(codec)
   end
 
   defp codec_for(code) when is_integer(code) do
-    raise ArgumentError, "unsupported code - #{inspect code, binaries: :as_strings}"
+    raise ArgumentError, "unsupported code - #{inspect(code, binaries: :as_strings)}"
   end
 
   defp do_decode(<<>>) do
@@ -418,15 +415,15 @@ defmodule Multicodec do
   end
 
   defp do_decode(data) do
-    {_prefix, decoded_data} = decode_varint(data) #Varint.LEB128.decode(data)
+    # Varint.LEB128.decode(data)
+    {_prefix, decoded_data} = decode_varint(data)
     decoded_data
   end
 
   defp decode_varint(data) do
-    #temporary patch until we can replace or pull request varint
+    # temporary patch until we can replace or pull request varint
     Varint.LEB128.decode(data)
-    rescue
-      FunctionClauseError -> raise ArgumentError, "data is not a varint."
+  rescue
+    FunctionClauseError -> raise ArgumentError, "data is not a varint."
   end
-
 end

@@ -4,12 +4,14 @@ defmodule MulticodecTest do
 
   test "multicodec transparently encodes and decodes" do
     address = "http://3g2upl4pq6kufc4m.onion/"
-    codec = "onion"
+    codec = :onion
     assert Multicodec.encode!(address, codec) |> Multicodec.decode!() == address
     {:ok, encoded_data} = Multicodec.encode(address, codec)
     assert Multicodec.decode(encoded_data) == {:ok, address}
     assert Multicodec.encode!(address, codec) |> Multicodec.codec_decode!() == {address, codec}
-    assert Multicodec.encode!(address, codec) |> Multicodec.codec_decode() == {:ok, {address, codec}}
+
+    assert Multicodec.encode!(address, codec) |> Multicodec.codec_decode() ==
+             {:ok, {address, codec}}
   end
 
   test "encode!/2 raises errors" do
@@ -67,6 +69,7 @@ defmodule MulticodecTest do
 
   test "encodes for all codecs" do
     data = "Like strawberries and cream, it's the only way, it's the only way to be."
+
     for codec <- Multicodec.codecs() do
       assert {:ok, _} = Multicodec.encode(data, codec)
       assert Multicodec.encode!(data, codec) |> is_binary() == true
@@ -75,6 +78,7 @@ defmodule MulticodecTest do
 
   test "encodes transparently for all codecs" do
     data = "Massive, huge, really big"
+
     for codec <- Multicodec.codecs() do
       assert Multicodec.encode!(data, codec) |> Multicodec.decode!() == data
       {:ok, encoded_data} = Multicodec.encode(data, codec)
@@ -85,33 +89,34 @@ defmodule MulticodecTest do
   end
 
   test "prefix_for returns the correct prefix" do
-    codec = "https"
+    codec = :https
     prefix = <<187, 3>>
     assert Multicodec.prefix_for!(codec) == prefix
     assert Multicodec.prefix_for(codec) == {:ok, prefix}
   end
 
   test "prefix_for!/1 raises errors" do
-    assert_raise ArgumentError, fn -> Multicodec.prefix_for!("") end
-    assert_raise ArgumentError, fn -> Multicodec.prefix_for!("httpsteakfries") end
-    assert_raise ArgumentError, fn -> Multicodec.prefix_for!("cheesesaucehttps") end
+    assert_raise ArgumentError, fn -> Multicodec.prefix_for!(:"") end
+    assert_raise ArgumentError, fn -> Multicodec.prefix_for!(:httpsteakfries) end
+    assert_raise ArgumentError, fn -> Multicodec.prefix_for!(:cheesesaucehttps) end
   end
 
   test "prefix_for!/1 handles errors" do
-    assert {:error, _reason} = Multicodec.prefix_for("")
-    assert {:error, _reason} = Multicodec.prefix_for("httpsteakfries")
-    assert {:error, reason} = Multicodec.prefix_for("cheesesaucehttps")
+    assert {:error, _reason} = Multicodec.prefix_for(:"")
+    assert {:error, _reason} = Multicodec.prefix_for(:httpsteakfries)
+    assert {:error, reason} = Multicodec.prefix_for(:cheesesaucehttps)
   end
 
   test "codecs/0 returns a list of codecs" do
     codecs = Multicodec.codecs()
     assert is_list(codecs) == true
     assert Enum.count(codecs) > 0
-    assert Enum.all?(codecs, &String.valid?/1) == true
+    assert Enum.all?(codecs, &is_atom/1) == true
   end
 
   test "codec returns the correct codec for all codecs" do
     data = "I used to sometimes try to catch her, but never even caught her name"
+
     for codec <- Multicodec.codecs() do
       {:ok, encoded_data} = Multicodec.encode(data, codec)
       assert Multicodec.codec!(encoded_data) == codec
@@ -130,8 +135,8 @@ defmodule MulticodecTest do
     for codec <- Multicodec.codecs() do
       assert Multicodec.codec?(codec) == true
     end
-    assert Multicodec.codec?("") == false
-    assert Multicodec.codec?("spaghetti monsters") == false
-  end
 
+    assert Multicodec.codec?(:"") == false
+    assert Multicodec.codec?(:"spaghetti monsters") == false
+  end
 end
