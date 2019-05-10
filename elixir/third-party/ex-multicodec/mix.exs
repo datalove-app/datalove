@@ -23,14 +23,13 @@ defmodule Multicodec.MixProject do
   end
 
   def application do
-    [
-    ]
+    []
   end
 
   defp package do
     [
       maintainers: [
-        "nocursor",
+        "nocursor"
       ],
       licenses: ["MIT"],
       links: %{github: @source_url},
@@ -51,13 +50,12 @@ defmodule Multicodec.MixProject do
   defp extras do
     [
       "README.md",
-      "docs/FAQ.md",
+      "docs/FAQ.md"
     ]
   end
 
   defp groups_for_extras do
-    [
-    ]
+    []
   end
 
   defp deps do
