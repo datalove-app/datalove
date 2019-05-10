@@ -5,7 +5,7 @@ defmodule Cbor.Encoder do
   def encode(value) do
       case value do
         value when is_nil(value) or is_boolean(value) or value == :undefined ->
-          concat(Types.primative, encode_primative(value))
+          concat(Types.primitive, encode_primitive(value))
         value when is_integer(value) ->
           concat(Types.unsigned_integer, encode_unsigned_int(value))
         value when is_atom(value) ->
@@ -70,7 +70,7 @@ defmodule Cbor.Encoder do
     end
   end
 
-  def encode_primative(value) do
+  def encode_primitive(value) do
     case value do
       false -> <<20::size(5)>>
       true -> <<21::size(5)>>

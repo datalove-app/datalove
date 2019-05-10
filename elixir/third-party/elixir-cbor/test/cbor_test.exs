@@ -26,7 +26,7 @@ defmodule CborTest do
     round_trip(%{key1: :value1, key2: :value2})
   end
 
-  test "primatives" do
+  test "primitives" do
     round_trip(nil)
     round_trip(true)
     round_trip(false)

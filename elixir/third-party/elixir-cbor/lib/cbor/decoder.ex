@@ -4,7 +4,7 @@ defmodule Cbor.Decoder do
   @array Cbor.Types.array()
   @byte_string Cbor.Types.byte_string()
   @map Cbor.Types.map()
-  @primative Cbor.Types.primative()
+  @primitive Cbor.Types.primitive()
 
   def decode(value) do
     {value, rest} = read(value)
@@ -28,8 +28,8 @@ defmodule Cbor.Decoder do
         read_array(bits)
       << @map, bits::bits >> ->
         read_map(bits)
-      << @primative, bits::bits >> ->
-        read_primative(bits)
+      << @primitive, bits::bits >> ->
+        read_primitive(bits)
     end
 
   end
@@ -88,7 +88,7 @@ defmodule Cbor.Decoder do
     end
   end
 
-  def read_primative(value) do
+  def read_primitive(value) do
     case value do
       << 20::size(5), rest::bits >> ->
         {false, rest}
