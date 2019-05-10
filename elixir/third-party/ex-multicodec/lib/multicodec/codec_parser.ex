@@ -8,7 +8,7 @@ defmodule Multicodec.CodecParser do
   @doc """
   Parses a codec table from the Multicodec's official CSV file.
   """
-  @spec parse_table(Path.t()) :: [MulticodecMapping.t()]
+  @spec parse_table(Path.t) :: [MulticodecMapping.t]
   def parse_table(path \\ @default_table_path) do
     File.stream!(path)
     |> CSV.decode(headers: true, strip_fields: true)

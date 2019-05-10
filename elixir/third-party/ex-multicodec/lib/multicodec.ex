@@ -298,7 +298,7 @@ defmodule Multicodec do
 
   Each entry in the list is a mapping specification of how to encode data with Multicodec.
   """
-  @spec mappings() :: [MulticodecMapping.t()]
+  @spec mappings() :: [MulticodecMapping.t]
   def mappings() do
     unquote(Macro.escape(CodecTable.codec_mappings()))
   end

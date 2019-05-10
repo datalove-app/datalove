@@ -406,7 +406,7 @@ defmodule Multicodec.CodecTable do
   @doc """
   Returns a full list of Multicodec mappings that will be used at runtime.
   """
-  @spec codec_mappings() :: [MulticodecMapping.t()]
+  @spec codec_mappings() :: [MulticodecMapping.t]
   def codec_mappings() do
     @codec_mappings
   end
