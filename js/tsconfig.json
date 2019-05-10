@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    // Basic Options
+    "jsx": "react",
+    "moduleResolution": "node",
+    "sourceMap": true,
+
+    // Module Resolution Options
+    "allowSyntheticDefaultImports": true,
+
+    // Strict Type-Checking Options
+    "strict": true,
+    "alwaysStrict": true,
+
+    // Other Type-Checking Options
+    "noErrorTruncation": true,
+    "noImplicitReturns": true,
+
+    // Experimental Options
+    "experimentalDecorators": true
+  },
+
+  "exclude": [
+    "node_modules",
+    "../../node_modules"
+  ]
+}
