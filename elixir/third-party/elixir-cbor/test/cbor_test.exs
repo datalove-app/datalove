@@ -14,12 +14,12 @@ defmodule CborTest do
 
   test "arrays" do
     round_trip([])
-    round_trip([3,2,1])
+    round_trip([3, 2, 1])
     round_trip([100])
   end
 
   test "bytes" do
-    round_trip(<<1,2,3>>)
+    round_trip(<<1, 2, 3>>)
   end
 
   test "maps" do
@@ -34,7 +34,7 @@ defmodule CborTest do
   end
 
   test "invalid data" do
-    assert {:error, :invalid_trailing_data} == Cbor.decode(<<1,2,3>>)
+    assert {:error, :invalid_trailing_data} == Cbor.decode(<<1, 2, 3>>)
   end
 
   def round_trip(value) do

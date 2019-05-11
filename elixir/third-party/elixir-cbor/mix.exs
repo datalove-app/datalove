@@ -9,7 +9,7 @@ defmodule Cbor.MixProject do
       package: [
         maintainers: ["Mason Fischer"],
         licenses: ["MIT"],
-        links: %{"GitHub" => "https://github.com/masonforest/elixir-cbor"},
+        links: %{"GitHub" => "https://github.com/masonforest/elixir-cbor"}
       ],
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
