@@ -9,12 +9,14 @@ defmodule IPLD.Multiformatter.Multihasher do
   alias IPLD.Format
   import IPLD.Multiformatter.Util
 
+  @typedoc "Struct for describing a multihash, which can be serialized to binary."
   @type t :: %__MODULE__{
           codec: __MODULE__.multihash_codec(),
-          length: __MODULE__.trunc_length(),
+          length: non_neg_integer,
           digest: binary
         }
   @type multihash_codec :: Multihash.hash_type()
+  @typedoc "The maximum desired length of a multihash digest. `:default` defers to the underlying hash algorithm's digest length."
   @type trunc_length :: :default | non_neg_integer
 
   @type on_from :: {:ok, Multihasher.t()} | {:error, reason :: atom}
@@ -23,13 +25,13 @@ defmodule IPLD.Multiformatter.Multihasher do
 
   @enforce_keys [:codec, :length, :digest]
   defstruct codec: @default_mh,
-            length: @default_len,
+            length: 0,
             digest: <<>>
 
   @default_mh :sha2_256
   @default_len :default
 
-  @doc "Tracks a mapping from multihash codecs to hash codes used by `:crypto.hash/2`, as well as their default digest lengths."
+  @typedoc "Tracks a mapping from multihash codecs to hash codes used by `:crypto.hash/2`, as well as their default digest lengths."
   @native_algo_map %{
     :md4 => {:md4, 16},
     :md5 => {:md5, 16},
@@ -42,8 +44,14 @@ defmodule IPLD.Multiformatter.Multihasher do
     :sha3_512 => {:sha3_512, 64}
   }
   @non_native_algo_map %{}
-  @supported_algo_map Map.merge(@native_algo_map, @non_native_algo_map)
-  @supported_algos Map.keys(@native_algo_map) ++ Map.keys(@non_native_algo_map)
+
+  @typedoc "Tracks the mapping from supported multihash codecs to their default digest lengths."
+  @supported_algo_map @native_algo_map
+                      |> Enum.map(fn {mh, {_, len}} -> {mh, len} end)
+                      |> Enum.into(%{})
+                      |> Map.merge(@non_native_algo_map)
+  @typedoc "Tracks the supported multihash codecs."
+  @supported_algos Map.keys(@supported_algo_map)
 
   @doc ~S"""
   Creates a `t:IPLD.Multiformatter.Multihasher.t/0` from a binary of Enumerable over binary data.
@@ -58,6 +66,17 @@ defmodule IPLD.Multiformatter.Multihasher do
 
       iex> IPLD.Multiformatter.Multihasher.from(["H", "e", "l", "l", "o"], :sha1, 10)
       {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}}
+
+      iex> IPLD.Multiformatter.Multihasher.from(Stream.cycle(["H", "e", "l", "l", "o"]) |> Stream.take(5), :sha1, 10)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}}
+
+    Invalid `codec`, `trunc_length` corresponding to the hash function will return an error:
+
+      iex> IPLD.Multiformatter.Multihasher.from("Hello", :sha2_unknow)
+      {:error, :unsupported_hash_algo}
+
+      iex> IPLD.Multiformatter.Multihasher.from("Hello", :sha1, 32)
+      {:error, :invalid_truncating_length}
   """
   @spec from(
           blob :: Format.blob(),
@@ -86,6 +105,23 @@ defmodule IPLD.Multiformatter.Multihasher do
 
       iex> IPLD.Multiformatter.Multihasher.from_bytes(<<17, 20, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>)
       {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 20, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>}}
+
+      iex> IPLD.Multiformatter.Multihasher.from_bytes(<<17, 10, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}}
+
+    Invalid multihashes decode into errors:
+
+      iex> IPLD.Multiformatter.Multihasher.from_bytes(<<17, 20, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171>>)
+      {:error, :invalid_size}
+
+      iex> IPLD.Multiformatter.Multihasher.from_bytes(<<25, 20, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>)
+      {:error, :invalid_hash_code}
+
+      iex> IPLD.Multiformatter.Multihasher.from_bytes(<<17, 32, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>)
+      {:error, :invalid_length}
+
+      iex> IPLD.Multiformatter.Multihasher.from_bytes("Hello")
+      {:error, :invalid_hash_code}
   """
   @spec from_bytes(multihash :: binary) :: on_from
   def from_bytes(multihash) when is_binary(multihash) do
@@ -100,6 +136,32 @@ defmodule IPLD.Multiformatter.Multihasher do
 
   @doc ~S"""
   Creates a `t:IPLD.Multiformatter.Multihasher.t/0` from a digest binary.
+
+  ## Examples
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), :sha1)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 20, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>}}
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest("1234567890123456789012345678901234567890123456789012345678901234", :sha3, 10)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha3, length: 10, digest: <<49, 50, 51, 52, 53, 54, 55, 56, 57, 48>>}}
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha256, "Hello"), :sha2_256)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha2_256, length: 32, digest: <<24, 95, 141, 179, 34, 113, 254, 37, 245, 97, 166, 252, 147, 139, 46, 38, 67, 6, 236, 48, 78, 218, 81, 128, 7, 209, 118, 72, 38, 56, 25, 105>>}}
+
+    Invalid `hash_code`, `digest` length corresponding to the hash function will return an error
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), :sha2_unknow)
+      {:error, :invalid_multihash_codec}
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), 0x20)
+      {:error, :invalid_multihash_codec}
+
+    It's possible to [truncate a digest](https://github.com/jbenet/multihash/issues/1#issuecomment-91783612) by passing an optional `length` parameter. Passing a `length` longer than the default digest length of the hash function will return an error.
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), :sha1, 10)
+      {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}}
+
+      iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), :sha1, 30)
+      {:error, :invalid_truncating_length}
   """
   @spec from_digest(
           digest :: binary,
@@ -111,12 +173,12 @@ defmodule IPLD.Multiformatter.Multihasher do
   def from_digest(digest, codec, @default_len) do
     case Map.get(@supported_algo_map, codec) do
       nil -> {:error, :invalid_multihash_codec}
-      {_, len} -> {:ok, %__MODULE__{codec: codec, length: len, digest: digest}}
+      len -> {:ok, %__MODULE__{codec: codec, length: len, digest: digest}}
     end
   end
 
   def from_digest(digest, codec, trunc_len) do
-    default_trunc_len = Map.get(@supported_algo_map, codec) |> elem(1)
+    default_trunc_len = Map.get(@supported_algo_map, codec, nil)
 
     if is_valid_trunc_len(default_trunc_len, trunc_len) do
       digest = Kernel.binary_part(digest, 0, trunc_len)
@@ -167,7 +229,7 @@ defmodule IPLD.Multiformatter.Multihasher do
       do: {:ok, do_native_digest_enum(blob, unquote(hash_code))}
 
     defp digest(blob, unquote(codec), _trunc_len) do
-      case Enumerable.impl_for(unquote(codec)) do
+      case Enumerable.impl_for(blob) do
         nil -> {:error, :invalid_blob}
         _ -> {:ok, do_native_digest_enum(blob, unquote(hash_code))}
       end
