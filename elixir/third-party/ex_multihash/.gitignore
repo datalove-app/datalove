@@ -1,0 +1,10 @@
+/_build
+/deps
+/doc
+/docs
+erl_crash.dump
+*.ez
+
+.DS_Store
+.elixir_ls
+.vscode
