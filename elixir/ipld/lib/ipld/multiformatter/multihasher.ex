@@ -76,7 +76,7 @@ defmodule IPLD.Multiformatter.Multihasher do
       {:error, :unsupported_hash_algo}
 
       iex> IPLD.Multiformatter.Multihasher.from("Hello", :sha1, 32)
-      {:error, :invalid_truncating_length}
+      {:error, :invalid_truncation_length}
   """
   @spec from(
           blob :: Format.blob(),
@@ -161,7 +161,7 @@ defmodule IPLD.Multiformatter.Multihasher do
       {:ok, %IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}}
 
       iex> IPLD.Multiformatter.Multihasher.from_digest(:crypto.hash(:sha, "Hello"), :sha1, 30)
-      {:error, :invalid_truncating_length}
+      {:error, :invalid_truncation_length}
   """
   @spec from_digest(
           digest :: binary,
@@ -184,12 +184,34 @@ defmodule IPLD.Multiformatter.Multihasher do
       digest = Kernel.binary_part(digest, 0, trunc_len)
       {:ok, %__MODULE__{codec: codec, length: trunc_len, digest: digest}}
     else
-      {:error, :invalid_truncating_length}
+      {:error, :invalid_truncation_length}
     end
   end
 
   @doc ~S"""
   Serializes a `t:IPLD.Multiformatter.Multihasher.t/0` struct into raw binary.
+
+  ## Examples:
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha1, length: 20, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>})
+      {:ok, <<17, 20, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>}
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>})
+      {:ok, <<17, 10, 247, 255, 158, 139, 123, 178, 224, 155, 112, 147>>}
+
+  Invalid multihash will result in errors
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha1, length: 20, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171>>})
+      {:error, :invalid_size}
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha, length: 20, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>})
+      {:error, :invalid_hash_function}
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha1, length: 30, digest: <<247, 255, 158, 139, 123, 178, 224, 155, 112, 147, 90, 93, 120, 94, 12, 197, 217, 208, 171, 240>>})
+      {:error, :invalid_truncation_length}
+
+      iex> IPLD.Multiformatter.Multihasher.to_bytes(%IPLD.Multiformatter.Multihasher{codec: :sha1, length: 10, digest: "Hello"})
+      {:error, :invalid_size}
   """
   @spec to_bytes(multihasher :: __MODULE__.t()) :: on_to
   def to_bytes(%__MODULE__{codec: mh, length: len, digest: digest}) do
@@ -220,7 +242,7 @@ defmodule IPLD.Multiformatter.Multihasher do
   Enum.each(@native_algo_map, fn {codec, {hash_code, hash_len}} ->
     defp digest(_blob, unquote(codec), trunc_length)
          when not is_valid_trunc_len(unquote(hash_len), trunc_length),
-         do: {:error, :invalid_truncating_length}
+         do: {:error, :invalid_truncation_length}
 
     defp digest(blob, unquote(codec), _trunc_len) when is_binary(blob) or is_bitstring(blob),
       do: {:ok, do_native_digest(blob, unquote(hash_code))}
