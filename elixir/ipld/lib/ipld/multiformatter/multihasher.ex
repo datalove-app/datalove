@@ -6,8 +6,8 @@ defmodule IPLD.Multiformatter.Multihasher do
   """
 
   alias Multihash
-  alias IPLD.Format
   import IPLD.Multiformatter.Util
+  alias IPLD.Types
 
   @typedoc "Struct for describing a multihash, which can be serialized to binary."
   @type t :: %__MODULE__{
@@ -20,7 +20,7 @@ defmodule IPLD.Multiformatter.Multihasher do
   @type trunc_length :: :default | non_neg_integer
 
   @type on_from :: {:ok, Multihasher.t()} | {:error, reason :: atom}
-  @type on_to :: {:ok, Format.blob()} | {:error, reason :: atom}
+  @type on_to :: {:ok, Types.blob()} | {:error, reason :: atom}
   @type on_verify :: {:ok, bool} | {:error, reason :: atom}
 
   @enforce_keys [:codec, :length, :digest]
@@ -79,7 +79,7 @@ defmodule IPLD.Multiformatter.Multihasher do
       {:error, :invalid_truncation_length}
   """
   @spec from(
-          blob :: Format.blob(),
+          blob :: Types.blob(),
           codec :: __MODULE__.multihash_codec(),
           trunc_length :: trunc_length
         ) :: on_from
@@ -224,7 +224,7 @@ defmodule IPLD.Multiformatter.Multihasher do
   # @doc ~S"""
 
   # """
-  # @spec verify(blob :: Format.blob(), multihash :: binary) :: on_verify
+  # @spec verify(blob :: Types.blob(), multihash :: binary) :: on_verify
   # def verify(blob, multihash) when is_binary(multihash) do
   #   {:error, :unimplemented}
   # end
@@ -233,7 +233,7 @@ defmodule IPLD.Multiformatter.Multihasher do
 
   @doc false
   @spec digest(
-          blob :: Format.blob(),
+          blob :: Types.blob(),
           codec :: __MODULE__.multihash_codec(),
           length :: trunc_length
         ) :: binary
