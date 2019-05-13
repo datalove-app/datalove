@@ -18,6 +18,7 @@
   "multibase": {:hex, :multibase, "0.0.1", "9243bebe6f7f0f9f873c770ddcddab285cc554a8dd2374b8de6b2add087eccbc", [:mix], [{:base1, "~> 0.1.0", [hex: :base1, repo: "hexpm", optional: false]}, {:base2, "~> 0.1.0", [hex: :base2, repo: "hexpm", optional: false]}, {:basefiftyeight, "~> 0.1.0", [hex: :basefiftyeight, repo: "hexpm", optional: false]}, {:zbase32, "~> 2.0.0", [hex: :zbase32, repo: "hexpm", optional: false]}], "hexpm"},
   "nimble_parsec": {:hex, :nimble_parsec, "0.5.0", "90e2eca3d0266e5c53f8fbe0079694740b9c91b6747f2b7e3c5d21966bba8300", [:mix], [], "hexpm"},
   "parallel_stream": {:hex, :parallel_stream, "1.0.6", "b967be2b23f0f6787fab7ed681b4c45a215a81481fb62b01a5b750fa8f30f76c", [:mix], [], "hexpm"},
+  "rustler": {:hex, :rustler, "0.20.0", "6b2cc8149700a7b1df2226dbe273ec1f9449318cad3bd3b5b68125a4cf1f438b", [:mix], [], "hexpm"},
   "varint": {:hex, :varint, "1.2.0", "61bffd9dcc2d5242d59f75694506b4d4013bb103f6a23e34b94f89cebb0c1ab3", [:mix], [], "hexpm"},
   "zbase32": {:hex, :zbase32, "2.0.0", "5a61d5ee8f39092d4a243da2a42b5b4339ef226d9b182603f63d5a3f16d192ee", [:mix], [], "hexpm"},
 }

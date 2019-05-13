@@ -1,0 +1,22 @@
+[package]
+name = "xerde"
+version = "0.0.1"
+authors = ["Sunny G <sunny.gonna@gmail.com>"]
+readme = "README.md"
+categories = ["serde", "elixir"]
+license = "MIT"
+edition = "2018"
+
+[dependencies]
+lazy_static = "1.0"
+quick-error = "1.2"
+rustler = "0.20.0"
+rustler_codegen = "0.20.0"
+serde = "1.0"
+serde_derive = "1.0"
+serde-transcode = "1.1.0"
+
+[lib]
+name = "xerde"
+path = "src/lib.rs"
+crate-type = ["dylib"]
