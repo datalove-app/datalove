@@ -8,6 +8,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
+enum_dispatch = "0.1"
 lazy_static = "1.0"
 quick-error = "1.2"
 rustler = "0.20.0"

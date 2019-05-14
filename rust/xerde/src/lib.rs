@@ -21,23 +21,20 @@
 //!     - maps data model into the output representation
 //!     - aka, maps serde types to Rustler Terms
 
-#[macro_use] extern crate rustler;
-#[macro_use] extern crate rustler_codegen;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate enum_dispatch;
+#[macro_use]
+extern crate rustler;
+#[macro_use]
+extern crate rustler_codegen;
+#[macro_use]
+extern crate lazy_static;
 
-use rustler::{Env, Term, NifResult, Encoder};
+use rustler::{Encoder, Env, NifResult, Term};
 
-pub mod ser;
+pub mod atoms;
 pub mod de;
-
-mod atoms {
-    rustler_atoms! {
-        atom ok;
-        //atom error;
-        //atom __true__ = "true";
-        //atom __false__ = "false";
-    }
-}
+pub mod ser;
 
 rustler_export_nifs! {
     "Elixir.Xerde",
