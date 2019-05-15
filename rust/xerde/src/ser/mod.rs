@@ -1,40 +1,73 @@
-use rustler::{dynamic, Encoder, Env, Term, TermType};
-use ser::Serialize;
-use serde::ser;
-use super::atoms;
 use self::{
     compound::{Compound, CompoundProxy},
     error::Error,
 };
+use super::atoms;
+use rustler::{dynamic, Encoder, Env, Term, TermType};
+use serde::ser::{self, Serialize};
 
 pub mod compound;
 pub mod error;
 
+// pub fn to_term<'a, T>(env: Env<'a>, value: &T) -> Result<Term<'a>> where T: Serialize {}
+
 /**
  *
  */
-pub struct Serializer<'a> {
-    env: Env<'a>,
-    proxies: Vec<Proxy<'a>>,
-    output: Option<Term<'a>>,
+enum Proxy<'a> {
+    Primitive(Term<'a>),
+    Compound(CompoundProxy<'a>),
 }
 
-impl<'a> From<Env<'a>> for Serializer<'a> {
-    fn from(env: Env<'a>) -> Serializer<'a> {
-        Serializer {
-            env: env,
-            proxies: Vec::new(),
-            output: None,
+impl<'a> Proxy<'a> {
+    pub fn to_term(self: Proxy<'a>, env: Env<'a>) -> Result<Term<'a>, Error> {
+        match self {
+            Proxy::Primitive(term) => Ok(term),
+            Proxy::Compound(compound) => compound.to_term(env),
         }
     }
 }
 
-/**
- *
- */
-pub enum Proxy<'a> {
-    Primitive(Term<'a>),
-    Compound(CompoundProxy<'a>),
+struct Proxies<'a>(Vec<Proxy<'a>>);
+
+impl<'a> Proxies<'a> {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn add_term(&'a mut self, term: Term<'a>) -> Result<(), Error> {
+        self._add_to_proxy(term)
+    }
+
+    pub fn start_compound(&'a mut self, compound: CompoundProxy<'a>) -> Result<(), Error> {
+        self._start_proxy(compound);
+        Ok(())
+    }
+
+    pub fn end_compound(&'a mut self, env: Env<'a>) -> Result<Term<'a>, Error> {
+        let proxy = self.0.pop().ok_or(Error::Invalid)?;
+        let term = proxy.to_term(env)?;
+        self._add_to_proxy(term);
+        Ok(term)
+    }
+
+    // === === === === === === === === === === === === === === === === === ===
+
+    fn _add_to_proxy(&'a mut self, term: Term<'a>) -> Result<(), Error> {
+        let mut_proxy = self._mut_proxy().ok_or(Error::Invalid)?;
+        match mut_proxy {
+            Proxy::Compound(compound) => compound.add(term),
+            _ => Err(Error::Invalid),
+        }
+    }
+
+    fn _mut_proxy(&'a mut self) -> Option<&'a mut Proxy<'a>> {
+        self.0.last_mut()
+    }
+
+    fn _start_proxy(&'a mut self, compound: CompoundProxy<'a>) -> () {
+        self.0.push(Proxy::Compound(compound))
+    }
 }
 
 fn is_primitive_term(term: &Term) -> bool {
@@ -56,7 +89,24 @@ fn is_associated_term(term: &Term) -> bool {
     }
 }
 
-// pub fn to_term<'a, T>(env: Env<'a>, value: &T) -> Result<Term<'a>> where T: Serialize {}
+/**
+ *
+ */
+pub struct Serializer<'a> {
+    env: Env<'a>,
+    proxies: Proxies<'a>,
+    output: Option<Term<'a>>,
+}
+
+impl<'a> From<Env<'a>> for Serializer<'a> {
+    fn from(env: Env<'a>) -> Serializer<'a> {
+        Serializer {
+            env: env,
+            proxies: Proxies(Vec::new()),
+            output: None,
+        }
+    }
+}
 
 /**
  *
@@ -72,33 +122,32 @@ fn is_associated_term(term: &Term) -> bool {
  *  - stack.tail() -> output.add()
  */
 impl<'a> Serializer<'a> {
-    fn add_primitive<T: Encoder>(self, native: T) -> Result<(), Error> {
+    fn add_primitive<T: Encoder>(&'a mut self, native: T) -> Result<(), Error> {
         let term = self._native_to_term(native);
-        self.add_term(term)
+        self.proxies.add_term(term)
     }
 
-    fn add_term(mut self, term: Term<'a>) -> Result<(), Error> {
-        if (&self)._is_first() {
-            self._set_output(term);
+    fn add_term(&'a mut self, term: Term<'a>) -> Result<(), Error> {
+        if self._is_first() {
+            self.output = Some(term);
             return Ok(());
         }
 
-        self._add_to_proxy(term)
+        self.proxies.add_term(term)
     }
 
-    fn start_compound(self, compound: CompoundProxy<'a>) -> Result<(), Error> {
-        self._start_proxy(compound);
+    fn start_compound(&'a mut self, compound: CompoundProxy<'a>) -> Result<(), Error> {
+        self.proxies.start_compound(compound);
         Ok(())
     }
 
-    fn end_compound(mut self) -> Result<(), Error> {
+    fn end_compound(&'a mut self) -> Result<(), Error> {
         let is_last = self._is_last();
-        let proxy = self._end_proxy().ok_or(Error::Invalid)?;
-        let term = self._proxy_to_term(proxy)?;
-        self._add_to_proxy(term);
+        let term = self.proxies.end_compound(self.env)?;
 
         if is_last {
-            return Ok(self._set_output(term));
+            self.output = Some(term);
+            return Ok(());
         }
 
         Ok(())
@@ -116,33 +165,6 @@ impl<'a> Serializer<'a> {
 
     fn _native_to_term<T: Encoder>(&self, native: T) -> Term<'a> {
         native.encode(self.env)
-    }
-
-    fn _proxy_to_term(&self, proxy: Proxy<'a>) -> Result<Term<'a>, Error> {
-        match proxy {
-            Proxy::Primitive(term) => Ok(term),
-            Proxy::Compound(compound) => compound.to_term(self.env),
-        }
-    }
-
-    fn _add_to_proxy(&'a mut self, term: Term<'a>) -> Result<(), Error> {
-        let mut_proxy = self._mut_proxy().ok_or(Error::Invalid)?;
-        match mut_proxy {
-            Proxy::Compound(compound) => compound.add(term),
-            _ => Err(Error::Invalid),
-        }
-    }
-
-    fn _start_proxy(&'a mut self, compound: CompoundProxy<'a>) -> () {
-        self.proxies.push(Proxy::Compound(compound))
-    }
-
-    fn _end_proxy(&'a mut self) -> Option<Proxy<'a>> {
-        self.proxies.pop()
-    }
-
-    fn _mut_proxy(&'a mut self) -> Option<&'a mut Proxy<'a>> {
-        self.proxies.last_mut()
     }
 
     fn _set_output(&'a mut self, term: Term<'a>) -> () {
@@ -236,7 +258,7 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
 
     // TODO
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v);
+        self.add_primitive(v)?;
         Ok(())
     }
 
@@ -272,8 +294,8 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         T: ?Sized + ser::Serialize,
     {
         let proxy = CompoundProxy::new_map(Some(1));
-        self.start_compound(proxy);
-        self.add_primitive(variant);
+        self.start_compound(proxy)?;
+        variant.serialize(self)?;
         value.serialize(self)
     }
 
@@ -281,13 +303,13 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
     //
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         let proxy = CompoundProxy::new_sequence(len);
-        self.start_compound(proxy);
+        self.start_compound(proxy)?;
         Ok(self)
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
         let proxy = CompoundProxy::new_tuple(Some(len));
-        self.start_compound(proxy);
+        self.start_compound(proxy)?;
         Ok(self)
     }
 
@@ -307,14 +329,14 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        self.serialize_map(Some(1));
-        variant.serialize(self);
+        self.serialize_map(Some(1))?;
+        variant.serialize(self)?;
         self.serialize_tuple(len)
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         let proxy = CompoundProxy::new_map(len);
-        self.start_compound(proxy);
+        self.start_compound(proxy)?;
         Ok(self)
     }
 
@@ -335,8 +357,8 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        self.serialize_map(Some(1));
-        variant.serialize(self);
+        self.serialize_map(Some(1))?;
+        variant.serialize(self)?;
         self.serialize_map(Some(len))
     }
 }
@@ -409,7 +431,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer<'a> {
 
     // Ends the tuple and the containing map
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound();
+        self.end_compound()?;
         self.end_compound()
     }
 }
@@ -462,7 +484,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer<'a> {
     where
         T: ?Sized + ser::Serialize,
     {
-        key.serialize(*self);
+        key.serialize(*self)?;
         value.serialize(*self)
     }
 
@@ -481,12 +503,12 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer<'a> {
     where
         T: ?Sized + ser::Serialize,
     {
-        key.serialize(*self);
+        key.serialize(*self)?;
         value.serialize(*self)
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound();
+        self.end_compound()?;
         self.end_compound()
     }
 }
