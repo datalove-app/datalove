@@ -321,6 +321,7 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         self.serialize_tuple(len)
     }
 
+    // TODO
     // Serializes `E::T` of `enum E { T(u8, u8) }` into `%{"T" => (u8, u8)}`
     fn serialize_tuple_variant(
         self,
@@ -349,6 +350,7 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         self.serialize_map(Some(len))
     }
 
+    // TODO
     // Serializes `E::S` of `enum E { S { r: u8, g: u8, b: u8 } }` into `%{"S" => %{...}}`
     fn serialize_struct_variant(
         self,
@@ -418,6 +420,7 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer<'a> {
     }
 }
 
+// TODO
 impl<'a> ser::SerializeTupleVariant for &'a mut Serializer<'a> {
     type Ok = ();
     type Error = Error;
@@ -455,7 +458,7 @@ impl<'a> ser::SerializeMap for &'a mut Serializer<'a> {
     //
     // A real JSON serializer would need to validate that map keys are strings.
     // This can be done by using a different Serializer to serialize the key
-    // (instead of `&mut **self`) and having that other serializer only
+    // (instead of `self`) and having that other serializer only
     // implement `serialize_str` and return an error on any other data type.
     fn serialize_key<T>(&mut self, key: &T) -> Result<Self::Ok, Self::Error>
     where
@@ -476,6 +479,7 @@ impl<'a> ser::SerializeMap for &'a mut Serializer<'a> {
     }
 }
 
+// TODO
 impl<'a> ser::SerializeStruct for &'a mut Serializer<'a> {
     type Ok = ();
     type Error = Error;
@@ -493,6 +497,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer<'a> {
     }
 }
 
+// TODO
 // Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 // closing both of the curly braces opened by `serialize_struct_variant`.
 impl<'a> ser::SerializeStructVariant for &'a mut Serializer<'a> {
