@@ -1,74 +1,14 @@
 use self::{
-    compound::{Compound, CompoundProxy},
     error::Error,
 };
 use super::atoms;
-use rustler::{dynamic, Encoder, Env, Term, TermType};
+use rustler::{dynamic, Encoder, Env, types::tuple, Term, TermType};
 use serde::ser::{self, Serialize};
 
-pub mod compound;
 pub mod error;
+mod proxy;
 
 // pub fn to_term<'a, T>(env: Env<'a>, value: &T) -> Result<Term<'a>> where T: Serialize {}
-
-/**
- *
- */
-enum Proxy<'a> {
-    Primitive(Term<'a>),
-    Compound(CompoundProxy<'a>),
-}
-
-impl<'a> Proxy<'a> {
-    pub fn to_term(self: Proxy<'a>, env: Env<'a>) -> Result<Term<'a>, Error> {
-        match self {
-            Proxy::Primitive(term) => Ok(term),
-            Proxy::Compound(compound) => compound.to_term(env),
-        }
-    }
-}
-
-struct Proxies<'a>(Vec<Proxy<'a>>);
-
-impl<'a> Proxies<'a> {
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn add_term(&'a mut self, term: Term<'a>) -> Result<(), Error> {
-        self._add_to_proxy(term)
-    }
-
-    pub fn start_compound(&'a mut self, compound: CompoundProxy<'a>) -> Result<(), Error> {
-        self._start_proxy(compound);
-        Ok(())
-    }
-
-    pub fn end_compound(&'a mut self, env: Env<'a>) -> Result<Term<'a>, Error> {
-        let proxy = self.0.pop().ok_or(Error::Invalid)?;
-        let term = proxy.to_term(env)?;
-        self._add_to_proxy(term);
-        Ok(term)
-    }
-
-    // === === === === === === === === === === === === === === === === === ===
-
-    fn _add_to_proxy(&'a mut self, term: Term<'a>) -> Result<(), Error> {
-        let mut_proxy = self._mut_proxy().ok_or(Error::Invalid)?;
-        match mut_proxy {
-            Proxy::Compound(compound) => compound.add(term),
-            _ => Err(Error::Invalid),
-        }
-    }
-
-    fn _mut_proxy(&'a mut self) -> Option<&'a mut Proxy<'a>> {
-        self.0.last_mut()
-    }
-
-    fn _start_proxy(&'a mut self, compound: CompoundProxy<'a>) -> () {
-        self.0.push(Proxy::Compound(compound))
-    }
-}
 
 fn is_primitive_term(term: &Term) -> bool {
     match dynamic::get_type(*term) {
@@ -93,16 +33,14 @@ fn is_associated_term(term: &Term) -> bool {
  *
  */
 pub struct Serializer<'a> {
-    env: Env<'a>,
-    proxies: Proxies<'a>,
+    formatter: Formatter<'a>,
     output: Option<Term<'a>>,
 }
 
 impl<'a> From<Env<'a>> for Serializer<'a> {
     fn from(env: Env<'a>) -> Serializer<'a> {
         Serializer {
-            env: env,
-            proxies: Proxies(Vec::new()),
+            formatter: Formatter{env: env, proxies: Vec::new()},
             output: None,
         }
     }
@@ -122,57 +60,10 @@ impl<'a> From<Env<'a>> for Serializer<'a> {
  *  - stack.tail() -> output.add()
  */
 impl<'a> Serializer<'a> {
-    fn add_primitive<T: Encoder>(&'a mut self, native: T) -> Result<(), Error> {
-        let term = self._native_to_term(native);
-        self.proxies.add_term(term)
-    }
 
-    fn add_term(&'a mut self, term: Term<'a>) -> Result<(), Error> {
-        if self._is_first() {
-            self.output = Some(term);
-            return Ok(());
-        }
-
-        self.proxies.add_term(term)
-    }
-
-    fn start_compound(&'a mut self, compound: CompoundProxy<'a>) -> Result<(), Error> {
-        self.proxies.start_compound(compound);
-        Ok(())
-    }
-
-    fn end_compound(&'a mut self) -> Result<(), Error> {
-        let is_last = self._is_last();
-        let term = self.proxies.end_compound(self.env)?;
-
-        if is_last {
-            self.output = Some(term);
-            return Ok(());
-        }
-
-        Ok(())
-    }
-
-    // === === === === === === === === === === === === === === === === === ===
-
-    fn _is_first(&self) -> bool {
-        self.proxies.len() == 0
-    }
-
-    fn _is_last(&self) -> bool {
-        self.proxies.len() == 1 && self.output.is_none()
-    }
-
-    fn _native_to_term<T: Encoder>(&self, native: T) -> Term<'a> {
-        native.encode(self.env)
-    }
-
-    fn _set_output(&'a mut self, term: Term<'a>) -> () {
-        self.output = Some(term);
-    }
 }
 
-impl<'a> ser::Serializer for &'a mut Serializer<'a> {
+impl<'env, 'a: 'env> ser::Serializer for &'a mut Serializer<'env> {
     type Ok = ();
     type Error = Error;
 
@@ -185,12 +76,11 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
     type SerializeStructVariant = Self;
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        let term = atoms::nil().to_term(self.env);
-        self.add_term(term)
+        self.formatter.write_primitive(atoms::nil())
     }
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
@@ -204,42 +94,50 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
 
-    // Not particularly efficient but this is example code anyway. A more
-    // performant approach would be to use the `itoa` crate.
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)
+        self.formatter.write_primitive(v)
     }
 
     fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         self.serialize_unit()
     }
+
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        variant: &'static str,
+    ) -> Result<Self::Ok, Self::Error> {
+        self.serialize_str(variant)
+    }
+
     fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
@@ -258,8 +156,7 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
 
     // TODO
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        self.add_primitive(v)?;
-        Ok(())
+        self.formatter.write_primitive(v)
     }
 
     // TODO: return Binary or OwnedBinary?
@@ -273,15 +170,6 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
         Err(Error::Invalid)
     }
 
-    fn serialize_unit_variant(
-        self,
-        _name: &'static str,
-        _variant_index: u32,
-        variant: &'static str,
-    ) -> Result<Self::Ok, Self::Error> {
-        self.serialize_str(variant)
-    }
-
     // TODO
     fn serialize_newtype_variant<T>(
         self,
@@ -293,23 +181,26 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
     where
         T: ?Sized + ser::Serialize,
     {
-        let proxy = CompoundProxy::new_map(Some(1));
-        self.start_compound(proxy)?;
-        variant.serialize(self)?;
-        value.serialize(self)
+        let compound = CompoundProxy::new_map(Some(1));
+        self.formatter.start_compound(compound);
+        self.serialize_str(variant);
+        value.serialize(self);
+        self.formatter.end_compound()?;
+
+        Ok(())
     }
 
     // Now we get to the serialization of compound types.
     //
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         let proxy = CompoundProxy::new_sequence(len);
-        self.start_compound(proxy)?;
+        self.formatter.start_compound(proxy);
         Ok(self)
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
         let proxy = CompoundProxy::new_tuple(Some(len));
-        self.start_compound(proxy)?;
+        self.formatter.start_compound(proxy);
         Ok(self)
     }
 
@@ -337,7 +228,7 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         let proxy = CompoundProxy::new_map(len);
-        self.start_compound(proxy)?;
+        self.formatter.start_compound(proxy);
         Ok(self)
     }
 
@@ -365,6 +256,13 @@ impl<'a> ser::Serializer for &'a mut Serializer<'a> {
     }
 }
 
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+
 // The following 7 impls deal with the serialization of compound types like
 // sequences and maps. Serialization of such types is begun by a Serializer
 // method and followed by zero or more calls to serialize individual elements of
@@ -384,7 +282,8 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -400,7 +299,8 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -416,7 +316,8 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -434,8 +335,9 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer<'a> {
 
     // Ends the tuple and the containing map
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()?;
-        self.end_compound()
+        self.formatter.end_compound()?;
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -475,7 +377,8 @@ impl<'a> ser::SerializeMap for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -493,7 +396,8 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
 
@@ -513,10 +417,263 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer<'a> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        self.end_compound()?;
-        self.end_compound()
+        self.formatter.end_compound()?;
+        self.formatter.end_compound()?;
+        Ok(())
     }
 }
+
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+
+impl<'a> ser::SerializeMap for CompoundProxy<'a> {
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_key<T>(&mut self, value: &T) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + ser::Serialize,
+    {
+        match *self {
+            CompoundProxy::Map(ref mut proxy) => {
+                // value.serialize(proxy.ser)?;
+                Ok(())
+            },
+            _ => Err(Error::Invalid),
+        }
+    }
+
+    fn serialize_value<T>(&mut self, value: &T) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + ser::Serialize,
+    {
+        match *self {
+            CompoundProxy::Map(ref mut proxy) => {
+                // value.serialize(proxy.ser)?;
+                Ok(())
+            },
+            _ => Err(Error::Invalid),
+        }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        match self {
+            CompoundProxy::Map(proxy) => {
+                // let ser = proxy.ser;
+
+                Ok(())
+            },
+            _ => Err(Error::Invalid),
+        }
+    }
+}
+
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+// === === === === === === === === === === === === === === === === === ===
+
+/**
+ *
+ */
+struct Formatter<'a> {
+    env: Env<'a>,
+    proxies: Vec<Proxy<'a>>,
+}
+
+impl<'a> Formatter<'a> {
+    pub fn write_primitive<T: Encoder>(&'a mut self, native: T) -> Result<(), Error> {
+        let term = self.native_to_term(native);
+        let mut_proxy = self.proxies.last_mut();
+        match mut_proxy {
+            Some(Proxy::Compound(compound)) => compound.add(term),
+            Some(Proxy::Primitive(_)) => Err(Error::Invalid),
+            None => {
+                self.proxies.push(Proxy::Primitive(term));
+                Ok(())
+            },
+        }
+    }
+
+    pub fn start_compound(&'a mut self, compound: CompoundProxy<'a>) -> () {
+        self.proxies.push(Proxy::Compound(compound))
+    }
+
+    pub fn end_compound(&'a mut self) -> Result<(), Error> {
+        let proxy = self.proxies.pop().ok_or(Error::Invalid)?;
+        let term = proxy.to_term(self.env)?;
+
+        if self.len() == 0 {
+            // put it back so that Serializer can
+            self.proxies.push(proxy);
+            Ok(())
+        } else {
+            match self.proxies.pop().ok_or(Error::Invalid)? {
+                Proxy::Compound(compound) => compound.add(term),
+                Proxy::Primitive(_) => Err(Error::Invalid),
+            }
+        }
+    }
+
+    fn len(&self) -> usize { self.proxies.len() }
+
+    fn native_to_term<T: Encoder>(&self, native: T) -> Term<'a> {
+        native.encode(self.env)
+    }
+}
+
+pub enum Proxy<'a> {
+    Primitive(Term<'a>),
+    Compound(CompoundProxy<'a>),
+}
+
+impl<'a> Proxy<'a> {
+    pub fn to_term(&self, env: Env<'a>) -> Result<Term<'a>, Error> {
+        match self {
+            Proxy::Primitive(term) => Ok(*term),
+            Proxy::Compound(compound) => compound.to_term(env),
+        }
+    }
+}
+
+/**
+ *
+ */
+#[enum_dispatch(Compound)]
+pub enum CompoundProxy<'a> {
+    Seq(SequenceProxy<'a>),
+    Map(MapProxy<'a>),
+    Tuple(TupleProxy<'a>),
+}
+
+// TODO: refactor this to support all 7 compound types (even with small stubs)
+// TODO: have internal Serializer types impl'ed for `CompoundProxy<'a>` (not &'a mut)
+impl<'a> CompoundProxy<'a> {
+    pub fn new_map(len: Option<usize>) -> CompoundProxy<'a> {
+        CompoundProxy::Map(MapProxy::new(len))
+    }
+
+    pub fn new_sequence(len: Option<usize>) -> CompoundProxy<'a> {
+        CompoundProxy::Seq(SequenceProxy::new(len))
+    }
+
+    pub fn new_tuple(len: Option<usize>) -> CompoundProxy<'a> {
+        CompoundProxy::Tuple(TupleProxy::new(len))
+    }
+}
+
+/**
+ *
+ */
+#[enum_dispatch]
+pub trait Compound<'a> {
+    /**
+     *
+     */
+
+    fn add(&mut self, term: Term<'a>) -> Result<(), Error>;
+
+    fn to_term(&self, env: Env<'a>) -> Result<Term<'a>, Error>;
+}
+
+/**
+ *
+ */
+pub struct MapProxy<'a> {
+    keys: Vec<Term<'a>>,
+    values: Vec<Term<'a>>,
+}
+impl<'a> MapProxy<'a> {
+    pub fn new(len: Option<usize>) -> Self {
+        match len {
+            None => MapProxy {
+                keys: Vec::new(),
+                values: Vec::new(),
+            },
+            Some(length) => MapProxy {
+                keys: Vec::with_capacity(length),
+                values: Vec::with_capacity(length),
+            },
+        }
+    }
+
+    fn should_add_key(&self) -> bool {
+        self.keys.len() == self.values.len()
+    }
+    fn should_add_val(&self) -> bool {
+        self.keys.len() == self.values.len() + 1
+    }
+}
+impl<'a> Compound<'a> for MapProxy<'a> {
+    fn add(&mut self, term: Term<'a>) -> Result<(), Error> {
+        if self.should_add_key() {
+            self.keys.push(term);
+            Ok(())
+        } else if self.should_add_val() {
+            self.values.push(term);
+            Ok(())
+        } else {
+            Err(Error::Invalid)
+        }
+    }
+
+    fn to_term(&self, env: Env<'a>) -> Result<Term<'a>, Error> {
+        match Term::map_from_arrays(env, &self.keys, &self.values) {
+            Err(_reason) => Err(Error::Invalid),
+            Ok(term) => Ok(term),
+        }
+    }
+}
+
+/**
+ *
+ */
+pub struct SequenceProxy<'a>(Vec<Term<'a>>);
+impl<'a> SequenceProxy<'a> {
+    pub fn new(len: Option<usize>) -> Self {
+        match len {
+            None => SequenceProxy(Vec::new()),
+            Some(length) => SequenceProxy(Vec::with_capacity(length)),
+        }
+    }
+}
+impl<'a> Compound<'a> for SequenceProxy<'a> {
+    fn add(&mut self, term: Term<'a>) -> Result<(), Error> {
+        self.0.push(term);
+        Ok(())
+    }
+
+    fn to_term(&self, env: Env<'a>) -> Result<Term<'a>, Error> {
+        Ok(self.0.encode(env))
+    }
+}
+
+/**
+ *
+ */
+pub struct TupleProxy<'a>(Vec<Term<'a>>);
+impl<'a> TupleProxy<'a> {
+    pub fn new(len: Option<usize>) -> Self {
+        match len {
+            None => TupleProxy(Vec::new()),
+            Some(length) => TupleProxy(Vec::with_capacity(length)),
+        }
+    }
+}
+impl<'a> Compound<'a> for TupleProxy<'a> {
+    fn add(&mut self, term: Term<'a>) -> Result<(), Error> {
+        self.0.push(term);
+        Ok(())
+    }
+
+    fn to_term(&self, env: Env<'a>) -> Result<Term<'a>, Error> {
+        Ok(tuple::make_tuple(env, &self.0))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
