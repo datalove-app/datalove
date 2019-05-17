@@ -1,9 +1,6 @@
-use self::error::Error;
-use super::atoms;
+use super::{atoms, error::Error};
 use rustler::{types::tuple, Encoder, Env, Term};
 use serde::ser::{self, Serialize};
-
-pub mod error;
 
 /**
  *
@@ -14,7 +11,7 @@ pub struct Serializer<'a> {
 
 impl<'a> From<Env<'a>> for Serializer<'a> {
     fn from(env: Env<'a>) -> Serializer<'a> {
-        Serializer { env: env }
+        Serializer { env }
     }
 }
 
@@ -106,7 +103,7 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         _variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)
+        atoms::term_from_str(self.env, variant).map_err(|_| Error::InvalidVariant)
     }
 
     fn serialize_newtype_struct<T>(
@@ -132,7 +129,8 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         T: ?Sized + ser::Serialize,
     {
         let mut tuple = SequenceSerializer::new(&self, Some(2), None);
-        let variant_term = atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)?;
+        let variant_term =
+            atoms::term_from_str(self.env, variant).map_err(|_| Error::InvalidVariant)?;
         tuple.add(variant_term);
         tuple.add(value.serialize(self)?);
         tuple.to_tuple()
@@ -162,7 +160,8 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        let variant_term = atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)?;
+        let variant_term =
+            atoms::term_from_str(self.env, variant).map_err(|_| Error::InvalidVariant)?;
         Ok(SequenceSerializer::new(
             &self,
             Some(len),
@@ -180,7 +179,8 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        let name_term = atoms::try_from_str(self.env, name).map_err(|_| Error::Invalid)?;
+        let name_term =
+            atoms::term_from_str(self.env, name).map_err(|_| Error::InvalidStructName)?;
         Ok(MapSerializer::new(self, Some(len), Some(name_term), None))
     }
 
@@ -192,8 +192,10 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        let name_term = atoms::try_from_str(self.env, name).map_err(|_| Error::Invalid)?;
-        let variant_term = atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)?;
+        let name_term =
+            atoms::term_from_str(self.env, name).map_err(|_| Error::InvalidStructName)?;
+        let variant_term =
+            atoms::term_from_str(self.env, variant).map_err(|_| Error::InvalidVariant)?;
         Ok(MapSerializer::new(
             self,
             Some(len),
@@ -211,8 +213,7 @@ impl<'a> ser::SerializeSeq for SequenceSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        let term = value.serialize(self.ser)?;
-        self.add(term);
+        self.add(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -229,8 +230,7 @@ impl<'a> ser::SerializeTuple for SequenceSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        let term = value.serialize(self.ser)?;
-        self.add(term);
+        self.add(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -247,8 +247,7 @@ impl<'a> ser::SerializeTupleStruct for SequenceSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        let term = value.serialize(self.ser)?;
-        self.add(term);
+        self.add(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -265,8 +264,7 @@ impl<'a> ser::SerializeTupleVariant for SequenceSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        let term = value.serialize(self.ser)?;
-        self.add(term);
+        self.add(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -381,7 +379,7 @@ impl<'a> SequenceSerializer<'a> {
     }
 
     fn to_tuple_variant(&self) -> Result<Term<'a>, Error> {
-        let variant_term = self.variant.ok_or(Error::Invalid)?;
+        let variant_term = self.variant.ok_or(Error::InvalidVariant)?;
         let tuple_term = self.to_tuple()?;
         Ok(tuple::make_tuple(
             self.ser.env,
@@ -435,22 +433,23 @@ impl<'a> MapSerializer<'a> {
 
     fn to_map(&self) -> Result<Term<'a>, Error> {
         match Term::map_from_arrays(self.ser.env, &self.keys, &self.values) {
-            Err(_reason) => Err(Error::Invalid),
+            Err(_reason) => Err(Error::InvalidMap),
             Ok(term) => Ok(term),
         }
     }
 
     fn to_struct(&self) -> Result<Term<'a>, Error> {
-        let module_term = self.name.ok_or(Error::Invalid)?;
+        let module_term = self.name.ok_or(Error::InvalidStructName)?;
         let struct_atom = atoms::__struct__().to_term(self.ser.env);
-        self.to_map()?
+        self.to_map()
+            .map_err(|_| Error::InvalidStruct)?
             .map_put(struct_atom, module_term)
-            .map_err(|_| Error::Invalid)
+            .map_err(|_| Error::InvalidStruct)
     }
 
     // TODO: support :__struct__ and atom key? is name/variant correct?
     fn to_struct_variant(&self) -> Result<Term<'a>, Error> {
-        let variant_term = self.variant.ok_or(Error::Invalid)?;
+        let variant_term = self.variant.ok_or(Error::InvalidVariant)?;
         let struct_term = self.to_struct()?;
         Ok(tuple::make_tuple(
             self.ser.env,

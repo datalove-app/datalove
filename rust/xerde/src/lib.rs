@@ -22,8 +22,6 @@
 //!     - aka, maps serde types to Rustler Terms
 
 #[macro_use]
-extern crate enum_dispatch;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate rustler;
@@ -34,6 +32,7 @@ use rustler::{Encoder, Env, NifResult, Term};
 
 pub mod atoms;
 pub mod de;
+pub mod error;
 pub mod ser;
 
 rustler_export_nifs! {

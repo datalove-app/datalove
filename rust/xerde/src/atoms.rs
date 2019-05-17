@@ -11,30 +11,35 @@ rustler_atoms! {
     atom __struct__;
 }
 
-pub fn try_from_bytes<'a>(env: Env<'a>, bytes: &[u8]) -> Result<Term<'a>, Error> {
+pub fn term_from_bytes<'a>(env: Env<'a>, bytes: &[u8]) -> Result<Term<'a>, Error> {
     match Atom::try_from_bytes(env, bytes) {
         Ok(Some(term)) => Ok(term.encode(env)),
-        _ => {
+        Ok(None) => {
             let string = from_utf8(bytes).map_err(|_| Error::InvalidUTF8Bytes)?;
             Ok(string.encode(env))
         }
+        _ => Err(Error::InvalidAtomBytes),
     }
 }
 
-pub fn try_from_str<'a>(env: Env<'a>, string: &str) -> Result<Term<'a>, Error> {
+pub fn term_from_str<'a>(env: Env<'a>, string: &str) -> Result<Term<'a>, Error> {
     match Atom::try_from_bytes(env, string.as_bytes()) {
         Ok(Some(term)) => Ok(term.encode(env)),
-        _ => Ok(string.encode(env)),
+        Ok(None) => Ok(string.encode(env)),
+        _ => Err(Error::InvalidUTF8String),
     }
 }
 
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
-        InvalidAtom {
-            description("Unable to create atom")
+        InvalidAtomBytes {
+            description("Invalid atom bytes")
         }
         InvalidUTF8Bytes {
+            description("Invalid UTF-8 bytes")
+        }
+        InvalidUTF8String {
             description("Invalid UTF-8 string")
         }
     }
