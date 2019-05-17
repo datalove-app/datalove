@@ -1,30 +1,9 @@
 use self::error::Error;
 use super::atoms;
-use rustler::{dynamic, types::tuple, Encoder, Env, Term, TermType};
+use rustler::{types::tuple, Encoder, Env, Term};
 use serde::ser::{self, Serialize};
 
 pub mod error;
-
-// pub fn to_term<'a, T>(env: Env<'a>, value: &T) -> Result<Term<'a>> where T: Serialize {}
-
-fn is_primitive_term(term: &Term) -> bool {
-    match dynamic::get_type(*term) {
-        TermType::Atom => true,
-        TermType::Binary => true,
-        TermType::EmptyList => true,
-        TermType::Number => true,
-        _ => false,
-    }
-}
-
-fn is_associated_term(term: &Term) -> bool {
-    match dynamic::get_type(*term) {
-        TermType::List => true,
-        TermType::Map => true,
-        TermType::Tuple => true,
-        _ => false,
-    }
-}
 
 /**
  *
@@ -38,21 +17,6 @@ impl<'a> From<Env<'a>> for Serializer<'a> {
         Serializer { env: env }
     }
 }
-
-/**
- *
- * Proxy stack is either a single primitive, or a list of incomplete associated data types, the last one representing the deepest and current associated type being added to
- * adding initial term ---- (push)
- *  - stack.push()
- * adding next primitive ---- (add)
- *  - stack.tail() -> output.add()
- * starting next associated ---- (push)
- *  - stack.push()
- * ending next associated ---- (pop, to_term, add)
- *  - stack.pop() -> output.to_term()
- *  - stack.tail() -> output.add()
- */
-impl<'a> Serializer<'a> {}
 
 impl<'a> ser::Serializer for &'a Serializer<'a> {
     type Ok = Term<'a>;
@@ -135,14 +99,14 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         self.serialize_unit()
     }
 
-    // TODO: could be an atom, but should probably be a string
+    // Serializes `E::A` or `E::B` in `enum E { A, B }` as `:A` or `:B`
     fn serialize_unit_variant(
         self,
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        unimplemented!("return atom or bytes?");
+        atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)
     }
 
     fn serialize_newtype_struct<T>(
@@ -156,7 +120,7 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         value.serialize(self)
     }
 
-    // TODO
+    // Serializes `E::N` in `enum E { N(u8) }` as `{:N, u8}`
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
@@ -169,12 +133,11 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
     {
         let mut tuple = SequenceSerializer::new(&self, Some(2), None);
         let variant_term = atoms::try_from_str(self.env, variant).map_err(|_| Error::Invalid)?;
-        tuple.add(variant_term)?;
-        tuple.add(value.serialize(self)?)?;
+        tuple.add(variant_term);
+        tuple.add(value.serialize(self)?);
         tuple.to_tuple()
     }
 
-    // Now we get to the serialization of compound types.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         Ok(SequenceSerializer::new(&self, len, None))
     }
@@ -191,7 +154,6 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         self.serialize_tuple(len)
     }
 
-    // TODO
     // Serializes `E::T` of `enum E { T(u8, u8) }` into `{:T, {u8, u8}}`
     fn serialize_tuple_variant(
         self,
@@ -212,7 +174,7 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         Ok(MapSerializer::new(self, len, None, None))
     }
 
-    // attempts to create __struct__ field pointing to module atom
+    // Serializes as map, but tries to include %{:__struct__ => :STRUCT_NAME}
     fn serialize_struct(
         self,
         name: &'static str,
@@ -222,7 +184,6 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         Ok(MapSerializer::new(self, Some(len), Some(name_term), None))
     }
 
-    // TODO
     // Serializes `E::S` of `enum E { S { r: u8, g: u8, b: u8 } }` into `%{:E, %S{...}}`
     fn serialize_struct_variant(
         self,
@@ -242,18 +203,10 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
     }
 }
 
-// === === === === === === === === === === === === === === === === === ===
-// === === === === === === === === === === === === === === === === === ===
-// === === === === === === === === === === === === === === === === === ===
-// === === === === === === === === === === === === === === === === === ===
-// === === === === === === === === === === === === === === === === === ===
-// === === === === === === === === === === === === === === === === === ===
-
 impl<'a> ser::SerializeSeq for SequenceSerializer<'a> {
     type Ok = Term<'a>;
     type Error = Error;
 
-    // Serialize a single element of the sequence.
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error>
     where
         T: ?Sized + Serialize,
@@ -272,7 +225,6 @@ impl<'a> ser::SerializeTuple for SequenceSerializer<'a> {
     type Ok = Term<'a>;
     type Error = Error;
 
-    // Serialize a single element of the sequence.
     fn serialize_element<T>(&mut self, value: &T) -> Result<(), Error>
     where
         T: ?Sized + Serialize,
@@ -291,7 +243,6 @@ impl<'a> ser::SerializeTupleStruct for SequenceSerializer<'a> {
     type Ok = Term<'a>;
     type Error = Error;
 
-    // Serialize a single element of the sequence.
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error>
     where
         T: ?Sized + Serialize,
@@ -310,7 +261,6 @@ impl<'a> ser::SerializeTupleVariant for SequenceSerializer<'a> {
     type Ok = Term<'a>;
     type Error = Error;
 
-    // Serialize a single element of the sequence.
     fn serialize_field<T>(&mut self, value: &T) -> Result<(), Error>
     where
         T: ?Sized + Serialize,
@@ -348,8 +298,8 @@ impl<'a> ser::SerializeMap for MapSerializer<'a> {
         K: Serialize,
         V: Serialize,
     {
-        self.add_key(key.serialize(self.ser)?)?;
-        self.add_val(value.serialize(self.ser)?)?;
+        self.add_key(key.serialize(self.ser)?);
+        self.add_val(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -366,8 +316,8 @@ impl<'a> ser::SerializeStruct for MapSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        self.add_key(key.serialize(self.ser)?)?;
-        self.add_val(value.serialize(self.ser)?)?;
+        self.add_key(key.serialize(self.ser)?);
+        self.add_val(value.serialize(self.ser)?);
         Ok(())
     }
 
@@ -384,13 +334,59 @@ impl<'a> ser::SerializeStructVariant for MapSerializer<'a> {
     where
         T: ?Sized + Serialize,
     {
-        self.add_key(key.serialize(self.ser)?)?;
-        self.add_val(value.serialize(self.ser)?)?;
+        self.add_key(key.serialize(self.ser)?);
+        self.add_val(value.serialize(self.ser)?);
         Ok(())
     }
 
     fn end(self) -> Result<Term<'a>, Error> {
         self.to_struct_variant()
+    }
+}
+
+/**
+ *
+ */
+pub struct SequenceSerializer<'a> {
+    ser: &'a Serializer<'a>,
+    variant: Option<Term<'a>>,
+    items: Vec<Term<'a>>,
+}
+impl<'a> SequenceSerializer<'a> {
+    fn new(ser: &'a Serializer<'a>, len: Option<usize>, variant: Option<Term<'a>>) -> Self {
+        match len {
+            None => SequenceSerializer {
+                ser,
+                variant,
+                items: Vec::new(),
+            },
+            Some(length) => SequenceSerializer {
+                ser,
+                variant,
+                items: Vec::with_capacity(length),
+            },
+        }
+    }
+
+    fn add(&mut self, term: Term<'a>) -> () {
+        self.items.push(term)
+    }
+
+    fn to_list(&self) -> Result<Term<'a>, Error> {
+        Ok(self.items.encode(self.ser.env))
+    }
+
+    fn to_tuple(&self) -> Result<Term<'a>, Error> {
+        Ok(tuple::make_tuple(self.ser.env, &self.items))
+    }
+
+    fn to_tuple_variant(&self) -> Result<Term<'a>, Error> {
+        let variant_term = self.variant.ok_or(Error::Invalid)?;
+        let tuple_term = self.to_tuple()?;
+        Ok(tuple::make_tuple(
+            self.ser.env,
+            &vec![variant_term, tuple_term],
+        ))
     }
 }
 
@@ -405,7 +401,7 @@ pub struct MapSerializer<'a> {
     values: Vec<Term<'a>>,
 }
 impl<'a> MapSerializer<'a> {
-    pub fn new(
+    fn new(
         ser: &'a Serializer<'a>,
         len: Option<usize>,
         name: Option<Term<'a>>,
@@ -429,23 +425,22 @@ impl<'a> MapSerializer<'a> {
         }
     }
 
-    pub fn add_key(&mut self, term: Term<'a>) -> Result<(), Error> {
-        Ok(self.keys.push(term))
+    fn add_key(&mut self, term: Term<'a>) -> () {
+        self.keys.push(term)
     }
 
-    pub fn add_val(&mut self, term: Term<'a>) -> Result<(), Error> {
-        Ok(self.values.push(term))
+    fn add_val(&mut self, term: Term<'a>) -> () {
+        self.values.push(term)
     }
 
-    pub fn to_map(&self) -> Result<Term<'a>, Error> {
+    fn to_map(&self) -> Result<Term<'a>, Error> {
         match Term::map_from_arrays(self.ser.env, &self.keys, &self.values) {
             Err(_reason) => Err(Error::Invalid),
             Ok(term) => Ok(term),
         }
     }
 
-    // TODO: support :__struct__ and atom key? is name/variant correct?
-    pub fn to_struct(&self) -> Result<Term<'a>, Error> {
+    fn to_struct(&self) -> Result<Term<'a>, Error> {
         let module_term = self.name.ok_or(Error::Invalid)?;
         let struct_atom = atoms::__struct__().to_term(self.ser.env);
         self.to_map()?
@@ -454,59 +449,12 @@ impl<'a> MapSerializer<'a> {
     }
 
     // TODO: support :__struct__ and atom key? is name/variant correct?
-    pub fn to_struct_variant(&self) -> Result<Term<'a>, Error> {
+    fn to_struct_variant(&self) -> Result<Term<'a>, Error> {
         let variant_term = self.variant.ok_or(Error::Invalid)?;
         let struct_term = self.to_struct()?;
         Ok(tuple::make_tuple(
             self.ser.env,
             &vec![variant_term, struct_term],
-        ))
-    }
-}
-
-/**
- *
- */
-pub struct SequenceSerializer<'a> {
-    ser: &'a Serializer<'a>,
-    variant: Option<Term<'a>>,
-    items: Vec<Term<'a>>,
-}
-impl<'a> SequenceSerializer<'a> {
-    pub fn new(ser: &'a Serializer<'a>, len: Option<usize>, variant: Option<Term<'a>>) -> Self {
-        match len {
-            None => SequenceSerializer {
-                ser,
-                variant,
-                items: Vec::new(),
-            },
-            Some(length) => SequenceSerializer {
-                ser,
-                variant,
-                items: Vec::with_capacity(length),
-            },
-        }
-    }
-
-    pub fn add(&mut self, term: Term<'a>) -> Result<(), Error> {
-        self.items.push(term);
-        Ok(())
-    }
-
-    pub fn to_list(&self) -> Result<Term<'a>, Error> {
-        Ok(self.items.encode(self.ser.env))
-    }
-
-    pub fn to_tuple(&self) -> Result<Term<'a>, Error> {
-        Ok(tuple::make_tuple(self.ser.env, &self.items))
-    }
-
-    pub fn to_tuple_variant(&self) -> Result<Term<'a>, Error> {
-        let variant_term = self.variant.ok_or(Error::Invalid)?;
-        let tuple_term = self.to_tuple()?;
-        Ok(tuple::make_tuple(
-            self.ser.env,
-            &vec![variant_term, tuple_term],
         ))
     }
 }
