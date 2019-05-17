@@ -6,7 +6,7 @@ quick_error! {
     #[derive(Debug)]
     pub enum Error {
         Invalid {
-            description("invalid")
+            description("Invalid")
         }
     }
 }

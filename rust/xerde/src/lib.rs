@@ -21,10 +21,14 @@
 //!     - maps data model into the output representation
 //!     - aka, maps serde types to Rustler Terms
 
-#[macro_use] extern crate enum_dispatch;
-#[macro_use] extern crate lazy_static;
-#[macro_use] extern crate rustler;
-#[macro_use] extern crate rustler_codegen;
+#[macro_use]
+extern crate enum_dispatch;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate rustler;
+#[macro_use]
+extern crate rustler_codegen;
 
 use rustler::{Encoder, Env, NifResult, Term};
 
