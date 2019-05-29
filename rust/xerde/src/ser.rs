@@ -27,10 +27,6 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
     type SerializeStruct = MapSerializer<'a>;
     type SerializeStructVariant = MapSerializer<'a>;
 
-    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        Ok(atoms::nil().encode(self.env))
-    }
-
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         Ok(v.encode(self.env))
     }
@@ -77,12 +73,10 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         Ok(v.encode(self.env))
     }
 
-    //TODO
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
         self.serialize_str(&v.to_string())
     }
 
-    // TODO
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         Ok(v.encode(self.env))
     }
@@ -92,11 +86,16 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         unimplemented!("return Binary or OwnedBinary?");
     }
 
+    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+        Ok(atoms::nil().encode(self.env))
+    }
+
+    /// Serializes `struct Unit` as `nil`.
     fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         self.serialize_unit()
     }
 
-    // Serializes `E::A` or `E::B` in `enum E { A, B }` as `:A` or `:B`
+    /// Serializes `E::A` or `E::B` in `enum E { A, B }` as `:A` or `:B`.
     fn serialize_unit_variant(
         self,
         _name: &'static str,
@@ -106,6 +105,7 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         atoms::term_from_str(self.env, variant).map_err(|_| Error::InvalidVariant)
     }
 
+    /// Serializes `struct Millimeters(u8)` as the raw `u8` value.
     fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
@@ -117,7 +117,9 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         value.serialize(self)
     }
 
-    // Serializes `E::N` in `enum E { N(u8) }` as `{:N, u8}`
+    /// Serializes `E::N` in `enum E { N(u8) }` as `{:N, u8}` or `{"N", u8}`, depending on if the atom `:N` has already been created.
+    /// Serializes `Result::Ok` of `enum Result { Ok(u8) }` into `{:ok, u8}`.
+    // TODO: ensure `Ok` maps to `:ok`, `Err` to `:error`
     fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
@@ -136,14 +138,17 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         tuple.to_tuple()
     }
 
+    /// Serializes sequences as a Elixir lists.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         Ok(SequenceSerializer::new(&self, len, None))
     }
 
+    /// Serializes tuples as Elixir tuples.
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
         Ok(SequenceSerializer::new(&self, Some(len), None))
     }
 
+    /// Serializes `struct Rgb(u8, u8, u8)` as `{u8, u8, u8}`.
     fn serialize_tuple_struct(
         self,
         _name: &'static str,
@@ -152,7 +157,7 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         self.serialize_tuple(len)
     }
 
-    // Serializes `E::T` of `enum E { T(u8, u8) }` into `{:T, {u8, u8}}`
+    /// Serializes `E::T` of `enum E { T(u8, u8) }` as `{:T, {u8, u8}} or {"T", {u8, u8}}`, depending on if the atom `:T` has already been created.
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
@@ -169,11 +174,12 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         ))
     }
 
+    /// Serializes map as Elixir map.
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         Ok(MapSerializer::new(self, len, None, None))
     }
 
-    // Serializes as map, but tries to include %{:__struct__ => :STRUCT_NAME}
+    // Serializes as map, but attempts to include %{:__struct__ => :STRUCT_NAME}, if the atom `:STRUCT_NAME` has already been created.
     fn serialize_struct(
         self,
         name: &'static str,
@@ -184,7 +190,8 @@ impl<'a> ser::Serializer for &'a Serializer<'a> {
         Ok(MapSerializer::new(self, Some(len), Some(name_term), None))
     }
 
-    // Serializes `E::S` of `enum E { S { r: u8, g: u8, b: u8 } }` into `%{:E, %S{...}}`
+    // Serializes `E::S` of `enum E { S { r: u8, g: u8, b: u8 } }` into `{:E, %S{...}}`, attempting to replace `E` and `S` with `:E` and `:S` if the atoms have already been created.
+    // TODO: above is incorrect, fix it
     fn serialize_struct_variant(
         self,
         name: &'static str,

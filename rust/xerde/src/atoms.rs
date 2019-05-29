@@ -11,6 +11,9 @@ rustler_atoms! {
     atom __struct__;
 }
 
+/**
+ * Attempts to create an atom term from the provided bytes (if the atom already exists in the atom table). If not, returns a string term.
+ */
 pub fn term_from_bytes<'a>(env: Env<'a>, bytes: &[u8]) -> Result<Term<'a>, Error> {
     match Atom::try_from_bytes(env, bytes) {
         Ok(Some(term)) => Ok(term.encode(env)),
@@ -22,12 +25,12 @@ pub fn term_from_bytes<'a>(env: Env<'a>, bytes: &[u8]) -> Result<Term<'a>, Error
     }
 }
 
+/**
+ * Attempts to create an atom term from the provided string (if the atom already exists in the atom table). If not, returns a string term.
+ */
+// TODO: ensure `Ok` maps to `:ok`, `Err` to `:error`
 pub fn term_from_str<'a>(env: Env<'a>, string: &str) -> Result<Term<'a>, Error> {
-    match Atom::try_from_bytes(env, string.as_bytes()) {
-        Ok(Some(term)) => Ok(term.encode(env)),
-        Ok(None) => Ok(string.encode(env)),
-        _ => Err(Error::InvalidUTF8String),
-    }
+    term_from_bytes(env, string.as_bytes()).map_err(|_| Error::InvalidUTF8String)
 }
 
 quick_error! {
