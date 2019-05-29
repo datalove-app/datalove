@@ -20,6 +20,7 @@
 //! name of the game (for Serializer):
 //!     - maps data model into the output representation
 //!     - aka, maps serde types to Rustler Terms
+#![recursion_limit = "100"]
 
 #[macro_use]
 extern crate lazy_static;
