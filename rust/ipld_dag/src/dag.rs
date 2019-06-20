@@ -1,0 +1,220 @@
+use crate::{
+    error::Error,
+    // format::{Decode, FormatDecoder},
+    link::Link,
+};
+use serde::{
+    de::{Deserialize, Deserializer},
+    ser::{Serialize, SerializeMap, SerializeSeq, Serializer},
+};
+use std::collections::BTreeMap;
+
+/**
+ * Notes:
+ *
+ * dag needs to:
+ *  - define a FormatEncoder, FormatDecoder, and FormatResolver trait
+ *      - Encoder and Decoder methods are hard-coded to take in each Dag and Link variant
+ *      -
+ *
+ * each format needs:
+ *  - define a FormatEncoder
+ *
+ *  - to implement a Serializer and Deserializer that matches the Dag, Link and CID Serialize and Deserialize behaviour
+ *      - custom impl Serialize and Deserialize for Dag, Link and CID
+ *      - with a custom
+ *      - deref (or whatever) impls to access the underlying Dag and Link
+ *      - these can be aided with serde attributes and (our own) macros
+ *  - expose functions that pair these new types with their format's specific Serializer and Deserializer impls
+ */
+
+pub enum DagInt {
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+}
+
+impl Serialize for DagInt {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DagInt::U8(num) => serializer.serialize_u8(*num),
+            DagInt::U16(num) => serializer.serialize_u16(*num),
+            DagInt::U32(num) => serializer.serialize_u32(*num),
+            DagInt::U64(num) => serializer.serialize_u64(*num),
+            DagInt::U128(num) => serializer.serialize_u128(*num),
+            DagInt::I8(num) => serializer.serialize_i8(*num),
+            DagInt::I16(num) => serializer.serialize_i16(*num),
+            DagInt::I32(num) => serializer.serialize_i32(*num),
+            DagInt::I64(num) => serializer.serialize_i64(*num),
+            DagInt::I128(num) => serializer.serialize_i128(*num),
+        }
+    }
+}
+
+pub enum DagFloat {
+    F32(f32),
+    F64(f64),
+}
+
+impl Serialize for DagFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DagFloat::F32(num) => serializer.serialize_f32(*num),
+            DagFloat::F64(num) => serializer.serialize_f64(*num),
+        }
+    }
+}
+
+/// Represents an abtract IPLD Dag. Useful if decoding unknown IPLD.
+///
+/// An `indexmap` is used as the map implementation in order to preserve key order.
+/// TODO: possibly add/repalce with a fully-owned alternative
+pub enum Dag<'a, T: Serialize> {
+    /// Represents an IPLD null value.
+    Null,
+
+    /// Represents an IPLD boolean.
+    Bool(bool),
+
+    /// Represents an IPLD integer.
+    Integer(DagInt),
+
+    /// Represents an IPLD float.
+    Float(DagFloat),
+
+    /// Represents an IPLD string.
+    Str(&'a str),
+
+    /// Represents IPLD bytes.
+    Bytes(&'a [u8]),
+
+    /// Represents an IPLD list.
+    List(Vec<T>),
+
+    /// Represents an IPLD map.
+    /// Uses a BTreeMap to preserve key order.
+    Map(BTreeMap<T, T>),
+
+    /// Represents an IPLD link.
+    Link(Link<T>),
+}
+
+// impl<'a, T: Serialize> From<Dag<'a, T>> for T {
+//     fn from(dag: Dag<'a, T>) -> T {
+//         match dag {
+//             Dag::Link(link) => {
+//                 let new_link = match link {
+//                     Link::CID(cid) => Link::CID(cid),
+//                     Link::Dag(dag) => Link::Dag(Box::new((*dag).into())),
+//                 };
+
+//                 Dag::Link(new_link).into()
+//             }
+//             Dag::List(seq) => JsonDag(Dag::List(seq.into())),
+//             Dag::Map(map) => JsonDag(Dag::Map(map.into())),
+//             _ => dag.into(),
+//         }
+//     }
+// }
+
+impl<'a, T: Serialize> Serialize for Dag<'a, T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Dag::Null => serializer.serialize_none(),
+            Dag::Bool(b) => serializer.serialize_bool(*b),
+            Dag::Integer(int) => int.serialize(serializer),
+            Dag::Float(float) => float.serialize(serializer),
+            Dag::Str(s) => serializer.serialize_str(s),
+            Dag::Bytes(bytes) => serializer.serialize_bytes(bytes),
+            Dag::Link(link) => link.serialize(serializer),
+            Dag::List(seq) => {
+                let mut seq_enc = serializer.serialize_seq(Some(seq.len()))?;
+                for dag in seq {
+                    seq_enc.serialize_element(&dag)?;
+                }
+                seq_enc.end()
+            }
+            Dag::Map(map) => {
+                let mut map_enc = serializer.serialize_map(Some(map.len()))?;
+                for (key, value) in map.iter() {
+                    map_enc.serialize_entry(key, value)?;
+                }
+                map_enc.end()
+            }
+        }
+    }
+}
+
+// impl<'de> Deserialize<'de> for CID {
+//     fn deserialize<D>(deserializer: D) -> Result<CID, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         Ok(CID::new())
+//     }
+// }
+
+// impl<'a, D: IpldDag> Encode for Dag<'a, D> {
+//     fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
+//     where
+//         E: FormatEncoder,
+//     {
+//         match self {
+//             Dag::Null => encoder.encode_null(),
+//             Dag::Bool(b) => encoder.encode_bool(*b),
+//             Dag::Integer(ref int) => encoder.encode_int(int),
+//             Dag::Float(ref float) => encoder.encode_float(float),
+//             Dag::Str(s) => encoder.encode_str(s),
+//             Dag::Bytes(bytes) => encoder.encode_bytes(bytes),
+//             Dag::Link(ref link) => encoder.encode_link(link),
+//             Dag::List(ref list) => {
+//                 let mut list_enc = encoder.encode_list(Some(list.len()))?;
+//                 for dag in list {
+//                     list_enc.encode_element(dag)?;
+//                 }
+//                 list_enc.end()
+//             }
+//             Dag::Map(ref map) => {
+//                 let mut map_enc = encoder.encode_map(Some(map.len()))?;
+//                 for (key, value) in map.iter() {
+//                     map_enc.encode_key(key)?;
+//                     map_enc.encode_value(value)?;
+//                 }
+//                 map_enc.end()
+//             }
+//         }
+//     }
+// }
+
+// impl<'de, 'a: 'de, D: IpldDag> Decode<'de> for Dag<'a, D> {
+//     fn decode<D>(decoder: D) -> Result<Self, D::Error>
+//     where
+//         D: FormatDecoder<'de>,
+//     {
+//         Ok(Dag::Null)
+//     }
+// }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+}

@@ -1,0 +1,12 @@
+[package]
+name = "ipld_dag"
+version = "0.0.1"
+authors = ["Sunny G <sunny.gonna@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+cid = "0.3.0"
+serde = {version = "1.0.92", features = ["derive"]}
+serde-value = "0.6.0"
+serde-aux = "0.6.1"
+indexmap = "1.0.2"
