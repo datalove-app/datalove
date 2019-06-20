@@ -1,6 +1,7 @@
 use crate::{cid::CID, dag::Dag};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+/// Link
 // pub enum Link<'de, T: Serialize + Deserialize<'de>> {
 pub enum Link<T: Serialize> {
     CID(CID),
