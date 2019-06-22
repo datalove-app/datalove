@@ -1,3 +1,5 @@
+// TODO: fix this to support CID errors
+
 use serde::{de, ser};
 use std::fmt;
 

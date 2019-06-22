@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate serde;
 
-mod cid;
-mod dag;
+pub mod cid;
+pub mod dag;
 mod error;
-mod format;
+// mod format;
 
-pub use crate::cid::CID;
-pub use dag::{float::DagFloat, int::DagInt, link::Link, Dag};
-pub use error::Error;
+// pub use crate::cid::{Base, Codec, CID};
+// pub use crate::dag::{Dag, Float, Int, Link};
+pub use crate::error::Error;

@@ -1,7 +1,7 @@
 use serde::ser::{Serialize, Serializer};
 
-/// DagInt
-pub enum DagInt {
+/// Int
+pub enum Int {
     U8(u8),
     U16(u16),
     U32(u32),
@@ -14,22 +14,22 @@ pub enum DagInt {
     I128(i128),
 }
 
-impl Serialize for DagInt {
+impl Serialize for Int {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
-            DagInt::U8(num) => serializer.serialize_u8(*num),
-            DagInt::U16(num) => serializer.serialize_u16(*num),
-            DagInt::U32(num) => serializer.serialize_u32(*num),
-            DagInt::U64(num) => serializer.serialize_u64(*num),
-            DagInt::U128(num) => serializer.serialize_u128(*num),
-            DagInt::I8(num) => serializer.serialize_i8(*num),
-            DagInt::I16(num) => serializer.serialize_i16(*num),
-            DagInt::I32(num) => serializer.serialize_i32(*num),
-            DagInt::I64(num) => serializer.serialize_i64(*num),
-            DagInt::I128(num) => serializer.serialize_i128(*num),
+            Int::U8(num) => serializer.serialize_u8(*num),
+            Int::U16(num) => serializer.serialize_u16(*num),
+            Int::U32(num) => serializer.serialize_u32(*num),
+            Int::U64(num) => serializer.serialize_u64(*num),
+            Int::U128(num) => serializer.serialize_u128(*num),
+            Int::I8(num) => serializer.serialize_i8(*num),
+            Int::I16(num) => serializer.serialize_i16(*num),
+            Int::I32(num) => serializer.serialize_i32(*num),
+            Int::I64(num) => serializer.serialize_i64(*num),
+            Int::I128(num) => serializer.serialize_i128(*num),
         }
     }
 }

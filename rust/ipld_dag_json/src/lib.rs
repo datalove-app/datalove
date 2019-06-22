@@ -1,21 +1,16 @@
-#[macro_use]
-extern crate serde;
-
 mod error;
 
-use crate::error::{j2i_de_err, j2i_ser_err, key_must_be_a_string};
-use base64::{display::Base64Display, encode as b64Encode};
-use ipld_dag::{Dag, DagFloat, DagInt, Error, Link, CID};
+// use crate::error::{j2i_de_err, j2i_ser_err, key_must_be_a_string};
+// use base64::{display::Base64Display, encode as b64Encode};
+use ipld_dag::{
+    cid::CID,
+    dag::{Dag, DagNode, Link},
+};
 use multibase::{encode, Base};
 use serde::{
     de,
-    ser::{self, Serialize, SerializeMap, SerializeSeq, Serializer},
+    ser::{self, Serialize, SerializeStructVariant, Serializer},
 };
-use serde_json::{
-    de as json_de,
-    ser::{self as json_ser, Formatter},
-};
-use std::io::Write;
 
 // TODO: === two problems to contend with ===
 // 1. Dag variants dont map one-to-one to serde's data model
@@ -30,13 +25,39 @@ use std::io::Write;
 //  - each format exposes a Dag struct
 //  --- it implements Serialize/Deserialize custom to it's serializer
 //  --- it implements From<Dag> for FormatDag (so it can be translated between Serialize/Deserialize impls)
-pub struct JsonDag<'a>(Dag<'a, JsonDag<'a>>);
+pub struct JsonDag<'a>(DagNode<'a, JsonDag<'a>>);
 
-impl<'a> From<Dag<'a, JsonDag<'a>>> for JsonDag<'a> {
-    fn from(dag: Dag<'a, JsonDag<'a>>) -> Self {
+impl<'a> From<DagNode<'a, JsonDag<'a>>> for JsonDag<'a> {
+    fn from(dag: DagNode<'a, JsonDag<'a>>) -> Self {
         JsonDag(dag)
     }
 }
+
+// impl<'a, T: Dag> From<DagNode<'a, T>> for JsonDag<'a> {
+//     fn from(dag: DagNode<'a, T>) -> Self {
+//         match dag {
+//             DagNode::Null => dag.into(),
+//             DagNode::Bool(_) => dag.into(),
+//             DagNode::Integer(int) => dag.into(),
+//             DagNode::Float(float) => dag.into(),
+//             DagNode::Str(s) => dag.into(),
+//             DagNode::Bytes(b, t) => dag.into(),
+//             DagNode::Link(link) => match link {
+//                 Link::CID(cid) => dag.into(),
+//                 Link::Dag(dag) => {
+//                     let new_dag = Box::new(JsonDag::from(*dag));
+//                     JsonDag(DagNode::Link(Link::Dag(new_dag))
+//                 }
+//             }
+//         }
+//     }
+// }
+
+impl<'a> Dag for JsonDag<'a> {}
+
+// impl<'a> Serialize for Link<JsonDag<'a>> {
+
+// }
 
 impl<'a> Serialize for JsonDag<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -44,23 +65,36 @@ impl<'a> Serialize for JsonDag<'a> {
         S: Serializer,
     {
         match &self.0 {
-            Dag::Null => self.0.serialize(serializer),
-            Dag::Bool(_) => self.0.serialize(serializer),
-            Dag::Integer(_) => self.0.serialize(serializer),
-            Dag::Float(_) => self.0.serialize(serializer),
-            Dag::Str(_) => self.0.serialize(serializer),
-            Dag::List(_) => self.0.serialize(serializer),
-            Dag::Map(_) => self.0.serialize(serializer),
-            Dag::Bytes(bytes) => serializer.serialize_bytes(bytes),
-            Dag::Link(link) => match link {
-                Link::CID(cid) => serializer.serialize_newtype_struct("CID", &cid.to_vec()),
-                Link::Dag(dag) => dag.serialize(serializer),
+            // Serialization identical to the default format
+            DagNode::Null => self.0.serialize(serializer),
+            DagNode::Bool(_) => self.0.serialize(serializer),
+            DagNode::Integer(_) => self.0.serialize(serializer),
+            DagNode::Float(_) => self.0.serialize(serializer),
+            DagNode::Str(_) => self.0.serialize(serializer),
+            DagNode::List(_) => self.0.serialize(serializer),
+            DagNode::Map(_) => self.0.serialize(serializer),
+
+            // Serialization unique to the DagJSON format
+            // Encodes bytes as `{"/": { "base64": String }}`
+            DagNode::Bytes(bytes, _base) => {
+                // todo: should this be configurable?
+                let (base, base_key) = (&Base::Base64, "base64");
+                let bytes_str = &encode(*base, bytes);
+                let mut ser = serializer.serialize_struct_variant("", 0, "/", 1)?;
+                ser.serialize_field(base_key, bytes_str)?;
+                ser.end()
+            }
+            // Encodes CID bytes as `{"/": String}`
+            DagNode::Link(link) => match link {
+                Link::Dag(dag) => (*dag).serialize(serializer),
+                Link::CID(cid) => {
+                    serializer.serialize_newtype_variant("CID", 0, "/", &cid.to_string())
+                }
             },
         }
     }
 }
 
-///
 ///
 /// ```edition2018
 /// use ipld_dag::{Dag, Link};
@@ -70,7 +104,7 @@ impl<'a> Serialize for JsonDag<'a> {
 ///
 ///
 /// ```
-pub struct Decoder<R>(json_de::Deserializer<R>);
+// pub struct Decoder<R>(json_de::Deserializer<R>);
 // pub enum EncoderContext {
 //     Bytes,
 //     CID,
@@ -79,28 +113,28 @@ pub struct Decoder<R>(json_de::Deserializer<R>);
 
 ///
 ///
-pub struct Encoder<W> {
-    ser: json_ser::Serializer<W>,
-}
+// pub struct Encoder<W> {
+//     ser: json_ser::Serializer<W>,
+// }
 
-// TODO: impl From for Read supported types
-impl<'de, R: json_de::Read<'de>> Decoder<R> {
-    fn from_reader(reader: R) -> Self {
-        Decoder(json_de::Deserializer::new(reader))
-    }
-}
+// // TODO: impl From for Read supported types
+// impl<'de, R: json_de::Read<'de>> Decoder<R> {
+//     fn from_reader(reader: R) -> Self {
+//         Decoder(json_de::Deserializer::new(reader))
+//     }
+// }
 
-// TODO: impl From for Write supported types
-impl<W: Write> Encoder<W> {
-    fn from_writer(writer: W) -> Self {
-        let ser = json_ser::Serializer::with_formatter(writer, json_ser::CompactFormatter);
-        Encoder { ser: ser }
-    }
+// // TODO: impl From for Write supported types
+// impl<W: Write> Encoder<W> {
+//     fn from_writer(writer: W) -> Self {
+//         let ser = json_ser::Serializer::with_formatter(writer, json_ser::CompactFormatter);
+//         Encoder { ser: ser }
+//     }
 
-    fn writer_mut(&mut self) -> &mut W {
-        &mut self.ser.writer
-    }
-}
+//     fn writer_mut(&mut self) -> &mut W {
+//         &mut self.ser.writer
+//     }
+// }
 
 // impl<'a, W> FormatEncoder for &'a mut Encoder<W>
 // where
@@ -592,8 +626,45 @@ impl<W: Write> Encoder<W> {
 
 #[cfg(test)]
 mod tests {
+    use crate::JsonDag;
+    use ipld_dag::{
+        cid::CID,
+        dag::{DagNode, Link},
+    };
+    use serde_json::to_string;
+
+    const CID_STR: &'static str = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_vec() {
+        let cid: CID = CID_STR.parse().unwrap();
+        let dag: JsonDag = DagNode::List(vec![
+            JsonDag(DagNode::Link(Link::CID(cid.clone()))),
+            JsonDag(DagNode::Link(Link::CID(cid))),
+        ])
+        .into();
+
+        let link = make_cid(CID_STR);
+        let expected = format!(r#"[{},{}]"#, &link, &link);
+        let actual = to_string(&dag).unwrap();
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn test_cid() {
+        let cid: CID = CID_STR.parse().unwrap();
+        let dag: JsonDag = DagNode::Link(Link::CID(cid)).into();
+
+        let expected = make_cid(CID_STR);
+        let actual = to_string(&dag).unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    fn make_cid(cid_str: &str) -> String {
+        format!(
+            r#"{{"{key}":"{cid}"}}"#,
+            key = r#"/"#,
+            cid = cid_str.to_string(),
+        )
     }
 }

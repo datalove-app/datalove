@@ -1,3 +1,5 @@
 [workspace]
 members = [
+  "ipld_dag",
+  "ipld_dag_json"
 ]

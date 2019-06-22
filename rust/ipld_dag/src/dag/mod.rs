@@ -1,8 +1,11 @@
-pub mod float;
-pub mod int;
-pub mod link;
+mod float;
+mod int;
+mod link;
 
-use crate::{error::Error, DagFloat, DagInt, Link};
+pub use crate::dag::{float::Float, int::Int, link::Link};
+
+use crate::error::Error;
+use multibase::Base;
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, SerializeMap, SerializeSeq, Serializer},
@@ -28,11 +31,18 @@ use std::collections::BTreeMap;
  *  - expose functions that pair these new types with their format's specific Serializer and Deserializer impls
  */
 
+///
+// pub trait Dag: From<DagNode<Self>> + Serialize {}
+pub trait Dag: Serialize {
+    // fn serialize_dag<S: Serializer, T: Dag>(dag: T, serializer: S) -> Result<S::Ok, S::Error>;
+}
+
+// TODO: possibly add/repalce with a fully-owned alternative
+// TODO: ?? (just so we can implement conversion from DagNode<T> -> DagNode<U>) impl a Serializer + Deserializer, and macros for auto deriving them for the DagNode wrapper struct
 /// Represents an abtract IPLD Dag. Useful if decoding unknown IPLD.
 ///
 /// An `indexmap` is used as the map implementation in order to preserve key order.
-/// TODO: possibly add/repalce with a fully-owned alternative
-pub enum Dag<'a, T: Serialize> {
+pub enum DagNode<'a, T: Dag> {
     /// Represents an IPLD null value.
     Null,
 
@@ -40,16 +50,18 @@ pub enum Dag<'a, T: Serialize> {
     Bool(bool),
 
     /// Represents an IPLD integer.
-    Integer(DagInt),
+    Integer(Int),
 
     /// Represents an IPLD float.
-    Float(DagFloat),
+    Float(Float),
 
     /// Represents an IPLD string.
+    // Str(String),
     Str(&'a str),
 
     /// Represents IPLD bytes.
-    Bytes(&'a [u8]),
+    // Bytes(Vec<u8>, Option<Base>),
+    Bytes(&'a [u8], Option<Base>),
 
     /// Represents an IPLD list.
     List(Vec<T>),
@@ -61,6 +73,10 @@ pub enum Dag<'a, T: Serialize> {
     /// Represents an IPLD link.
     Link(Link<T>),
 }
+
+// impl<'a, T: Dag, U: Dag> From<DagNode<'a, T>> for DagNode<'a, U> {}
+
+impl<'a, T: Dag> Dag for DagNode<'a, T> {}
 
 // impl<'a, T: Serialize> From<Dag<'a, T>> for T {
 //     fn from(dag: Dag<'a, T>) -> T {
@@ -80,27 +96,27 @@ pub enum Dag<'a, T: Serialize> {
 //     }
 // }
 
-impl<'a, T: Serialize> Serialize for Dag<'a, T> {
+impl<'a, T: Dag> Serialize for DagNode<'a, T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
-            Dag::Null => serializer.serialize_none(),
-            Dag::Bool(b) => serializer.serialize_bool(*b),
-            Dag::Integer(int) => int.serialize(serializer),
-            Dag::Float(float) => float.serialize(serializer),
-            Dag::Str(s) => serializer.serialize_str(s),
-            Dag::Bytes(bytes) => serializer.serialize_bytes(bytes),
-            Dag::Link(link) => link.serialize(serializer),
-            Dag::List(seq) => {
+            DagNode::Null => serializer.serialize_none(),
+            DagNode::Bool(b) => serializer.serialize_bool(*b),
+            DagNode::Integer(int) => int.serialize(serializer),
+            DagNode::Float(float) => float.serialize(serializer),
+            DagNode::Str(s) => serializer.serialize_str(s),
+            DagNode::Bytes(bytes, _) => serializer.serialize_bytes(bytes),
+            DagNode::Link(link) => link.serialize(serializer),
+            DagNode::List(seq) => {
                 let mut seq_enc = serializer.serialize_seq(Some(seq.len()))?;
                 for dag in seq {
                     seq_enc.serialize_element(&dag)?;
                 }
                 seq_enc.end()
             }
-            Dag::Map(map) => {
+            DagNode::Map(map) => {
                 let mut map_enc = serializer.serialize_map(Some(map.len()))?;
                 for (key, value) in map.iter() {
                     map_enc.serialize_entry(key, value)?;

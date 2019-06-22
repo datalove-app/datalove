@@ -3,19 +3,19 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Link
 // pub enum Link<'de, T: Serialize + Deserialize<'de>> {
-pub enum Link<T: Serialize> {
+pub enum Link<T: Dag> {
     CID(CID),
     Dag(Box<T>),
 }
 
-impl<T: Serialize> Serialize for Link<T> {
+impl<T: Dag> Serialize for Link<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match self {
-            Link::CID(cid) => serializer.serialize_newtype_struct("CID", &cid.to_vec()),
             Link::Dag(dag) => (*dag).serialize(serializer),
+            Link::CID(cid) => serializer.serialize_newtype_struct("CID", &cid.to_vec()),
         }
     }
 }

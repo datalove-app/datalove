@@ -6,7 +6,8 @@ edition = "2018"
 
 [dependencies]
 cid = "0.3.0"
-serde = {version = "1.0.92", features = ["derive"]}
-serde-value = "0.6.0"
-serde-aux = "0.6.1"
 indexmap = "1.0.2"
+multibase = "0.6.0"
+serde = {version = "1.0.92", features = ["derive"]}
+serde-aux = "0.6.1"
+serde-value = "0.6.0"
