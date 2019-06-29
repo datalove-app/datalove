@@ -5,9 +5,14 @@ authors = ["Sunny G <sunny.gonna@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-cid = "0.3.0"
-indexmap = "1.0.2"
-multibase = "0.6.0"
-serde = {version = "1.0.92", features = ["derive"]}
-serde-aux = "0.6.1"
-serde-value = "0.6.0"
+cid = "0.3"
+derive_more = "0.15"
+futures = "0.1.27"
+indexmap = "1.0"
+multibase = "0.6"
+multicodec = "0.1"
+multihash = "0.8"
+serde = {version = "1.0", features = ["derive"]}
+serde_bytes = "0.11"
+serde_token = "0.0.2"
+erased-serde = "0.3.9"

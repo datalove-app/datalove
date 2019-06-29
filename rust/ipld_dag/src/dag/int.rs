@@ -1,6 +1,7 @@
 use serde::ser::{Serialize, Serializer};
 
-/// Int
+/// Signed and unsigned integer wrapper
+#[derive(From, Hash, PartialEq, Eq)]
 pub enum Int {
     U8(u8),
     U16(u16),
@@ -15,21 +16,22 @@ pub enum Int {
 }
 
 impl Serialize for Int {
+    #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match self {
-            Int::U8(num) => serializer.serialize_u8(*num),
-            Int::U16(num) => serializer.serialize_u16(*num),
-            Int::U32(num) => serializer.serialize_u32(*num),
-            Int::U64(num) => serializer.serialize_u64(*num),
-            Int::U128(num) => serializer.serialize_u128(*num),
-            Int::I8(num) => serializer.serialize_i8(*num),
-            Int::I16(num) => serializer.serialize_i16(*num),
-            Int::I32(num) => serializer.serialize_i32(*num),
-            Int::I64(num) => serializer.serialize_i64(*num),
-            Int::I128(num) => serializer.serialize_i128(*num),
+        match *self {
+            Int::U8(num) => serializer.serialize_u8(num),
+            Int::U16(num) => serializer.serialize_u16(num),
+            Int::U32(num) => serializer.serialize_u32(num),
+            Int::U64(num) => serializer.serialize_u64(num),
+            Int::U128(num) => serializer.serialize_u128(num),
+            Int::I8(num) => serializer.serialize_i8(num),
+            Int::I16(num) => serializer.serialize_i16(num),
+            Int::I32(num) => serializer.serialize_i32(num),
+            Int::I64(num) => serializer.serialize_i64(num),
+            Int::I128(num) => serializer.serialize_i128(num),
         }
     }
 }

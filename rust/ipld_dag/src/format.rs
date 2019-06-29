@@ -1,6 +1,52 @@
-use crate::{Dag, DagFloat, DagInt, Error, Link};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::BTreeMap;
+use crate::{Dag, Link, Prefix, Token, CID};
+use futures::{Sink, Stream};
+use serde::{Deserialize, Serialize};
+use std::io::{Read, Write};
+
+///
+#[derive(Deserialize, Serialize)]
+pub enum ResolvedDag<'a, D: Dag> {
+    Final(D),
+    Link {
+        // link: Link<D>,
+        remaining_path: &'a str,
+    },
+}
+
+///
+pub trait Format {
+    ///
+    type Dag: Dag;
+
+    ///
+    type Error;
+
+    /// Derives a `CID` from a `Read` and an optional `Prefix`.
+    fn cid<R>(blob: R, prefix: Option<Prefix>) -> Result<CID, Self::Error>
+    where
+        R: Read;
+
+    /// Deserializes a `Read` into a `Dag`.
+    fn decode<R>(blob: R) -> Result<Self::Dag, Self::Error>
+    where
+        R: Read;
+
+    /// Serializes a `Dag` into a `Write`.
+    fn encode<W>(dag: Self::Dag) -> Result<W, Self::Error>
+    where
+        W: Write;
+
+    /// Deserializes a `Read` into a `Sink` of `Tokens`.
+    fn decode_tokens<'a, R, S>(blob: R, sink: S) -> Result<(), Self::Error>
+    where
+        R: Read,
+        S: Sink<SinkItem = Token<'a>>;
+
+    /// Retrieves a `Dag` value from within a `Read`, either returning the value or a `Link` and the remaining path.
+    fn resolve<R>(blob: R, path: &str) -> Result<ResolvedDag<Self::Dag>, Self::Error>
+    where
+        R: Read;
+}
 
 // pub trait Decode<'de>: Deserialize<'de> + Sized {
 // pub trait Decode<'de>: Sized {

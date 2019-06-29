@@ -1,17 +1,26 @@
 // TODO: fix this to support CID errors
 
 use serde::{de, ser};
-use std::fmt;
+use std::{error::Error as StdError, fmt};
 
+///
 #[derive(Debug)]
 pub enum Error {
+    ExpectedCID,
+    ExpectedLinkedDag,
+    ExpectedList,
+    ExpectedMap,
     Serialization(String),
     Deserialization(String),
 }
 
-impl std::error::Error for Error {
+impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
+            Error::ExpectedCID => "expected CID",
+            Error::ExpectedLinkedDag => "expected linked dag",
+            Error::ExpectedList => "expected list",
+            Error::ExpectedMap => "expected map",
             Error::Serialization(ref string) => string,
             Error::Deserialization(ref string) => string,
         }
@@ -23,6 +32,7 @@ impl fmt::Display for Error {
         match self {
             Error::Serialization(ref string) => write!(f, "{}", string),
             Error::Deserialization(ref string) => write!(f, "{}", string),
+            _ => write!(f, "{}", self.description()),
         }
     }
 }
