@@ -1,4 +1,10 @@
-use crate::{cid::CID, dag::Dag};
+use crate::{
+    cid::CID,
+    dag::Dag,
+    error::Error,
+    format::{Encode, Encoder},
+};
+use multibase::Base;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // pub enum Link<'de, T: Serialize + Deserialize<'de>> {
@@ -7,20 +13,22 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// [link]: https://github.com/ipld/specs/blob/master/data-model-layer/data-model.md#link-kind
 /// [`CID`]: https://github.com/ipld/specs/blob/master/block-layer/CID.md
 #[derive(From)]
+// #[serde(untagged)]
 pub enum Link<T: Dag> {
-    CID(CID),
+    CID(CID, Option<Base>),
     Dag(Box<T>),
 }
 
-impl<T: Dag> Serialize for Link<T> {
+impl<T: Dag> Encode for Link<T> {
     #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
     where
-        S: Serializer,
+        E: Encoder,
+        <E as serde::Serializer>::Error: Into<Error>,
     {
         match self {
-            Link::Dag(dag) => (*dag).serialize(serializer),
-            Link::CID(cid) => serializer.serialize_newtype_struct("CID", &cid),
+            Link::CID(cid, base) => encoder.encode_link(cid, *base),
+            Link::Dag(dag) => dag.encode(encoder),
         }
     }
 }
@@ -38,3 +46,15 @@ impl<T: Dag> Serialize for Link<T> {
 // impl<'de> Visitor<'de> for LinkVisitor {
 
 // }
+
+impl<T: Dag> From<CID> for Link<T> {
+    fn from(cid: CID) -> Link<T> {
+        Link::CID(cid, None)
+    }
+}
+
+impl<T: Dag> From<T> for Link<T> {
+    fn from(dag: T) -> Link<T> {
+        Link::Dag(Box::new(dag))
+    }
+}

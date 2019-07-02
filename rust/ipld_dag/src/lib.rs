@@ -12,10 +12,10 @@ extern crate serde;
 mod cid;
 mod dag;
 mod error;
-mod format;
+pub mod format;
 
 pub use crate::cid::CID;
-pub use dag::{Dag, Float, Int, Key, Link, RawDag, Token};
+pub use dag::{Dag, Float, Int, Key, Token};
 pub use error::Error;
 
 pub use ::cid::{Codec, Prefix, Version};

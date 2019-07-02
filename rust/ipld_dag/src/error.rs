@@ -10,6 +10,9 @@ pub enum Error {
     ExpectedLinkedDag,
     ExpectedList,
     ExpectedMap,
+    InvalidType,
+    CID(String),
+    Multibase(String),
     Serialization(String),
     Deserialization(String),
 }
@@ -17,12 +20,15 @@ pub enum Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
+            Error::InvalidType => "invalid Dag type",
             Error::ExpectedCID => "expected CID",
             Error::ExpectedLinkedDag => "expected linked dag",
             Error::ExpectedList => "expected list",
             Error::ExpectedMap => "expected map",
-            Error::Serialization(ref string) => string,
-            Error::Deserialization(ref string) => string,
+            Error::CID(ref s) => s,
+            Error::Multibase(ref s) => s,
+            Error::Serialization(ref s) => s,
+            Error::Deserialization(ref s) => s,
         }
     }
 }
@@ -30,8 +36,8 @@ impl StdError for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Serialization(ref string) => write!(f, "{}", string),
-            Error::Deserialization(ref string) => write!(f, "{}", string),
+            Error::Serialization(ref s) => write!(f, "{}", s),
+            Error::Deserialization(ref s) => write!(f, "{}", s),
             _ => write!(f, "{}", self.description()),
         }
     }
@@ -45,7 +51,19 @@ impl ser::Error for Error {
 
 impl de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::Serialization(msg.to_string())
+        Error::Deserialization(msg.to_string())
+    }
+}
+
+impl From<multibase::Error> for Error {
+    fn from(err: multibase::Error) -> Self {
+        Error::Multibase(err.description().into())
+    }
+}
+
+impl From<::cid::Error> for Error {
+    fn from(err: ::cid::Error) -> Self {
+        Error::CID(err.description().into())
     }
 }
 

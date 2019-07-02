@@ -42,10 +42,9 @@ pub enum Token<'a> {
 
     ///
     Link(CID, Option<Base>),
+    // TODO: a link to another `Dag`, possibly of another format
+    // LinkedData(Option<Prefix>),
 
-    ///
-    LinkedData,
-
-    ///
-    LinkedDataEnd,
+    // TODO:
+    // LinkedDataEnd,
 }

@@ -13,106 +13,167 @@ pub enum ResolvedDag<'a, D: Dag> {
     },
 }
 
+/// Represents an IPLD Dag Format
 ///
-pub trait Format {
-    ///
-    type Dag: Dag;
+/// [`IPLD`]
+/// [`Dag`]
+/// [`Format`]
+pub trait Format<'de> {
+    // type Encoder: Encoder;
+    // type Decoder: Decoder<'de>;
 
     ///
     type Error;
 
-    /// Derives a `CID` from a `Read` and an optional `Prefix`.
-    fn cid<R>(blob: R, prefix: Option<Prefix>) -> Result<CID, Self::Error>
-    where
-        R: Read;
+    // /// Derives a `CID` from a `Read` and an optional `Prefix`.
+    // fn get_cid<R>(blob: R, prefix: Option<Prefix>) -> Result<CID, Self::Error>
+    // where
+    //     R: Read;
 
-    /// Deserializes a `Read` into a `Dag`.
-    fn decode<R>(blob: R) -> Result<Self::Dag, Self::Error>
-    where
-        R: Read;
+    // /// Serializes a `Dag` into a `Write`.
+    // fn encode<D, W>(dag: D) -> Result<W, Self::Error>
+    // where
+    //     D: Dag,
+    //     W: Write;
 
-    /// Serializes a `Dag` into a `Write`.
-    fn encode<W>(dag: Self::Dag) -> Result<W, Self::Error>
-    where
-        W: Write;
+    // /// Deserializes a `Read` into a `Dag`.
+    // fn decode<D, R>(blob: R) -> Result<D, Self::Error>
+    // where
+    //     D: Dag,
+    //     R: Read;
 
-    /// Deserializes a `Read` into a `Sink` of `Tokens`.
-    fn decode_tokens<'a, R, S>(blob: R, sink: S) -> Result<(), Self::Error>
-    where
-        R: Read,
-        S: Sink<SinkItem = Token<'a>>;
+    // /// Deserializes a `Read` into a `Sink` of `Tokens`.
+    // fn decode_tokens<'a, R, S>(blob: R, sink: S) -> Result<(), Self::Error>
+    // where
+    //     R: Read,
+    //     S: Sink<SinkItem = Token<'a>>;
 
     /// Retrieves a `Dag` value from within a `Read`, either returning the value or a `Link` and the remaining path.
-    fn resolve<R>(blob: R, path: &str) -> Result<ResolvedDag<Self::Dag>, Self::Error>
+    fn resolve<D, R>(blob: R, path: &str) -> Result<ResolverResult<D>, Self::Error>
     where
+        D: Dag,
         R: Read;
 }
 
-// pub trait Decode<'de>: Deserialize<'de> + Sized {
-// pub trait Decode<'de>: Sized {
-//     fn decode<D>(decoder: D) -> Result<Self, D::Error>
-//     where
-//         D: FormatDecoder<'de>;
-// }
+///
+pub trait Encode {
+    ///
+    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
+    where
+        E: Encoder,
+        <E as serde::Serializer>::Error: Into<Error>;
+}
 
-// pub trait Encode: Serialize {
-// pub trait Encode {
-//     fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
-//     where
-//         E: FormatEncoder;
-// }
+impl<T> Encode for T
+where
+    T: serde::Serialize,
+{
+    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
+    where
+        E: Encoder,
+        <E as serde::Serializer>::Error: Into<Error>,
+    {
+        self.serialize(encoder)
+    }
+}
 
-// pub trait FormatDecoder<'de> {
-//     type Ok: IpldDag;
-//     type Error: std::error::Error;
-//     fn decode<D>(self, block: &[u8]) -> Result<Self::Ok, Error>
-//     where
-//         D: Deserializer<'de>;
-// }
+///
+pub trait Encoder: Sized + serde::Serializer
+where
+    <Self as serde::Serializer>::Error: Into<Error>,
+{
+    ///
+    type EncodeList: EncodeList;
 
-// pub trait FormatEncoder {
-//     type Ok;
-//     type Error: std::error::Error;
+    ///
+    type EncodeMap: EncodeMap;
 
-//     // type EncodeLink: EncodeLink<Ok = Self::Ok, Error = Self::Error>;
-//     type EncodeList: EncodeList<Ok = Self::Ok, Error = Self::Error>;
-//     type EncodeMap: EncodeMap<Ok = Self::Ok, Error = Self::Error>;
+    ///
+    fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
+        match base {
+            None => self.serialize_bytes(bytes),
+            Some(base) => self.serialize_str(&Encodable::encode(bytes, base)),
+        }
+    }
 
-//     fn encode_null(self) -> Result<Self::Ok, Self::Error>;
+    /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
+    fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
+        match cid.base() {
+            None => self.serialize_bytes(&cid.to_vec()),
+            Some(base) => self.serialize_str(&cid.to_string(None)),
+        }
+    }
 
-//     fn encode_bool(self, v: bool) -> Result<Self::Ok, Self::Error>;
+    ///
+    fn encode_list(self, len: Option<usize>) -> Result<Self::EncodeList, Self::Error>;
 
-//     fn encode_int(self, v: &DagInt) -> Result<Self::Ok, Self::Error>;
+    ///
+    fn encode_map(self, len: Option<usize>) -> Result<Self::EncodeMap, Self::Error>;
 
-//     fn encode_float(self, v: &DagFloat) -> Result<Self::Ok, Self::Error>;
+    // fn encode_linked_dag(self, )
+}
 
-//     fn encode_str(self, v: &str) -> Result<Self::Ok, Self::Error>;
+///
+pub trait EncodeList {
+    ///
+    type Ok;
 
-//     fn encode_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error>;
+    ///
+    type Error: Into<Error>;
 
-//     fn encode_link<'a>(self, v: &Link<'a>) -> Result<Self::Ok, Self::Error>;
+    ///
+    fn encode_element<T>(&mut self, element: &T) -> Result<(), Self::Error>
+    where
+        T: Encode;
 
-//     fn encode_list(self, len: Option<usize>) -> Result<Self::EncodeList, Self::Error>;
+    ///
+    fn end(self) -> Result<Self::Ok, Self::Error>;
+}
 
-//     fn encode_map(self, len: Option<usize>) -> Result<Self::EncodeMap, Self::Error>;
-// }
+///
+pub trait EncodeMap {
+    ///
+    type Ok;
 
-// pub trait EncodeList {
-//     type Ok;
-//     type Error: std::error::Error;
+    ///
+    type Error: Into<Error>;
 
-//     fn encode_element(&mut self, element: &Dag) -> Result<(), Self::Error>;
+    ///
+    fn encode_key(&mut self, key: &Key) -> Result<(), Self::Error>;
 
-//     fn end(self) -> Result<Self::Ok, Self::Error>;
-// }
+    ///
+    fn encode_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: Encode;
 
-// pub trait EncodeMap {
-//     type Ok;
-//     type Error: std::error::Error;
+    ///
+    fn end(self) -> Result<Self::Ok, Self::Error>;
+}
 
-//     fn encode_key(&mut self, key: &Dag) -> Result<(), Self::Error>;
+///
+pub trait Decode<'de>: Sized {
+    ///
+    fn decode<D>(&self, decoder: D) -> Result<Self, D::Error>
+    where
+        D: Decoder<'de>;
 
-//     fn encode_value(&mut self, value: &Dag) -> Result<(), Self::Error>;
+    ///
+    fn decode_tokens<D, S>(&self, decoder: D, sink: S) -> Result<(), D::Error>
+    where
+        D: Decoder<'de>,
+        S: Sink<SinkItem = Token<'de>>;
+}
 
-//     fn end(self) -> Result<Self::Ok, Self::Error>;
-// }
+///
+pub trait Decoder<'de>: Sized {
+    ///
+    type Ok;
+
+    ///
+    type Error: From<Error>;
+
+    ///
+    fn decode<R>(self, blob: R) -> Result<(), Self::Error>
+    where
+        R: Read;
+}
