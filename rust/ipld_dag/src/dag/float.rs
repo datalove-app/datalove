@@ -1,4 +1,4 @@
-use serde::ser::{Serialize, Serializer};
+use serde::{Serialize, Serializer};
 
 /// Float wrapper
 #[derive(From)]

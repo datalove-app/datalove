@@ -1,17 +1,22 @@
-use crate::{Dag, Link, Prefix, Token, CID};
+//!
+
+use crate::{
+    base::{Base, Encodable},
+    Error, Token, CID,
+};
 use futures::{Sink, Stream};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Read, Write};
 
-///
-#[derive(Deserialize, Serialize)]
-pub enum ResolvedDag<'a, D: Dag> {
-    Final(D),
-    Link {
-        // link: Link<D>,
-        remaining_path: &'a str,
-    },
-}
+// ///
+// #[derive(Deserialize, Serialize)]
+// pub enum ResolverResult<'a, D: Dag> {
+//     Final(D),
+//     Link {
+//         // link: Link<D>,
+//         remaining_path: &'a str,
+//     },
+// }
 
 /// Represents an IPLD Dag Format
 ///
@@ -48,47 +53,27 @@ pub trait Format<'de> {
     //     R: Read,
     //     S: Sink<SinkItem = Token<'a>>;
 
-    /// Retrieves a `Dag` value from within a `Read`, either returning the value or a `Link` and the remaining path.
-    fn resolve<D, R>(blob: R, path: &str) -> Result<ResolverResult<D>, Self::Error>
-    where
-        D: Dag,
-        R: Read;
+    // /// Retrieves a `Dag` value from within a `Read`, either returning the value or a `Link` and the remaining path.
+    // fn resolve<D, R>(blob: R, path: &str) -> Result<ResolverResult<D>, Self::Error>
+    // where
+    //     D: Dag,
+    //     R: Read;
 }
 
 ///
-pub trait Encode {
-    ///
-    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
-    where
-        E: Encoder,
-        <E as serde::Serializer>::Error: Into<Error>;
+pub trait Encoder: Sized + Serializer {
+    /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
+    fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error>;
+
+    /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
+    fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error>;
 }
 
-impl<T> Encode for T
+impl<T> Encoder for T
 where
-    T: serde::Serialize,
+    T: Sized + Serializer,
 {
-    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
-    where
-        E: Encoder,
-        <E as serde::Serializer>::Error: Into<Error>,
-    {
-        self.serialize(encoder)
-    }
-}
-
-///
-pub trait Encoder: Sized + serde::Serializer
-where
-    <Self as serde::Serializer>::Error: Into<Error>,
-{
-    ///
-    type EncodeList: EncodeList;
-
-    ///
-    type EncodeMap: EncodeMap;
-
-    ///
+    /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
         match base {
             None => self.serialize_bytes(bytes),
@@ -100,54 +85,9 @@ where
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
         match cid.base() {
             None => self.serialize_bytes(&cid.to_vec()),
-            Some(base) => self.serialize_str(&cid.to_string(None)),
+            Some(_) => self.serialize_str(&cid.to_string(None)),
         }
     }
-
-    ///
-    fn encode_list(self, len: Option<usize>) -> Result<Self::EncodeList, Self::Error>;
-
-    ///
-    fn encode_map(self, len: Option<usize>) -> Result<Self::EncodeMap, Self::Error>;
-
-    // fn encode_linked_dag(self, )
-}
-
-///
-pub trait EncodeList {
-    ///
-    type Ok;
-
-    ///
-    type Error: Into<Error>;
-
-    ///
-    fn encode_element<T>(&mut self, element: &T) -> Result<(), Self::Error>
-    where
-        T: Encode;
-
-    ///
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-///
-pub trait EncodeMap {
-    ///
-    type Ok;
-
-    ///
-    type Error: Into<Error>;
-
-    ///
-    fn encode_key(&mut self, key: &Key) -> Result<(), Self::Error>;
-
-    ///
-    fn encode_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: Encode;
-
-    ///
-    fn end(self) -> Result<Self::Ok, Self::Error>;
 }
 
 ///

@@ -4,12 +4,12 @@
 // TODO: add decoder functions for the various rust types (that can parse multibases from strings)
 
 use crate::{
+    base::{Base, Encodable},
     error::Error,
-    format::{Encode, Encoder},
+    format::Encoder,
     Prefix, Version,
 };
 use ::cid::{Cid, Codec};
-use multibase::{Base, Encodable};
 use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -89,6 +89,7 @@ impl CID {
     }
 
     #[inline]
+    /// Defaults to `Base58Btc`.
     fn to_string_v0(&self) -> String {
         self.cid.to_string()
     }
@@ -96,7 +97,6 @@ impl CID {
     #[inline]
     fn to_string_v1(&self, base: Option<Base>) -> String {
         match base.or(*self.base()) {
-            // defaults to Base58Btc
             None => self.cid.to_string(),
             Some(base) => Encodable::encode(&self.to_vec_v1(), base),
         }
@@ -113,29 +113,15 @@ impl CID {
     }
 }
 
-impl Encode for CID {
-    // #[inline]
-    fn encode<E>(&self, encoder: E) -> Result<E::Ok, E::Error>
+impl Serialize for CID {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        E: Encoder,
-        <E as serde::Serializer>::Error: Into<Error>,
+        S: Serializer,
     {
-        encoder.encode_link(self)
+        serializer.encode_link(self)
     }
 }
-
-// impl Serialize for CID {
-//     #[inline]
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         match self.base() {
-//             None => serializer.serialize_bytes(&self.to_vec()),
-//             Some(base) => serializer.serialize_str(&self.to_string(None)),
-//         }
-//     }
-// }
 
 // impl<'de> Deserialize<'de> for CID {
 //     fn deserialize<D>(deserializer: D) -> Result<CID, D::Error>

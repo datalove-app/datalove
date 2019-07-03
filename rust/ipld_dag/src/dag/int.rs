@@ -1,4 +1,4 @@
-use serde::ser::{Serialize, Serializer};
+use serde::{Serialize, Serializer};
 
 /// Signed and unsigned integer wrapper
 #[derive(From, Hash, PartialEq, Eq)]

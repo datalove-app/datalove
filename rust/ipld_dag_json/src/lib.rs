@@ -1,15 +1,13 @@
+#![feature(specialization)]
 #![recursion_limit = "512"]
 
 mod error;
 
-use crate::error::{j2i_de_err, j2i_ser_err, key_must_be_a_string};
-// use base64::{display::Base64Display, encode as b64Encode};
 use delegate::delegate;
 use ipld_dag::{
+    base::{name as base_name, Base, Encodable},
     format,
-    indexmap::indexmap,
-    multibase::{Base, Encodable},
-    Dag, Error, Token, CID,
+    Error, Token, CID,
 };
 use serde::{
     de,
@@ -29,23 +27,6 @@ use serde_json::{ser as json_ser, Error as JsonError, Serializer as JsonSerializ
 //  --- it implements From<Dag> for FormatDag (so it can be translated between Serialize/Deserialize impls)
 // pub struct JsonDag(RawDag<JsonDag>);
 
-// impl<I, O> From<I> for O where I: Dag<I>, O: Dag<JsonDag> {
-//     fn from(dag: I) -> Self {
-
-//     }
-// }
-
-// impl<'a> From<RawDag<'a, JsonDag<'a>>> for JsonDag<'a> {
-//     fn from(dag: RawDag<'a, JsonDag<'a>>) -> Self {
-//     }
-// }
-
-// impl<'a, T: Dag + Into<JsonDag<'a>>> From<RawDag<'a, T>> for JsonDag<'a> {
-//     fn from(dag: RawDag<'a, T>) -> Self {
-//         JsonDag(dag)
-//     }
-// }
-
 pub struct Encoder<W: std::io::Write>(JsonSerializer<W>);
 
 ///
@@ -54,77 +35,26 @@ where
     W: std::io::Write,
 {
     ///
-    type EncodeList = ListEncoder;
+    fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
+        use ser::SerializeStructVariant as SV;
 
-    ///
-    type EncodeMap = MapEncoder;
+        let base = base.or(Some(Base::Base64)).unwrap();
+        let base_str = base_name(base);
+        let byte_str = bytes.encode(base);
 
-    /// Encodes CID bytes as `{"/": String}`.
-    fn encode_link(self, v: &CID) -> Result<Self::Ok, Self::Error> {
-        self.serialize_newtype_variant("", 0, "/", &v.encode(Base::Base64))
+        let mut sv_ser = self.serialize_struct_variant("", 0, "/", 1)?;
+        SV::serialize_field(&mut sv_ser, base_str, &byte_str)?;
+        SV::end(sv_ser)
     }
 
     ///
-    fn encode_list(self, len: Option<usize>) -> Result<Self::EncodeList, Self::Error> {
-        match self.serialize_seq(len) {
-            Ok(json_ser::Compound::Map { ser: _, state }) => Ok(CompoundEncoder::new(self, state)),
-            _ => Err(Error::Serialization("".to_string())),
-        }
-    }
-
-    ///
-    fn encode_map(self, len: Option<usize>) -> Result<Self::EncodeMap, Self::Error> {
-        Ok(MapEncoder)
+    fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
+        let cid_str = &cid.encode(Base::Base64);
+        self.serialize_newtype_variant("", 0, "/", cid_str)
     }
 }
 
-pub struct ListEncoder;
-
-impl format::EncodeList for ListEncoder {
-    ///
-    type Ok = ();
-
-    ///
-    type Error = serde_json::error::Error;
-
-    ///
-    fn encode_element<T>(&mut self, element: &T) -> Result<(), Self::Error>
-    where
-        T: format::Encode,
-    {
-
-    }
-
-    ///
-    fn end(self) -> Result<Self::Ok, Self::Error> {}
-}
-
-pub struct MapEncoder;
-
-impl format::EncodeMap for MapEncoder {
-    ///
-    type Ok = ();
-
-    ///
-    type Error = serde_json::error::Error;
-
-    ///
-    fn encode_key(&mut self, key: &Key) -> Result<(), Self::Error> {}
-
-    ///
-    fn encode_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: format::Encode,
-    {
-
-    }
-
-    ///
-    fn end(self) -> Result<Self::Ok, Self::Error> {}
-}
-
-///
-/// `impl Serializer` by delegating to the raw `serde_json::Serializer`.
+/// `impl Serializer` by delegating to the raw `serde_json::Serializer`, overriding `serialize_bytes`.
 impl<'a, W> Serializer for &'a mut Encoder<W>
 where
     W: std::io::Write,
@@ -142,11 +72,7 @@ where
 
     /// Serializes bytes as `{"/": { "base64": String }}`.
     fn serialize_bytes(self, v: &[u8]) -> Result<(), JsonError> {
-        use ser::SerializeStructVariant as SV;
-
-        let mut sv_ser = self.serialize_struct_variant("", 0, "/", 1)?;
-        SV::serialize_field(&mut sv_ser, "base64", &v.encode(Base::Base64))?;
-        SV::end(sv_ser)
+        format::Encoder::encode_bytes(self, v, None)
     }
 
     delegate! {
@@ -167,7 +93,6 @@ where
             fn serialize_char(self, v: char) -> Result<(), JsonError>;
             fn serialize_str(self, v: &str) -> Result<(), JsonError>;
 
-            // TODO: override this above this macro block
             fn serialize_unit(self) -> Result<(), JsonError>;
             fn serialize_unit_struct(self, _name: &'static str) -> Result<(), JsonError>;
             fn serialize_unit_variant(

@@ -1,8 +1,4 @@
-use crate::{
-    dag::Int,
-    format::{Encode, Encoder},
-    Error,
-};
+use crate::{dag::Int, Error};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An IPLD Dag map key.

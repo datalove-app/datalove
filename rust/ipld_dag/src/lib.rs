@@ -5,10 +5,11 @@
 #[macro_use]
 extern crate derive_more;
 #[macro_use]
-extern crate erased_serde;
+extern crate lazy_static;
 #[macro_use]
 extern crate serde;
 
+pub mod base;
 mod cid;
 mod dag;
 mod error;
