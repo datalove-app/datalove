@@ -1,13 +1,12 @@
 #![feature(specialization)]
-#![recursion_limit = "512"]
+#![recursion_limit = "1024"]
 
 mod error;
 
 use delegate::delegate;
 use ipld_dag::{
-    base::{name as base_name, Base, Encodable},
-    format,
-    Error, Token, CID,
+    base::{to_name, Base, Encodable},
+    format, Error, Token, CID,
 };
 use serde::{
     de,
@@ -29,17 +28,48 @@ use serde_json::{ser as json_ser, Error as JsonError, Serializer as JsonSerializ
 
 pub struct Encoder<W: std::io::Write>(JsonSerializer<W>);
 
+#[inline]
+pub fn to_vec<T>(value: &T) -> Result<Vec<u8>, JsonError>
+where
+    T: Serialize,
+{
+    let mut writer = Vec::new();
+    let mut ser = Encoder::new(&mut writer);
+    value.serialize(&mut ser)?;
+    Ok(writer)
+}
+
+#[inline]
+pub fn to_string<T>(value: &T) -> Result<String, JsonError>
+where
+    T: Serialize,
+{
+    let writer = to_vec(value)?;
+    let string = unsafe { String::from_utf8_unchecked(writer) };
+    Ok(string)
+}
+
+impl<W> Encoder<W>
+where
+    W: std::io::Write,
+{
+    fn new(writer: W) -> Self {
+        Encoder(JsonSerializer::new(writer))
+    }
+}
+
 ///
 impl<'a, W> format::Encoder for &'a mut Encoder<W>
 where
     W: std::io::Write,
 {
-    ///
+    /// Serialize bytes as `{"/": { "base64": <<base64_string>> }}`.
+    #[inline]
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
         use ser::SerializeStructVariant as SV;
 
         let base = base.or(Some(Base::Base64)).unwrap();
-        let base_str = base_name(base);
+        let base_str = to_name(base);
         let byte_str = bytes.encode(base);
 
         let mut sv_ser = self.serialize_struct_variant("", 0, "/", 1)?;
@@ -47,10 +77,10 @@ where
         SV::end(sv_ser)
     }
 
-    ///
+    /// Serialize link as `{"/": <<base64_string>> }`.
+    #[inline]
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
-        let cid_str = &cid.encode(Base::Base64);
-        self.serialize_newtype_variant("", 0, "/", cid_str)
+        self.serialize_newtype_variant("", 0, "/", &cid.encode(Base::Base64))
     }
 }
 
@@ -71,64 +101,69 @@ where
     type SerializeStructVariant = <&'a mut JsonSerializer<W> as Serializer>::SerializeStructVariant;
 
     /// Serializes bytes as `{"/": { "base64": String }}`.
-    fn serialize_bytes(self, v: &[u8]) -> Result<(), JsonError> {
+    #[inline]
+    fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
         format::Encoder::encode_bytes(self, v, None)
     }
 
     delegate! {
         target self.0 {
-            fn serialize_bool(self, v: bool) -> Result<(), JsonError>;
-            fn serialize_i8(self, v: i8) -> Result<(), JsonError>;
-            fn serialize_i16(self, v: i16) -> Result<(), JsonError>;
-            fn serialize_i32(self, v: i32) -> Result<(), JsonError>;
-            fn serialize_i64(self, v: i64) -> Result<(), JsonError>;
-            fn serialize_i128(self, v: i128) -> Result<(), JsonError>;
-            fn serialize_u8(self, v: u8) -> Result<(), JsonError>;
-            fn serialize_u16(self, v: u16) -> Result<(), JsonError>;
-            fn serialize_u32(self, v: u32) -> Result<(), JsonError>;
-            fn serialize_u64(self, v: u64) -> Result<(), JsonError>;
-            fn serialize_u128(self, v: u128) -> Result<(), JsonError>;
-            fn serialize_f32(self, v: f32) -> Result<(), JsonError>;
-            fn serialize_f64(self, v: f64) -> Result<(), JsonError>;
-            fn serialize_char(self, v: char) -> Result<(), JsonError>;
-            fn serialize_str(self, v: &str) -> Result<(), JsonError>;
+            // fn is_human_readable(&self) -> bool;
 
-            fn serialize_unit(self) -> Result<(), JsonError>;
-            fn serialize_unit_struct(self, _name: &'static str) -> Result<(), JsonError>;
+            fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error>;
+            fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error>;
+            fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error>;
+            fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error>;
+            fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error>;
+            fn serialize_i128(self, v: i128) -> Result<Self::Ok, Self::Error>;
+            fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error>;
+            fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error>;
+            fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error>;
+            fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error>;
+            fn serialize_u128(self, v: u128) -> Result<Self::Ok, Self::Error>;
+            fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error>;
+            fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error>;
+            fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error>;
+            fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error>;
+            fn serialize_unit(self) -> Result<Self::Ok, Self::Error>;
+            fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error>;
+
             fn serialize_unit_variant(
                 self,
                 _name: &'static str,
                 _variant_index: u32,
                 variant: &'static str
-            ) -> Result<(), JsonError>;
-            fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, value: &T) -> Result<(), JsonError>
+            ) -> Result<Self::Ok, Self::Error>;
+
+            fn serialize_newtype_struct<T: ?Sized>(self, _name: &'static str, value: &T) -> Result<Self::Ok, Self::Error>
             where
                 T: Serialize;
+
             fn serialize_newtype_variant<T: ?Sized>(
                 self,
                 _name: &'static str,
                 _variant_index: u32,
                 variant: &'static str,
                 value: &T
-            ) -> Result<(), JsonError>
+            ) -> Result<Self::Ok, Self::Error>
             where
                 T: Serialize;
 
-            fn serialize_none(self) -> Result<(), JsonError>;
+            fn serialize_none(self) -> Result<Self::Ok, Self::Error>;
 
-            fn serialize_some<T: ?Sized>(self, value: &T) -> Result<(), JsonError>
+            fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
             where
                 T: Serialize;
 
-            fn serialize_seq(self, len: Option<usize>) -> Result<<Encoder<W> as Serializer>::SerializeSeq, JsonError>;
+            fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error>;
 
-            fn serialize_tuple(self, len: usize) -> Result<<Encoder<W> as Serializer>::SerializeTuple, JsonError>;
+            fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error>;
 
             fn serialize_tuple_struct(
                 self,
                 _name: &'static str,
                 len: usize
-            ) -> Result<<Encoder<W> as Serializer>::SerializeTupleStruct, JsonError>;
+            ) -> Result<Self::SerializeTupleStruct, Self::Error>;
 
             fn serialize_tuple_variant(
                 self,
@@ -136,11 +171,11 @@ where
                 _variant_index: u32,
                 variant: &'static str,
                 len: usize
-            ) -> Result<<Encoder<W> as Serializer>::SerializeTupleVariant, JsonError>;
+            ) -> Result<Self::SerializeTupleVariant, Self::Error>;
 
-            fn serialize_map(self, len: Option<usize>) -> Result<<Encoder<W> as Serializer>::SerializeMap, JsonError>;
+            fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error>;
 
-            fn serialize_struct(self, name: &'static str, len: usize) -> Result<<Encoder<W> as Serializer>::SerializeStruct, JsonError>;
+            fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct, Self::Error>;
 
             fn serialize_struct_variant(
                 self,
@@ -148,109 +183,76 @@ where
                 _variant_index: u32,
                 variant: &'static str,
                 len: usize
-            ) -> Result<<Encoder<W> as Serializer>::SerializeStructVariant, JsonError>;
+            ) -> Result<Self::SerializeStructVariant, Self::Error>;
 
-            fn collect_str<T: ?Sized>(self, value: &T) -> Result<<Encoder<W> as Serializer>::Ok, JsonError>
+            fn collect_seq<I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+            where
+                I: IntoIterator,
+                <I as IntoIterator>::Item: Serialize;
+
+            fn collect_map<K, V, I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+            where
+                K: Serialize,
+                V: Serialize,
+                I: IntoIterator<Item = (K, V)>;
+
+            fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
             where
                 T: std::fmt::Display;
         }
     }
 }
 
-// impl Dag for JsonDag {
-//     fn get_type(&self) -> Token {
-//         Token::Null
-//     }
-// }
-
-/// Serialization behaviour is almost identical to the standard JSON format, with a few exceptions:
-///     - encodes bytes as `{"/": { "base64": String }}`
-///     - encodes a CID as `{"/": String}`
-// impl Serialize for JsonDag {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         match &self.0 {
-//             // Serialization unique to the DagJSON format
-//             // Encodes bytes as `{"/": { "base64": String }}`
-//             RawDag::ByteBuf(bytes, _base) => {
-//                 let mut ser = serializer.serialize_struct_variant("", 0, "/", 1)?;
-//                 // todo: should this be configurable?
-//                 let (base, base_key) = (&Base::Base64, "base64");
-//                 ser.serialize_field(base_key, &bytes.encode(*base))?;
-//                 ser.end()
-//             }
-//             // Encodes CID bytes as `{"/": String}`
-//             RawDag::Link(link) => match link {
-//                 Link::Dag(dag) => (*dag).serialize(serializer),
-//                 Link::CID(cid) => {
-//                     let cid_str = cid.to_string(Some(Base::Base64));
-//                     serializer.serialize_newtype_variant("CID", 0, "/", &cid_str)
-//                 }
-//             },
-
-//             // Serialization identical to the default format
-//             _ => Dag::serialize(self, serializer),
-//         }
-//     }
-// }
-
 // TODO: ?? use serde_test methods to test the cases (instead of manually making json??)
 #[cfg(test)]
 mod tests {
-    // use crate::JsonDag;
-    // use ipld_dag::{
-    //     multibase::{encode as mb_encode, Base},
-    //     Link, RawDag, CID,
-    // };
+    use crate::to_string;
+    use ipld_dag::{
+        base::{Base, Encodable},
+        Dag, CID,
+    };
     // use serde_json::to_string;
 
-    // const CID_STR: &'static str = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+    const CID_STR: &'static str = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
 
-    // #[test]
-    // fn test_bytes() {
-    //     let bytes: Vec<u8> = vec![0, 1, 2, 3];
-    //     let byte_str = mb_encode(Base::Base64, &bytes);
-    //     let dag: JsonDag = JsonDag(RawDag::ByteBuf(bytes, None));
+    #[test]
+    fn test_bytes() {
+        let bytes: Vec<u8> = vec![0, 1, 2, 3];
+        let byte_str = &bytes.encode(Base::Base64);
+        let dag = Dag::ByteBuf(bytes, None);
 
-    //     let expected = format!(
-    //         r#"{{"/":{{"base64":"{bytes}"}}}}"#,
-    //         bytes = byte_str.to_string(),
-    //     );
-    //     let actual = to_string(&dag).unwrap();
-    //     assert_eq!(expected, actual);
-    // }
+        let expected = make_bytes_json(byte_str);
+        let actual = to_string(&dag).unwrap();
+        assert_eq!(expected, actual);
+    }
 
-    // #[test]
-    // fn test_cid() {
-    //     let cid: CID = CID_STR.parse().unwrap();
-    //     let dag = JsonDag(RawDag::Link(Link::CID(cid)));
+    #[test]
+    fn test_cid() {
+        let cid: CID = CID_STR.parse().unwrap();
+        let dag = Dag::Link(cid, None);
 
-    //     let expected = make_cid(CID_STR);
-    //     let actual = to_string(&dag).unwrap();
-    //     assert_eq!(expected, actual);
-    // }
+        let expected = make_cid_json(CID_STR);
+        let actual = to_string(&dag).unwrap();
+        assert_eq!(expected, actual);
+    }
 
-    // fn make_cid(cid_str: &str) -> String {
-    //     format!(
-    //         r#"{{"{key}":"{cid}"}}"#,
-    //         key = r#"/"#,
-    //         cid = cid_str.to_string(),
-    //     )
-    // }
+    #[test]
+    fn test_vec() {
+        let cid: CID = CID_STR.parse().unwrap();
+        let link = Dag::Link(cid, None);
+        let dag = Dag::List(vec![link.clone(), link]);
 
-    // #[test]
-    // fn test_vec() {
-    //     let cid: CID = CID_STR.parse().unwrap();
-    //     let dag: JsonDag = JsonDag(RawDag::List(vec![
-    //         JsonDag(RawDag::Link(Link::CID(cid.clone()))),
-    //         JsonDag(RawDag::Link(Link::CID(cid))),
-    //     ]));
+        let link = make_cid_json(CID_STR);
+        let expected = format!(r#"[{},{}]"#, &link, &link);
+        let actual = to_string(&dag).unwrap();
+        assert_eq!(expected, actual)
+    }
 
-    //     let link = make_cid(CID_STR);
-    //     let expected = format!(r#"[{},{}]"#, &link, &link);
-    //     let actual = to_string(&dag).unwrap();
-    //     assert_eq!(expected, actual)
-    // }
+    fn make_bytes_json(byte_str: &str) -> String {
+        format!(r#"{{"/":{{"base64":"{bytes}"}}}}"#, bytes = byte_str)
+    }
+
+    fn make_cid_json(cid_str: &str) -> String {
+        format!(r#"{{"/":"{cid}"}}"#, cid = cid_str)
+    }
 }

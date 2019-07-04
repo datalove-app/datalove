@@ -42,6 +42,12 @@ use serde_bytes::ByteBuf;
 
 // fn from_tokens() {}
 
+// pub enum Dag2<R: std::io::Read, D: Dag> {
+//     Block(R),
+//     Link(CID),
+//     Dag(D),
+// }
+
 // TODO: latest updates:
 // get rid of Link and Dag trait
 // instead:
@@ -57,7 +63,7 @@ use serde_bytes::ByteBuf;
 /// Represents an abtract IPLD [Dag](https://github.com/ipld/specs/blob/master/data-model-layer/data-model.md). Useful if decoding unknown IPLD.
 ///
 /// An `indexmap` is used as the map implementation in order to preserve key order.
-#[derive(From)]
+#[derive(Clone, Debug, From)]
 pub enum Dag {
     /// Represents a null value.
     Null,
@@ -77,7 +83,7 @@ pub enum Dag {
     /// Represents some bytes, and an optional desired [`multibase::Base`] if encoded as a string.
     ///
     /// [`multibase::Base`]: https://docs.rs/multibase/0.6.0/multibase/enum.Base.html
-    ByteBuf(ByteBuf, Option<Base>),
+    ByteBuf(Vec<u8>, Option<Base>),
 
     /// Represents a list of `Dag` nodes.
     List(Vec<Self>),
@@ -92,10 +98,7 @@ pub enum Dag {
     ///
     /// [`CID`]
     /// [`Link`]: https://github.com/ipld/specs/blob/master/data-model-layer/data-model.md#link-kind
-    Link(CID),
-    // /// Represents a linked IPLD [`Dag`].
-    // ///
-    // LinkedDag(Box<Self>),
+    Link(CID, Option<Box<Dag>>),
 }
 
 impl Serialize for Dag {
@@ -105,14 +108,13 @@ impl Serialize for Dag {
         S: Serializer,
     {
         match self {
-            Dag::ByteBuf(bytes, base) => serializer.encode_bytes(bytes, *base),
-            Dag::Link(cid) => cid.serialize(serializer),
-
             Dag::Null => serializer.serialize_none(),
             Dag::Bool(b) => serializer.serialize_bool(*b),
             Dag::Integer(int) => int.serialize(serializer),
             Dag::Float(float) => float.serialize(serializer),
             Dag::String(s) => serializer.serialize_str(s),
+            Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
+            Dag::Link(cid, _) => serializer.encode_link(cid),
             Dag::List(seq) => {
                 let mut seq_enc = serializer.serialize_seq(Some(seq.len()))?;
                 for dag in seq {

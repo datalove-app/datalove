@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
 /// Float wrapper
-#[derive(From)]
+#[derive(Clone, Debug, From)]
 pub enum Float {
     F32(f32),
     F64(f64),

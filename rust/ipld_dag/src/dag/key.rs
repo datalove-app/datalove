@@ -2,7 +2,7 @@ use crate::{dag::Int, Error};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An IPLD Dag map key.
-#[derive(Eq, From, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, From, Hash, PartialEq)]
 pub enum Key {
     Integer(Int),
     String(String),

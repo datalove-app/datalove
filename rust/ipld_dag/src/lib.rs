@@ -1,11 +1,10 @@
 //!
 
+#![feature(specialization)]
 #![warn(missing_docs)]
 
 #[macro_use]
 extern crate derive_more;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate serde;
 

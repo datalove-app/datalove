@@ -1,7 +1,7 @@
 use serde::{Serialize, Serializer};
 
 /// Signed and unsigned integer wrapper
-#[derive(From, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, From, Hash, PartialEq, Eq)]
 pub enum Int {
     U8(u8),
     U16(u16),

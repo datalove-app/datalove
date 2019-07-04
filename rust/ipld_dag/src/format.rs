@@ -61,7 +61,7 @@ pub trait Format<'de> {
 }
 
 ///
-pub trait Encoder: Sized + Serializer {
+pub trait Encoder: Serializer {
     /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error>;
 
@@ -71,10 +71,14 @@ pub trait Encoder: Sized + Serializer {
 
 impl<T> Encoder for T
 where
-    T: Sized + Serializer,
+    T: Serializer,
 {
     /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
-    fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
+    default fn encode_bytes(
+        self,
+        bytes: &[u8],
+        base: Option<Base>,
+    ) -> Result<Self::Ok, Self::Error> {
         match base {
             None => self.serialize_bytes(bytes),
             Some(base) => self.serialize_str(&Encodable::encode(bytes, base)),
@@ -82,7 +86,7 @@ where
     }
 
     /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
-    fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
+    default fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
         match cid.base() {
             None => self.serialize_bytes(&cid.to_vec()),
             Some(_) => self.serialize_str(&cid.to_string(None)),

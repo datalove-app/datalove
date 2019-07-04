@@ -4,12 +4,12 @@
 // TODO: add decoder functions for the various rust types (that can parse multibases from strings)
 
 use crate::{
-    base::{Base, Encodable},
+    base::{Base, Decodable, Encodable},
     error::Error,
     format::Encoder,
     Prefix, Version,
 };
-use ::cid::{Cid, Codec};
+use ::cid::{Cid, Codec, ToCid};
 use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -142,11 +142,27 @@ impl Encodable for CID {
 impl std::str::FromStr for CID {
     type Err = Error;
 
+    // TODO
     /// Creates a new `CID` from an `str`, decoding its `multibase::Base`.
     fn from_str(s: &str) -> Result<Self, Error> {
-        let (base, decoded) = multibase::decode(s)?;
-        let cid = Cid::from(decoded)?;
+        let (base, decoded) = if Version::is_v0_str(s) {
+            let s = Base::Base58btc.code().to_string() + &s;
+            Decodable::decode(&s)?
+        } else {
+            Decodable::decode(&s)?
+        };
+
+        println!(
+            "base: {:?}, decoded: {:?}, {}",
+            base,
+            decoded,
+            decoded.len()
+        );
+
+        let cid = decoded.to_cid()?;
+        println!("decoded cid: {:?}", cid);
         let prefix = Prefix::new_from_bytes(&cid.hash)?;
+        println!("decoded prefix: {:?}", prefix);
         Ok(CID {
             base: Some(base),
             cid,
