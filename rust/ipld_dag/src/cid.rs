@@ -10,15 +10,23 @@ use crate::{
     Prefix, Version,
 };
 use ::cid::{Cid, Codec, ToCid};
+use integer_encoding::VarIntWriter;
 use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+const V0_PREFIX: Prefix = Prefix {
+    version: Version::V0,
+    codec: Codec::DagProtobuf,
+    mh_type: Hash::SHA2256,
+    mh_len: 34,
+};
 
 /// An IPLD [`CID`](https://github.com/ipld/specs/blob/master/block-layer/CID.md).
 #[derive(Clone, Debug)]
 pub struct CID {
     base: Option<Base>,
-    cid: Cid,
     prefix: Prefix,
+    hash: Vec<u8>,
 }
 
 impl CID {
@@ -28,13 +36,13 @@ impl CID {
         Ok(CID::from_prefix(prefix, mh))
     }
 
-    /// Creates a new CID from a known `Prefix` and bytes.
+    /// Creates a new CID from a known `Prefix` and raw hash bytes.
     pub fn from_prefix(prefix: Prefix, mh: &[u8]) -> CID {
         let cid = Cid::new_from_prefix(&prefix, mh);
         CID {
             base: None,
-            cid,
             prefix,
+            hash: cid.hash,
         }
     }
 
@@ -44,16 +52,16 @@ impl CID {
         &self.base
     }
 
+    /// Retrieves the underlying `multihash` bytes.
+    #[inline]
+    pub fn mh(&self) -> &[u8] {
+        &self.hash
+    }
+
     /// Retrieves the underlying `multicodec::Codec`.
     #[inline]
     pub fn codec(&self) -> &Codec {
         &self.prefix.codec
-    }
-
-    /// Retrieves the underlying `multihash` bytes.
-    #[inline]
-    pub fn hash(&self) -> &[u8] {
-        &self.cid.hash
     }
 
     /// Retrieves the underlying `multihash::Hash`.
@@ -91,25 +99,31 @@ impl CID {
     #[inline]
     /// Defaults to `Base58Btc`.
     fn to_string_v0(&self) -> String {
-        self.cid.to_string()
+        println!("v0 bytes: {:?}", &self.hash);
+        let mut string = self.hash.as_slice().encode(Base::Base58btc);
+        string.remove(0);
+        println!("v0 string: {}", &string);
+        string
     }
 
     #[inline]
     fn to_string_v1(&self, base: Option<Base>) -> String {
-        match base.or(*self.base()) {
-            None => self.cid.to_string(),
-            Some(base) => Encodable::encode(&self.to_vec_v1(), base),
-        }
+        let base = base.or(*self.base()).or(Some(Base::Base58btc)).unwrap();
+        self.to_vec_v1().encode(base)
     }
 
     #[inline]
     fn to_vec_v0(&self) -> Vec<u8> {
-        self.cid.hash.clone()
+        self.hash.clone()
     }
 
     #[inline]
     fn to_vec_v1(&self) -> Vec<u8> {
-        self.cid.to_bytes()
+        let mut res = Vec::with_capacity(16);
+        res.write_varint(u64::from(self.prefix.version)).unwrap();
+        res.write_varint(u64::from(self.prefix.codec)).unwrap();
+        res.extend_from_slice(&self.hash);
+        res
     }
 }
 
@@ -119,7 +133,9 @@ impl Serialize for CID {
     where
         S: Serializer,
     {
-        serializer.encode_link(self)
+        println!("==> serializing link");
+        <S as Encoder>::encode_link(serializer, self)
+        // serializer.encode_link(self)
     }
 }
 
@@ -139,34 +155,43 @@ impl Encodable for CID {
     }
 }
 
+impl std::hash::Hash for CID {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.to_vec().hash(state);
+    }
+}
+
 impl std::str::FromStr for CID {
     type Err = Error;
 
     // TODO
     /// Creates a new `CID` from an `str`, decoding its `multibase::Base`.
     fn from_str(s: &str) -> Result<Self, Error> {
-        let (base, decoded) = if Version::is_v0_str(s) {
+        if Version::is_v0_str(s) {
             let s = Base::Base58btc.code().to_string() + &s;
-            Decodable::decode(&s)?
+            let (_, decoded) =
+                Decodable::decode(&s)
+                    .map_err(|err| err.into())
+                    .and_then(|(base, decoded)| match base {
+                        Base::Base58btc => Ok((base, decoded)),
+                        _ => Err(Error::InvalidCID),
+                    })?;
+
+            Ok(CID {
+                base: Some(Base::Base58btc),
+                prefix: V0_PREFIX,
+                hash: decoded,
+            })
         } else {
-            Decodable::decode(&s)?
-        };
-
-        println!(
-            "base: {:?}, decoded: {:?}, {}",
-            base,
-            decoded,
-            decoded.len()
-        );
-
-        let cid = decoded.to_cid()?;
-        println!("decoded cid: {:?}", cid);
-        let prefix = Prefix::new_from_bytes(&cid.hash)?;
-        println!("decoded prefix: {:?}", prefix);
-        Ok(CID {
-            base: Some(base),
-            cid,
-            prefix,
-        })
+            let (base, decoded) = Decodable::decode(&s)?;
+            // println!("raw: {}, decoded: {:?}", s, decoded);
+            let prefix = Prefix::new_from_bytes(&decoded)?;
+            // println!("decoded prefix: {:?}", prefix);
+            Ok(CID {
+                base: Some(base),
+                prefix,
+                hash: decoded,
+            })
+        }
     }
 }

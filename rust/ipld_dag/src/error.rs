@@ -6,11 +6,12 @@ use std::{error::Error as StdError, fmt};
 ///
 #[derive(Debug)]
 pub enum Error {
+    InvalidDagType,
+    InvalidCID,
     ExpectedCID,
     ExpectedLinkedDag,
     ExpectedList,
     ExpectedMap,
-    InvalidType,
     CID(String),
     Multibase(String),
     Serialization(String),
@@ -20,7 +21,8 @@ pub enum Error {
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::InvalidType => "invalid Dag type",
+            Error::InvalidDagType => "invalid Dag type",
+            Error::InvalidCID => "invalid CID",
             Error::ExpectedCID => "expected CID",
             Error::ExpectedLinkedDag => "expected linked dag",
             Error::ExpectedList => "expected list",

@@ -79,14 +79,17 @@ where
         bytes: &[u8],
         base: Option<Base>,
     ) -> Result<Self::Ok, Self::Error> {
+        println!("\n=====> DEFAULT bytes: {:?}, {:?}", bytes, base);
         match base {
             None => self.serialize_bytes(bytes),
-            Some(base) => self.serialize_str(&Encodable::encode(bytes, base)),
+            // None => self.serialize_str(&bytes.encode(Base::Base58btc)),
+            Some(base) => self.serialize_str(&bytes.encode(base)),
         }
     }
 
     /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
     default fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
+        println!("\n=====> DEFAULT link: {:?}", cid);
         match cid.base() {
             None => self.serialize_bytes(&cid.to_vec()),
             Some(_) => self.serialize_str(&cid.to_string(None)),

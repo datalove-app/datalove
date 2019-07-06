@@ -113,8 +113,12 @@ impl Serialize for Dag {
             Dag::Integer(int) => int.serialize(serializer),
             Dag::Float(float) => float.serialize(serializer),
             Dag::String(s) => serializer.serialize_str(s),
-            Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
-            Dag::Link(cid, _) => serializer.encode_link(cid),
+
+            Dag::ByteBuf(buf, base) => <S as Encoder>::encode_bytes(serializer, buf, *base),
+            // Dag::Link(cid, _) => <S as Encoder>::encode_link(serializer, cid),
+            Dag::Link(cid, _) => cid.serialize(serializer),
+            // Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
+            // Dag::Link(cid, _) => serializer.encode_link(cid),
             Dag::List(seq) => {
                 let mut seq_enc = serializer.serialize_seq(Some(seq.len()))?;
                 for dag in seq {

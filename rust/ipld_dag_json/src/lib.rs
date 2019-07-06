@@ -67,19 +67,21 @@ where
     #[inline]
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error> {
         use ser::SerializeStructVariant as SV;
+        println!("\n|||||> JSON bytes: {:?} {:?}", bytes, base);
 
         let base = base.or(Some(Base::Base64)).unwrap();
-        let base_str = to_name(base);
+        let base_name_str = to_name(base);
         let byte_str = bytes.encode(base);
 
         let mut sv_ser = self.serialize_struct_variant("", 0, "/", 1)?;
-        SV::serialize_field(&mut sv_ser, base_str, &byte_str)?;
+        SV::serialize_field(&mut sv_ser, base_name_str, &byte_str)?;
         SV::end(sv_ser)
     }
 
     /// Serialize link as `{"/": <<base64_string>> }`.
     #[inline]
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
+        println!("\n|||||> JSON link: {:?}", cid);
         self.serialize_newtype_variant("", 0, "/", &cid.encode(Base::Base64))
     }
 }
@@ -218,32 +220,32 @@ mod tests {
     #[test]
     fn test_bytes() {
         let bytes: Vec<u8> = vec![0, 1, 2, 3];
-        let byte_str = &bytes.encode(Base::Base64);
-        let dag = Dag::ByteBuf(bytes, None);
-
+        let byte_str = &bytes.encode(Base::Base58btc);
         let expected = make_bytes_json(byte_str);
+
+        let dag = Dag::ByteBuf(bytes, None);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_cid() {
+        let expected = make_cid_json(CID_STR);
+
         let cid: CID = CID_STR.parse().unwrap();
         let dag = Dag::Link(cid, None);
-
-        let expected = make_cid_json(CID_STR);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_vec() {
+        let link = make_cid_json(CID_STR);
+        let expected = format!(r#"[{},{}]"#, &link, &link);
+
         let cid: CID = CID_STR.parse().unwrap();
         let link = Dag::Link(cid, None);
         let dag = Dag::List(vec![link.clone(), link]);
-
-        let link = make_cid_json(CID_STR);
-        let expected = format!(r#"[{},{}]"#, &link, &link);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual)
     }
