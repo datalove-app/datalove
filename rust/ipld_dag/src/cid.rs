@@ -13,6 +13,7 @@ use ::cid::{Cid, Codec, ToCid};
 use integer_encoding::VarIntWriter;
 use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::{fmt, hash, str};
 
 const V0_PREFIX: Prefix = Prefix {
     version: Version::V0,
@@ -99,10 +100,9 @@ impl CID {
     #[inline]
     /// Defaults to `Base58Btc`.
     fn to_string_v0(&self) -> String {
-        println!("v0 bytes: {:?}", &self.hash);
         let mut string = self.hash.as_slice().encode(Base::Base58btc);
+        // remove leading char added by `multibase`
         string.remove(0);
-        println!("v0 string: {}", &string);
         string
     }
 
@@ -133,9 +133,7 @@ impl Serialize for CID {
     where
         S: Serializer,
     {
-        println!("==> serializing link");
-        <S as Encoder>::encode_link(serializer, self)
-        // serializer.encode_link(self)
+        serializer.encode_link(self)
     }
 }
 
@@ -155,13 +153,13 @@ impl Encodable for CID {
     }
 }
 
-impl std::hash::Hash for CID {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl hash::Hash for CID {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.to_vec().hash(state);
     }
 }
 
-impl std::str::FromStr for CID {
+impl str::FromStr for CID {
     type Err = Error;
 
     // TODO
@@ -184,9 +182,7 @@ impl std::str::FromStr for CID {
             })
         } else {
             let (base, decoded) = Decodable::decode(&s)?;
-            // println!("raw: {}, decoded: {:?}", s, decoded);
             let prefix = Prefix::new_from_bytes(&decoded)?;
-            // println!("decoded prefix: {:?}", prefix);
             Ok(CID {
                 base: Some(base),
                 prefix,

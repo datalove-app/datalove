@@ -30,7 +30,6 @@ use serde::{
     de::{Deserialize, Deserializer, Visitor},
     ser::{self, Serialize, SerializeMap, SerializeSeq, Serializer},
 };
-use serde_bytes::ByteBuf;
 
 // fn resolve<I: Dag, O: Dag>(dag: &I) -> Result<&O, Error> {
 //     Err(Error::ExpectedLinkedDag)
@@ -80,7 +79,7 @@ pub enum Dag {
     /// Represents a string.
     String(String),
 
-    /// Represents some bytes, and an optional desired [`multibase::Base`] if encoded as a string.
+    /// Represents some bytes, and an optional desired [`multibase::Base`] if intended to be encoded as a string.
     ///
     /// [`multibase::Base`]: https://docs.rs/multibase/0.6.0/multibase/enum.Base.html
     ByteBuf(Vec<u8>, Option<Base>),
@@ -108,32 +107,18 @@ impl Serialize for Dag {
         S: Serializer,
     {
         match self {
+            // encoder-specific
+            Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
+            Dag::Link(cid, _) => serializer.encode_link(cid),
+
+            // standard
             Dag::Null => serializer.serialize_none(),
             Dag::Bool(b) => serializer.serialize_bool(*b),
             Dag::Integer(int) => int.serialize(serializer),
             Dag::Float(float) => float.serialize(serializer),
             Dag::String(s) => serializer.serialize_str(s),
-
-            Dag::ByteBuf(buf, base) => <S as Encoder>::encode_bytes(serializer, buf, *base),
-            // Dag::Link(cid, _) => <S as Encoder>::encode_link(serializer, cid),
-            Dag::Link(cid, _) => cid.serialize(serializer),
-            // Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
-            // Dag::Link(cid, _) => serializer.encode_link(cid),
-            Dag::List(seq) => {
-                let mut seq_enc = serializer.serialize_seq(Some(seq.len()))?;
-                for dag in seq {
-                    seq_enc.serialize_element(dag)?;
-                }
-                seq_enc.end()
-            }
-            Dag::Map(map) => {
-                let mut map_enc = serializer.serialize_map(Some(map.len()))?;
-                for (key, value) in map.iter() {
-                    map_enc.serialize_key(key)?;
-                    map_enc.serialize_value(value)?;
-                }
-                map_enc.end()
-            }
+            Dag::List(seq) => serializer.collect_seq(seq),
+            Dag::Map(map) => serializer.collect_map(map),
         }
     }
 }

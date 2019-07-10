@@ -5,7 +5,10 @@ authors = ["Sunny G <sunny.gonna@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+delegate = "0.2.0"
 ipld_dag = {path = "../ipld_dag"}
 serde = "1.0"
-serde_json = "1.0"
-delegate = "0.2.0"
+serde_json = {git = "https://github.com/sunny-g/serde_json", branch = "master"}
+
+[dev-dependencies]
+serde_bytes = "0.11"
