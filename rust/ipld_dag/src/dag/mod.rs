@@ -12,24 +12,17 @@
 //!     - with the provided abstract Dag enum
 //!         - each variant already configured to
 
+mod de;
 pub mod float;
 pub mod int;
 pub mod key;
-// pub mod link;
+mod ser;
 pub mod token;
 
-pub use crate::{
-    base::Base,
-    cid::CID,
-    dag::{float::Float, int::Int, key::Key, token::Token},
-    error::Error,
-    format::{Encoder, Format},
-};
+pub use crate::dag::{float::Float, int::Int, key::Key, token::Token};
+use crate::{base::Base, cid::CID};
 use indexmap::IndexMap;
-use serde::{
-    de::{Deserialize, Deserializer, Visitor},
-    ser::{self, Serialize, SerializeMap, SerializeSeq, Serializer},
-};
+use std::{borrow, iter};
 
 // fn resolve<I: Dag, O: Dag>(dag: &I) -> Result<&O, Error> {
 //     Err(Error::ExpectedLinkedDag)
@@ -100,26 +93,68 @@ pub enum Dag {
     Link(CID, Option<Box<Dag>>),
 }
 
-impl Serialize for Dag {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            // encoder-specific
-            Dag::ByteBuf(buf, base) => serializer.encode_bytes(buf, *base),
-            Dag::Link(cid, _) => serializer.encode_link(cid),
+macro_rules! from_integer {
+    ($($ty:ident)*) => {
+        $(
+            impl From<$ty> for Dag {
+                fn from(n: $ty) -> Self {
+                    Dag::Integer(n.into())
+                }
+            }
+        )*
+    };
+}
 
-            // standard
-            Dag::Null => serializer.serialize_none(),
-            Dag::Bool(b) => serializer.serialize_bool(*b),
-            Dag::Integer(int) => int.serialize(serializer),
-            Dag::Float(float) => float.serialize(serializer),
-            Dag::String(s) => serializer.serialize_str(s),
-            Dag::List(seq) => serializer.collect_seq(seq),
-            Dag::Map(map) => serializer.collect_map(map),
+macro_rules! from_float {
+    ($($ty:ident)*) => {
+        $(
+            impl From<$ty> for Dag {
+                fn from(n: $ty) -> Self {
+                    Dag::Float(n.into())
+                }
+            }
+        )*
+    };
+}
+
+from_integer! { i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 }
+from_float! { f32 f64 }
+
+impl<'a> From<&'a str> for Dag {
+    fn from(v: &str) -> Self {
+        Dag::String(v.to_string())
+    }
+}
+
+impl<'a> From<borrow::Cow<'a, str>> for Dag {
+    fn from(v: borrow::Cow<'a, str>) -> Self {
+        Dag::String(v.into_owned())
+    }
+}
+
+impl<T> From<Option<T>> for Dag
+where
+    T: Into<Dag>,
+{
+    fn from(o: Option<T>) -> Self {
+        match o {
+            None => Dag::Null,
+            Some(t) => t.into(),
         }
+    }
+}
+
+impl<'a, T: Clone + Into<Dag>> From<&'a [T]> for Dag {
+    /// Convert a slice to a `Dag`.
+    fn from(v: &'a [T]) -> Self {
+        Dag::List(v.iter().cloned().map(Into::into).collect())
+    }
+}
+
+impl<T: Into<Dag>> iter::FromIterator<T> for Dag {
+    /// Convert an iteratable type to a `Dag`.
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Dag::List(iter.into_iter().map(Into::into).collect())
     }
 }
 

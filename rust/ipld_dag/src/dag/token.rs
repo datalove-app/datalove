@@ -41,7 +41,7 @@ pub enum Token<'a> {
     MapEnd,
 
     ///
-    Link(CID, Option<Base>),
+    Link(CID),
     // TODO: a link to another `Dag`, possibly of another format
     // LinkedData(Option<Prefix>),
 

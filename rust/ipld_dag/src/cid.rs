@@ -1,6 +1,5 @@
 //!
 
-// TODO: fix Error
 // TODO: add decoder functions for the various rust types (that can parse multibases from strings)
 
 use crate::{
@@ -9,7 +8,7 @@ use crate::{
     format::Encoder,
     Prefix, Version,
 };
-use ::cid::{Cid, Codec, ToCid};
+use ::cid::{Cid, Codec};
 use integer_encoding::VarIntWriter;
 use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -31,13 +30,15 @@ pub struct CID {
 }
 
 impl CID {
-    /// Creates a new `CID`.
+    /// Creates a new `CID` from `multihash` bytes.
+    #[inline]
     pub fn from(mh: &[u8]) -> Result<CID, Error> {
         let prefix = Prefix::new_from_bytes(mh)?;
         Ok(CID::from_prefix(prefix, mh))
     }
 
     /// Creates a new CID from a known `Prefix` and raw hash bytes.
+    #[inline]
     pub fn from_prefix(prefix: Prefix, mh: &[u8]) -> CID {
         let cid = Cid::new_from_prefix(&prefix, mh);
         CID {
@@ -80,6 +81,7 @@ impl CID {
     /// Encodes the `CID` to a string.
     /// If v0, just returns the underlying `multihash`, `base58btc` encoded.
     /// If v1, prefixes the string with the `CID` version and `multicodec::Codec`, then encodes the bytes with the specified `multibase::Base`, defaulting to `base58btc`.
+    #[inline]
     pub fn to_string(&self, mb: Option<Base>) -> String {
         match self.version() {
             Version::V0 => self.to_string_v0(),
@@ -90,6 +92,7 @@ impl CID {
     /// Encodes the `CID` to a `Vec<u8>`.
     /// If v0, returns the underlying `multihash`.
     /// If v1, prefixes the bytes with the `CID` version and `multicodec::Codec`.
+    #[inline]
     pub fn to_vec(&self) -> Vec<u8> {
         match self.version() {
             Version::V0 => self.to_vec_v0(),
@@ -97,8 +100,8 @@ impl CID {
         }
     }
 
-    #[inline]
     /// Defaults to `Base58Btc`.
+    #[inline]
     fn to_string_v0(&self) -> String {
         let mut string = self.hash.as_slice().encode(Base::Base58btc);
         // remove leading char added by `multibase`
@@ -154,6 +157,7 @@ impl Encodable for CID {
 }
 
 impl hash::Hash for CID {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.to_vec().hash(state);
     }
@@ -162,7 +166,6 @@ impl hash::Hash for CID {
 impl str::FromStr for CID {
     type Err = Error;
 
-    // TODO
     /// Creates a new `CID` from an `str`, decoding its `multibase::Base`.
     fn from_str(s: &str) -> Result<Self, Error> {
         if Version::is_v0_str(s) {
@@ -172,7 +175,7 @@ impl str::FromStr for CID {
                     .map_err(|err| err.into())
                     .and_then(|(base, decoded)| match base {
                         Base::Base58btc => Ok((base, decoded)),
-                        _ => Err(Error::InvalidCID),
+                        _ => Err(Error::InvalidCIDStr),
                     })?;
 
             Ok(CID {
@@ -182,10 +185,9 @@ impl str::FromStr for CID {
             })
         } else {
             let (base, decoded) = Decodable::decode(&s)?;
-            let prefix = Prefix::new_from_bytes(&decoded)?;
             Ok(CID {
                 base: Some(base),
-                prefix,
+                prefix: Prefix::new_from_bytes(&decoded)?,
                 hash: decoded,
             })
         }

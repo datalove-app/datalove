@@ -1,4 +1,4 @@
-// TODO: fix this to support CID errors
+//!
 
 use serde::{de, ser};
 use std::{error::Error as StdError, fmt};
@@ -6,31 +6,26 @@ use std::{error::Error as StdError, fmt};
 ///
 #[derive(Debug)]
 pub enum Error {
-    InvalidDagType,
-    InvalidCID,
-    ExpectedCID,
-    ExpectedLinkedDag,
-    ExpectedList,
-    ExpectedMap,
-    CID(String),
-    Multibase(String),
-    Serialization(String),
-    Deserialization(String),
+    /// Invalid `CID` `str`.
+    InvalidCIDStr,
+
+    ///
+    CID(::cid::Error),
+
+    ///
+    Multibase(multibase::Error),
+
+    ///
+    Custom(String),
 }
 
 impl StdError for Error {
     fn description(&self) -> &str {
         match *self {
-            Error::InvalidDagType => "invalid Dag type",
-            Error::InvalidCID => "invalid CID",
-            Error::ExpectedCID => "expected CID",
-            Error::ExpectedLinkedDag => "expected linked dag",
-            Error::ExpectedList => "expected list",
-            Error::ExpectedMap => "expected map",
-            Error::CID(ref s) => s,
-            Error::Multibase(ref s) => s,
-            Error::Serialization(ref s) => s,
-            Error::Deserialization(ref s) => s,
+            Error::InvalidCIDStr => "invalid CID str",
+            Error::CID(ref err) => err.description(),
+            Error::Multibase(ref err) => err.description(),
+            Error::Custom(ref s) => s,
         }
     }
 }
@@ -38,8 +33,7 @@ impl StdError for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Serialization(ref s) => write!(f, "{}", s),
-            Error::Deserialization(ref s) => write!(f, "{}", s),
+            Error::Custom(ref s) => write!(f, "{}", s),
             _ => write!(f, "{}", self.description()),
         }
     }
@@ -47,30 +41,24 @@ impl fmt::Display for Error {
 
 impl ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::Serialization(msg.to_string())
+        Error::Custom(msg.to_string())
     }
 }
 
 impl de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Error {
-        Error::Deserialization(msg.to_string())
-    }
-}
-
-impl From<multibase::Error> for Error {
-    fn from(err: multibase::Error) -> Self {
-        Error::Multibase(err.description().into())
+        Error::Custom(msg.to_string())
     }
 }
 
 impl From<::cid::Error> for Error {
     fn from(err: ::cid::Error) -> Self {
-        Error::CID(err.description().into())
+        Error::CID(err)
     }
 }
 
-// impl<W, F> From<<ser::Serializer<W, F> as ser::Serializer>::Error> for Error {
-//     fn from(err: ser::Error) -> Error {
-//         Error::Encode(err.description())
-//     }
-// }
+impl From<multibase::Error> for Error {
+    fn from(err: multibase::Error) -> Self {
+        Error::Multibase(err)
+    }
+}

@@ -1,9 +1,6 @@
 //!
 
-use crate::{
-    base::{Base, Encodable},
-    Error, Token, CID,
-};
+use crate::{base::Base, Error, Token, CID};
 use futures::{Sink, Stream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Read, Write};
@@ -77,12 +74,9 @@ where
     default fn encode_bytes(
         self,
         bytes: &[u8],
-        base: Option<Base>,
+        _base: Option<Base>,
     ) -> Result<Self::Ok, Self::Error> {
-        match base {
-            None => self.serialize_bytes(bytes),
-            Some(base) => self.serialize_str(&bytes.encode(base)),
-        }
+        self.serialize_bytes(bytes)
     }
 
     /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.

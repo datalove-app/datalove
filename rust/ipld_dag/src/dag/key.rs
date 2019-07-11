@@ -4,10 +4,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// An IPLD Dag map key.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Key {
-    /// Integer key
+    /// An integer key, signed or unsigned.
     Int(Int),
 
-    /// String key
+    /// A `String` key.
     String(String),
 }
 
@@ -21,15 +21,6 @@ impl Serialize for Key {
             Key::Int(int) => int.serialize(serializer),
             Key::String(s) => serializer.serialize_str(s),
         }
-    }
-}
-
-impl std::str::FromStr for Key {
-    type Err = Error;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Error> {
-        Ok(s.into())
     }
 }
 
@@ -51,5 +42,14 @@ impl<T: Into<Int>> From<T> for Key {
     #[inline]
     fn from(v: T) -> Key {
         Key::Int(v.into())
+    }
+}
+
+impl std::str::FromStr for Key {
+    type Err = Error;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Error> {
+        Ok(s.into())
     }
 }

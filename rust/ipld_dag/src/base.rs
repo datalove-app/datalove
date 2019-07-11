@@ -40,6 +40,6 @@ pub fn from_name(name: &str) -> Result<Base, Error> {
         "base58btc" => Ok(Base::Base58btc),
         "base64" => Ok(Base::Base64),
         "base64url" => Ok(Base::Base64url),
-        _ => Err(Error::Deserialization("unsupported multibase".into())),
+        _ => Err(Error::Custom("unsupported multibase".into())),
     }
 }

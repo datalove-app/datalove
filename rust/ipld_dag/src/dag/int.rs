@@ -3,15 +3,34 @@ use serde::{Serialize, Serializer};
 /// Signed and unsigned integer wrapper
 #[derive(Clone, Debug, From, Hash, PartialEq, Eq)]
 pub enum Int {
+    /// `u8`
     U8(u8),
+
+    /// `u16`
     U16(u16),
+
+    /// `u32`
     U32(u32),
+
+    /// `u64`
     U64(u64),
+
+    /// `u128`
     U128(u128),
+
+    /// `i8`
     I8(i8),
+
+    /// `i16`
     I16(i16),
+
+    /// `i32`
     I32(i32),
+
+    /// `i64`
     I64(i64),
+
+    /// `i128`
     I128(i128),
 }
 
