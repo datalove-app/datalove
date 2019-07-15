@@ -7,11 +7,10 @@ edition = "2018"
 [dependencies]
 cid = "0.3"
 derive_more = "0.15"
-futures = "0.1.27"
+futures = "0.1"
 indexmap = "1.0"
-integer-encoding = "1.0.7"
+integer-encoding = "1.0"
 multibase = "0.6"
 multicodec = "0.1"
 multihash = "0.8"
 serde = {version = "1.0", features = ["derive"]}
-serde_token = "0.0.2"

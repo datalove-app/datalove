@@ -1,14 +1,12 @@
 use super::{Float, Int};
-use crate::cid::CID;
-use multibase::Base;
-use serde_token::Token as SerdeToken;
+use crate::{base::Base, cid::CID};
 
 // TODO: ideas:
 //  - implement Serialize for Stream of Tokens
 //  - implement
 
 ///
-#[derive(From)]
+#[derive(Clone, Debug, From, PartialEq)]
 pub enum Token<'a> {
     ///
     Null,
@@ -25,8 +23,11 @@ pub enum Token<'a> {
     ///
     Str(&'a str),
 
-    ///
-    Bytes(&'a [u8], Option<Base>),
+    /// Raw bytes.
+    Bytes(&'a [u8]),
+
+    /// [`multibase`]-encoded `str`.
+    ByteStr(&'a str),
 
     ///
     List(Option<usize>),
@@ -42,6 +43,8 @@ pub enum Token<'a> {
 
     ///
     Link(CID),
+    // RawValue?
+
     // TODO: a link to another `Dag`, possibly of another format
     // LinkedData(Option<Prefix>),
 

@@ -144,14 +144,20 @@ where
     }
 }
 
-impl<'a, T: Clone + Into<Dag>> From<&'a [T]> for Dag {
+impl<'a, T> From<&'a [T]> for Dag
+where
+    T: Clone + Into<Dag>,
+{
     /// Convert a slice to a `Dag`.
     fn from(v: &'a [T]) -> Self {
         Dag::List(v.iter().cloned().map(Into::into).collect())
     }
 }
 
-impl<T: Into<Dag>> iter::FromIterator<T> for Dag {
+impl<T> iter::FromIterator<T> for Dag
+where
+    T: Into<Dag>,
+{
     /// Convert an iteratable type to a `Dag`.
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Dag::List(iter.into_iter().map(Into::into).collect())

@@ -1,7 +1,8 @@
+use crate::error::Error;
 use serde::{Serialize, Serializer};
 
 /// Signed and unsigned integer wrapper
-#[derive(Clone, Debug, From, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, From, Hash, PartialEq, Eq)]
 pub enum Int {
     /// `u8`
     U8(u8),
@@ -52,5 +53,13 @@ impl Serialize for Int {
             Int::I64(num) => serializer.serialize_i64(num),
             Int::I128(num) => serializer.serialize_i128(num),
         }
+    }
+}
+
+impl std::str::FromStr for Int {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Err(Error::Custom("".into()))
     }
 }

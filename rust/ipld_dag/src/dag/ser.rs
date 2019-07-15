@@ -1,4 +1,4 @@
-use crate::{Dag, format::Encoder};
+use crate::{format::Encoder, Dag};
 use serde::{Serialize, Serializer};
 
 impl Serialize for Dag {

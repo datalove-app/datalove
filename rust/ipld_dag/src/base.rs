@@ -1,9 +1,10 @@
-//!
+//! Re-exports of some [`multibase`] types and traits.
 
 use crate::error::Error;
 pub use multibase::{decode, encode, Base, Decodable, Encodable};
 
 ///
+#[inline]
 pub fn to_name(base: Base) -> &'static str {
     match base {
         Base::Base2 => "base2",
@@ -24,6 +25,7 @@ pub fn to_name(base: Base) -> &'static str {
 }
 
 ///
+#[inline]
 pub fn from_name(name: &str) -> Result<Base, Error> {
     match name {
         "base2" => Ok(Base::Base2),

@@ -66,6 +66,7 @@ pub trait Encoder: Serializer {
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error>;
 }
 
+/// Blanket impl of `Encoder` for all `Serializer`s that can be [`specialized`] by downstream impls.
 impl<T> Encoder for T
 where
     T: Serializer,

@@ -1,7 +1,8 @@
+use crate::error::Error;
 use serde::{Serialize, Serializer};
 
 /// Float wrapper
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, PartialEq)]
 pub enum Float {
     /// `f32`
     F32(f32),
@@ -20,5 +21,13 @@ impl Serialize for Float {
             Float::F32(num) => serializer.serialize_f32(num),
             Float::F64(num) => serializer.serialize_f64(num),
         }
+    }
+}
+
+impl std::str::FromStr for Float {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Err(Error::Custom("".into()))
     }
 }

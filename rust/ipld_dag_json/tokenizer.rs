@@ -16,97 +16,71 @@ use std::str::from_utf8;
 
 type TokenResult<'a> = IResult<&'a [u8], Token<'a>>;
 
-// Null
+/*
+ *  Null
+ */
 named!(null<&[u8], Token>, value!(Token::Null, tag!(b"null")));
-// fn null<'a, E>(i: &'a [u8]) -> IResult<&'a [u8], Token<'a>, E>
-// where
-//     E: ParseError<&'a [u8]>,
-// {
-//     value(Token::Null, tag(b"null"))(i)
-// }
 
-// Boolean
+/*
+ *  Boolean
+ */
 named!(boolean<&[u8], Token>, alt!(
     value!(Token::Bool(true), tag!(b"true")) |
     value!(Token::Bool(false), tag!(b"false"))
 ));
-// fn boolean<'a, E>(i: &'a [u8]) -> TokenResult<'a, E>
-// where
-//     E: ParseError<&'a [u8]>,
-// {
-//     alt((
-//         value(Token::Bool(true), tag(b"true")),
-//         value(Token::Bool(false), tag(b"false")),
-//     ))(i)
-// }
 
-// Integer
-named!(integer<&[u8], Token>, alt!(signed | unsigned));
-// named!(integer<&[u8], Token>, do_parse!(
-//     map_res!(do_parse!(opt!(tag!("-")) >> bytes: digit1 >> (bytes)), from_utf8) >>
-// ));
-// fn integer<'a>(i: &'a [u8]) -> TokenResult<'a> {
-//     flat_map(int_str, alt((signed, unsigned)))(i)
-// }
+/*
+ *  Integer
+ */
+named!(pub integer<&[u8], Token>, alt!(signed | unsigned));
 named!(signed<&[u8], Token>, do_parse!(
     tag!(b"-") >>
+    tap!(s: rest => println!("signed rest: {:?}", s)) >>
     token: alt!(
         map!(parse_to!(i64), |n| Token::Integer((-1 * n).into())) |
         map!(parse_to!(i128), |n| Token::Integer((-1 * n).into()))
     ) >>
     (token)
 ));
-named!(unsigned<&[u8], Token>, alt!(
-    map!(parse_to!(u64), |n| Token::Integer(n.into())) |
-    map!(parse_to!(u128), |n| Token::Integer(n.into()))
+named!(unsigned<&[u8], Token>, do_parse!(
+    opt!(tag!(b"+")) >>
+    tap!(s: rest => println!("unsigned rest: {:?}", s)) >>
+    token: alt!(
+        map!(parse_to!(u64), |n| Token::Integer(n.into())) |
+        map!(parse_to!(u128), |n| Token::Integer(n.into()))
+    ) >>
+    (token)
 ));
 
-// named!(int_str<&[u8], &str>, map_res!(
-//     do_parse!(opt!(tag!("-")) >> bytes: digit1 >> (bytes)),
-//     from_utf8
-// ));
-// named!(_u64<&str, u64>, parse_to!(u64));
-// named!(_u128<&str, u128>, parse_to!(u128));
-// named!(_i64<&str, i64>, parse_to!(i64));
-// named!(_i128<&str, i128>, parse_to!(i128));
+/*
+ *  Float
+ */
+named!(pub float<&[u8], Token>, map!(double, |f| Token::Float(f.into())));
 
-// Float
-named!(float<&[u8], Token>, map!(double, |f| Token::Float(f.into())));
-// fn float<'a, E>(i: &'a [u8]) -> TokenResult<'a, E>
-// where
-//     E: ParseError<&'a [u8]>,
-// {
-//     map(double, |f| Token::Float(f.into()))(i)
-// }
+/*
+ *  String
+ */
+named!(pub string<&[u8], Token>, map!(util::string, Token::Str));
 
-// String
-named!(string<&[u8], Token>, map!(util::string, Token::Str));
-// fn string<'a, E>(i: &'a [u8]) -> TokenResult<'a, E>
-// where
-//     E: ParseError<&'a [u8]>,
-// {
-//     map(util::string, Token::Str)(i)
-// }
-
-// Bytes
+/*
+ *  Bytes
+ */
 use util::string as util_string;
-named!(bytes<&[u8], Token>,
-    do_parse!(
-        tag!(b"{\"/\":{") >>
+named!(pub bytes<&[u8], Token>, do_parse!(
+    tag!(b"{\"/\":{") >>
 
-        tap!(s: util_string => println!("tapped base: {}", s)) >>
-        util_string >>
+    tap!(s: util_string => println!("tapped base: {}", s)) >>
+    util_string >>
 
-        eat_separator!(b":") >>
+    eat_separator!(b":") >>
 
-        tap!(s: util_string => println!("tapped base-encoded str: {}", s)) >>
-        s: util_string >>
+    tap!(s: util_string => println!("tapped base-encoded str: {}", s)) >>
+    s: util_string >>
 
-        tap!(s: tag(b"}}") => println!("rest: {:?}", s)) >>
-        tag!(b"}}") >>
-        (Token::ByteStr(&s))
-    )
-);
+    // tap!(s: rest => println!("rest: {:?}", s)) >>
+    tag!(b"}}") >>
+    (Token::ByteStr(&s))
+));
 
 mod util {
     use nom::{
@@ -122,6 +96,12 @@ mod util {
     // pub fn btos<'a, E: ParseError<&'a [u8]>>(i: &'a [u8]) -> StrResult<'a, E> {
 
     // }
+
+    // named!(string<&[u8], &str>, do_parse!(
+    //     tag!(b"\"") >>
+    //     s: take_until!("\"") >>
+    //     map_res!()
+    // ));
 
     pub fn string<'a, E: ParseError<&'a [u8]>>(i: &'a [u8]) -> StrResult<'a, E> {
         map(tuple((tag(b"\""), take_until("\""))), |(_, bytes)| {
@@ -143,7 +123,7 @@ mod tests {
     use nom::error::VerboseError;
     use serde::Serialize;
 
-    type E<'a> = VerboseError<&'a [u8]>;
+    // type E<'a> = VerboseError<&'a [u8]>;
 
     #[test]
     fn test_null() {
@@ -170,13 +150,13 @@ mod tests {
     fn test_integer() {
         let num: u128 = std::u128::MAX;
         let json = to_json(&num);
-        let res = parser::float(&json);
+        let res = parser::integer(&json);
         println!(
-            "{:?} {}\n{:?} {:?}",
+            "{:?} {}\nexp: {:?}\nact: {:?}",
             num,
             std::str::from_utf8(&json).unwrap(),
+            &json,
             res,
-            &json
         );
 
         assert_eq!(Token::Integer(num.into()), res.unwrap().1);
@@ -184,18 +164,10 @@ mod tests {
 
     #[test]
     fn test_float() {
-        let pi: f64 = 3.141592653589793; // 3.14159265358979323846264338327950288
+        let pi: f64 = 3.14159265358979323846264338327950288;
         let json = to_json(&pi);
-        let res = parser::float(&json);
-        println!(
-            "{:?} {}\n{:?} {:?}",
-            pi,
-            std::str::from_utf8(&json).unwrap(),
-            res,
-            &json
-        );
-
-        assert_eq!(Token::Float(pi.into()), res.unwrap().1);
+        let (_, actual) = parser::float(&json).unwrap();
+        assert_eq!(Token::Float(pi.into()), actual);
     }
 
     #[test]
@@ -205,7 +177,7 @@ mod tests {
         let (_, actual) = parser::string(&json).unwrap();
         assert_eq!(Token::Str(&string), actual);
 
-        let string = "hello \"double-quoted world\"";
+        let string = r#"hello "double-quoted world""#;
         let json = to_json(&string);
         let (_, actual) = parser::string(&json).unwrap();
         assert_eq!(Token::Str(&string), actual);
@@ -227,6 +199,8 @@ mod tests {
     }
 
     fn to_json<T: Serialize>(t: T) -> Vec<u8> {
-        to_vec(&t).unwrap()
+        let mut vec = to_vec(&t).unwrap();
+        vec.push('\n' as u8);
+        vec
     }
 }
