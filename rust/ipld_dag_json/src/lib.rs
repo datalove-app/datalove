@@ -10,6 +10,6 @@ extern crate nom;
 extern crate nom_trace;
 
 mod encoder;
-mod parser;
+mod tokenizer;
 
 pub use encoder::Encoder;
