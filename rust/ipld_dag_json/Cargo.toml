@@ -10,7 +10,7 @@ ipld_dag = {path = "../ipld_dag"}
 nom = "5"
 serde = "1.0"
 serde_json = {git = "https://github.com/sunny-g/serde_json", branch = "master"}
-nom-trace = "0.2.1"
+smallvec = "0.6.10"
 
 [dev-dependencies]
 serde_bytes = "0.11"

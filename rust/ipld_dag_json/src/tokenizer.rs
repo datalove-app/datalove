@@ -1,20 +1,30 @@
-use ipld_dag::{
-    base::{from_name, Decodable},
-    Token,
-};
-use nom::{
-    branch::alt,
-    bytes::streaming::{escaped, tag, take_until, take_while},
-    character::{is_digit, streaming::digit1},
-    combinator::{flat_map, map, map_opt, map_parser, map_res, opt, peek, rest, value},
-    error::{ErrorKind, ParseError},
-    number::streaming::{double, recognize_float},
-    sequence::tuple,
-    IResult,
-};
-use std::str::{from_utf8, FromStr};
+use ipld_dag::{Token, CID};
+use nom::{number::streaming::double, IResult};
+use util::parse_string;
 
-type TokenResult<'a> = IResult<&'a [u8], Token<'a>>;
+/******************************************************************************
+ * Main single token parser
+ *****************************************************************************/
+
+// TODO: wrap in ws!?
+named!(lex<&[u8], Token>, alt!(
+    null |
+    boolean |
+    number |
+    string |
+    bytes |
+    link |
+    map_start |
+    map_end |
+    list_start |
+    list_end
+));
+
+named!(map_key<&[u8], Token>, alt!(integer | string));
+
+/******************************************************************************
+ * Raw token parsers
+ *****************************************************************************/
 
 /*
  *  Null
@@ -30,13 +40,10 @@ named!(boolean<&[u8], Token>, alt!(
 ));
 
 /*
- *  Integer
+ *  Number
  */
+named!(number<&[u8], Token>, alt!(float | integer));
 named!(integer<&[u8], Token>, alt!(util::signed | util::unsigned));
-
-/*
- *  Float
- */
 named!(float<&[u8], Token>, map!(double, |f| Token::Float(f.into())));
 
 /*
@@ -47,21 +54,13 @@ named!(string<&[u8], Token>, map!(util::parse_string, Token::Str));
 /*
  *  Bytes
  */
-use util::parse_string;
 named!(bytes<&[u8], Token>, do_parse!(
-    tag!(b"{\"/\":{") >>
-
-    tap!(s: parse_string => println!("tapped base: {}", s)) >>
-    parse_string >>
-
-    eat_separator!(b":") >>
-
-    tap!(s: parse_string => println!("tapped base-encoded str: {}", s)) >>
-    s: parse_string >>
-
-    // tap!(s: rest => println!("rest: {:?}", s)) >>
-    tag!(b"}}") >>
-    (Token::ByteStr(&s))
+        tag!(b"{\"/\":{")       >>
+        parse_string            >>
+        eat_separator!(b":")    >>
+    s:  parse_string            >>
+        tag!(b"}}")             >>
+        (Token::ByteStr(&s))
 ));
 
 /*
@@ -79,29 +78,32 @@ named!(map_end<&[u8], Token>, value!(Token::MapEnd, tag!(b"}")));
 /*
  * Link
  */
+// TODO: possibly move parse until after the matches
+// TODO - not doing so might not consume the end tag
+named!(link<&[u8], Token>, do_parse!(
+        tag!(b"{\"/\":")                                    >>
+    c:  map_res!(parse_string, |s: &str| s.parse::<CID>())  >>
+        tag!(b"}")                                          >>
+        (Token::Link(c))
+));
 
 #[allow(dead_code)]
 mod util {
     use ipld_dag::{Int, Token};
-    use nom::{
-        bytes::streaming::{tag, take_until},
-        character::streaming::digit1,
-        combinator::map,
-        error::ParseError,
-        sequence::tuple,
-        IResult,
-    };
-    use std::{
-        ops::Mul,
-        str::{from_utf8, FromStr},
-    };
+    use nom::{character::streaming::digit1, IResult};
+    use std::str::{from_utf8, FromStr};
 
     type StrResult<'a, E> = IResult<&'a [u8], &'a str, E>;
 
-    // TODO
+    // TODO: possibly move parse until after the matches
     named!(pub(crate) parse_string<&[u8], &str>, do_parse!(
-        tag!(b"\"") >> s: map_res!(take_until!("\""), from_utf8) >> (s)
+        tag!(b"\"") >>
+        s: map_res!(take_until!("\""), from_utf8) >>
+        tag!(b"\"") >>
+        (s)
     ));
+
+    /****************************************/
 
     named!(pub(crate) signed<&[u8], Token>, do_parse!(
         tag!(b"-") >>
@@ -123,8 +125,9 @@ mod util {
     #[inline]
     fn to_int_token<N>(s: &str) -> Result<Token, N::Err>
     where
-        N: FromStr + From<i8> + Mul<Output = N> + Into<Int>,
+        N: FromStr + From<i8> + std::ops::Mul<Output = N> + Into<Int>,
     {
+        // negated i64/i128 is always in-bounds, so this should always be safe
         s.parse::<N>()
             .map(|n| Token::Integer(n.mul(N::from(-1)).into()))
     }
@@ -138,13 +141,12 @@ mod util {
     }
 
     named!(parse_int_str<&[u8], &str>, map_res!(digit1, from_utf8));
+
+    /****************************************/
+
+    // named!(whitespace<&[u8], Token>, ws!)
+    // named!(esc_quote<&[u8]>, escaped!(b"\\\"", '\\', |_| "\""));
 }
-
-/******************************************************************************
- *****************************************************************************/
-
-// named!(whitespace<&[u8], Token>, ws!)
-// named!(esc_quote<&[u8]>, escaped!(b"\\\"", '\\', |_| "\""));
 
 #[cfg(test)]
 mod tests {
@@ -217,6 +219,7 @@ mod tests {
         assert_eq!(Token::ByteStr(&byte_str), actual);
     }
 
+    // Newline ends each vec
     fn to_json<T: Serialize>(t: T) -> Vec<u8> {
         use std::io::Write;
         let mut vec = to_vec(&t).unwrap();

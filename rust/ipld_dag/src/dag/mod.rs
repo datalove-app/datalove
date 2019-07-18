@@ -17,10 +17,10 @@ pub mod float;
 pub mod int;
 pub mod key;
 mod ser;
-pub mod token;
+pub mod lexer;
 
-pub use crate::dag::{float::Float, int::Int, key::Key, token::Token};
-use crate::{base::Base, cid::CID};
+pub use crate::dag::{float::Float, int::Int, key::Key, lexer::Token};
+use crate::{base::Base, cid::CID, error::Error};
 use indexmap::IndexMap;
 use std::{borrow, iter};
 
@@ -39,6 +39,71 @@ use std::{borrow, iter};
 //     Link(CID),
 //     Dag(D),
 // }
+
+pub trait Node {
+	// ReprKind() ipld.ReprKind
+    fn kind(&self) -> Token;
+
+    // Length() int
+    fn len(&self) -> Option<usize> {
+        None
+    }
+
+	// IsNull() bool
+    fn is_null(&self) -> bool {
+        true
+    }
+
+	// AsBool() bool
+    fn as_bool(&self) -> Option<bool> {
+        None
+    }
+
+	// AsInt() int
+    fn as_int(&self) -> Option<Int> {
+        None
+    }
+
+	// AsFloat() float64
+    fn as_float(&self) -> Option<Float> {
+        None
+    }
+
+	// AsString() string
+    fn as_str(&self) -> Option<&str> {
+        None
+    }
+
+	// AsBytes() []byte
+    fn as_bytes(&self) -> Option<&[u8]> {
+        None
+    }
+
+	// AsLink() ipld.Link
+    fn as_link(&self) -> Option<CID> {
+        None
+    }
+
+	// TraverseIndex(idx int) Node
+    fn traverse_index<N: Node>(&self, index: usize) -> Option<N> {
+        None
+    }
+
+	// TraverseField(path string) Node
+    fn traverse_field<N: Node>(&self, path: &str) -> Option<N> {
+        None
+    }
+
+	// ListIterator() ListIterator
+    fn list_iter<I: Iterator>(&self) -> Option<I> {
+        None
+    }
+
+	// MapIterator() MapIterator
+    fn map_iter<I: Iterator>() -> Option<I> {
+        None
+    }
+}
 
 // TODO: latest updates:
 // get rid of Link and Dag trait
@@ -91,6 +156,29 @@ pub enum Dag {
     /// [`CID`]
     /// [`Link`]: https://github.com/ipld/specs/blob/master/data-model-layer/data-model.md#link-kind
     Link(CID, Option<Box<Dag>>),
+}
+
+impl Node for Dag {
+    #[inline]
+    fn kind(&self) -> Token {
+        match self {
+            Dag::Null => Token::Null,
+            Dag::Bool(b) => Token::Bool(*b),
+            Dag::Integer(i) => Token::Integer(*i),
+            Dag::Float(f) => Token::Float(*f),
+            Dag::String(s) => Token::Str(&s),
+            Dag::ByteBuf(bytes, _base) => Token::Bytes(&bytes),
+            Dag::List(vec) => Token::List(Some(vec.len())),
+            Dag::Map(map) => Token::Map(Some(map.len())),
+            Dag::Link(cid, _) => Token::Link(*cid),
+        }
+    }
+}
+
+impl<'a> Into<Token<'a>> for Dag {
+    fn into(&self) -> Token {
+        self.kind()
+    }
 }
 
 macro_rules! from_integer {
