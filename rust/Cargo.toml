@@ -1,5 +1,5 @@
 [workspace]
 members = [
-  "ipld_dag",
+  "ipld_core",
   "ipld_dag_json"
 ]

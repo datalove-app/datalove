@@ -59,8 +59,8 @@ pub trait Format<'de> {
 
 ///
 pub trait Encoder: Serializer {
-    /// Encodes an IPLD Node, returning it's encoded representation as `Vec<u8>` and the resulting `CID`.
-    fn encode<N>(self, node: N) -> Result<(CID, Vec<u8>), Self::Error> where N: Node;
+    // /// Encodes an IPLD Node, returning it's encoded representation as `Vec<u8>` and the resulting `CID`.
+    // fn encode<N>(self, node: N) -> Result<(CID, Vec<u8>), Self::Error> where N: Node;
 
     /// Encodes `&[u8]`.
     ///

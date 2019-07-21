@@ -31,3 +31,5 @@ impl std::str::FromStr for Float {
         Err(Error::Custom("".into()))
     }
 }
+
+// TODO: impl Node

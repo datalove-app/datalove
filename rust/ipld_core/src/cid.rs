@@ -22,7 +22,7 @@ const V0_PREFIX: Prefix = Prefix {
 };
 
 /// An IPLD [`CID`](https://github.com/ipld/specs/blob/master/block-layer/CID.md).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CID {
     base: Option<Base>,
     prefix: Prefix,

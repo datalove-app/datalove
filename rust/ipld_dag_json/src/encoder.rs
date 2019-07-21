@@ -590,7 +590,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::encoder::to_string;
-    use ipld_dag::{
+    use ipld_core::{
         base::{Base, Encodable},
         FreeNode, CID,
     };

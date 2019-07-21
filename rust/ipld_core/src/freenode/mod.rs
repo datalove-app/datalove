@@ -12,14 +12,14 @@
 //!     - with the provided abstract FreeNode enum
 //!         - each variant already configured to
 
-mod de;
-pub mod float;
-pub mod int;
-pub mod key;
-mod ser;
+mod serde;
 
-pub use crate::freenode::{float::Float, int::Int, key::Key};
-use crate::{base::Base, cid::CID, lexer::Token, node::Node};
+use crate::{
+    base::Base,
+    cid::CID,
+    lexer::Token,
+    node::{Float, Int, Key, Node},
+};
 use indexmap::{
     map::{Iter as MapIter, IterMut as MapIterMut},
     IndexMap,
@@ -92,19 +92,26 @@ macro_rules! match_freenode {
     }}
 }
 
-impl Node for FreeNode {
+impl<'a> Node<'a> for FreeNode {
+    type Key = Key;
+    type Child = FreeNode;
+    type ListIter = slice::Iter<'a, Self::Child>;
+    type ListIterMut = slice::IterMut<'a, Self::Child>;
+    type MapIter = MapIter<'a, Self::Key, Self::Child>;
+    type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
+
     #[inline]
     fn kind(&self) -> Token {
         match self {
             FreeNode::Null => Token::Null,
-            FreeNode::Bool(b) => Token::Bool(*b),
-            FreeNode::Integer(i) => Token::Integer(*i),
-            FreeNode::Float(f) => Token::Float(*f),
-            FreeNode::String(s) => Token::Str(&s),
-            FreeNode::ByteBuf(bytes, _base) => Token::Bytes(&bytes),
+            FreeNode::Bool(b) => b.kind(),
+            FreeNode::Integer(i) => i.kind(),
+            FreeNode::Float(f) => f.kind(),
+            FreeNode::String(s) => s.kind(),
+            FreeNode::ByteBuf(bytes, _base) => bytes.kind(),
             FreeNode::List(vec) => Token::List(Some(vec.len())),
             FreeNode::Map(map) => Token::Map(Some(map.len())),
-            FreeNode::Link(cid, _) => Token::Link(*cid),
+            FreeNode::Link(cid, _) => cid.kind(),
         }
     }
 
@@ -152,53 +159,47 @@ impl Node for FreeNode {
 
     #[inline]
     fn as_link(&self) -> Option<CID> {
-        match_freenode!(self, FreeNode::Link(cid, _) => Some(*cid))
+        match_freenode!(self, FreeNode::Link(cid, _) => Some(cid.clone()))
     }
 
     #[inline]
-    fn list_iter(&self) -> Option<slice::Iter<FreeNode>> {
+    fn list_iter(&'a self) -> Option<Self::ListIter> {
         match_freenode!(self, FreeNode::List(vec) => Some(vec.iter()))
     }
 
     #[inline]
-    fn list_iter_mut(&mut self) -> Option<slice::Iter<FreeNode>> {
-        match_freenode!(self, FreeNode::List(vec) => Some(vec.iter()))
+    fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
+        match_freenode!(self, FreeNode::List(vec) => Some(vec.iter_mut()))
     }
 
     #[inline]
-    fn map_iter(&self) -> Option<MapIter<Key, FreeNode>> {
+    fn map_iter(&'a self) -> Option<Self::MapIter> {
         match_freenode!(self, FreeNode::Map(map) => Some(map.iter()))
     }
 
     #[inline]
-    fn map_iter_mut(&mut self) -> Option<MapIterMut<Key, FreeNode>> {
+    fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
         match_freenode!(self, FreeNode::Map(map) => Some(map.iter_mut()))
     }
 
     #[inline]
-    fn traverse_index(&self, index: usize) -> Option<&FreeNode> {
+    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
         match_freenode!(self, FreeNode::List(vec) => vec.get(index))
     }
 
     #[inline]
-    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut FreeNode> {
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
         match_freenode!(self, FreeNode::List(vec) => vec.get_mut(index))
     }
 
     #[inline]
-    fn traverse_field<K>(&self, key: &K) -> Option<&FreeNode>
-    where
-        K: Into<Key>,
-    {
-        match_freenode!(self, FreeNode::Map(map) => map.get(&(*key).into()))
+    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
+        match_freenode!(self, FreeNode::Map(map) => map.get(key))
     }
 
     #[inline]
-    fn traverse_field_mut<K>(&mut self, key: &K) -> Option<&mut FreeNode>
-    where
-        K: Into<Key>,
-    {
-        match_freenode!(self, FreeNode::Map(map) => map.get_mut(&(*key).into()))
+    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
+        match_freenode!(self, FreeNode::Map(map) => map.get_mut(key))
     }
 }
 

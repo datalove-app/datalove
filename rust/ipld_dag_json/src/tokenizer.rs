@@ -89,7 +89,7 @@ named!(link<&[u8], Token>, do_parse!(
 
 #[allow(dead_code)]
 mod util {
-    use ipld_dag::{Int, Token};
+    use ipld_core::{Int, Token};
     use nom::{character::streaming::digit1, IResult};
     use std::str::{from_utf8, FromStr};
 
@@ -151,8 +151,13 @@ mod util {
 #[cfg(test)]
 mod tests {
     use crate::{encoder::to_vec, tokenizer};
-    use ipld_dag::Token;
+    use ipld_core::{
+        base::{Base, Encodable},
+        Token,
+    };
     use serde::Serialize;
+    use serde_bytes::ByteBuf;
+    use std::io::Write;
 
     #[test]
     fn test_null() {
@@ -206,9 +211,6 @@ mod tests {
 
     #[test]
     fn test_bytes() {
-        use ipld_dag::base::{Base, Encodable};
-        use serde_bytes::ByteBuf;
-
         let bytes = ByteBuf::from(vec![0, 1, 2, 3]);
         let byte_str = bytes.encode(Base::Base64);
         let json = to_json(&bytes);
@@ -221,7 +223,6 @@ mod tests {
 
     // Newline ends each vec
     fn to_json<T: Serialize>(t: T) -> Vec<u8> {
-        use std::io::Write;
         let mut vec = to_vec(&t).unwrap();
         writeln!(&mut vec).unwrap();
         vec

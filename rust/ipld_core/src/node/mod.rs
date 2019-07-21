@@ -1,112 +1,131 @@
-use crate::{
-    cid::CID,
-    freenode::{Float, Int, Key},
-    lexer::Token,
-};
-use serde::Serialize;
-use std::borrow;
+mod float;
+mod int;
+mod key;
 
-pub trait Node: Serialize {
+pub use self::{float::Float, int::Int, key::Key};
+use crate::{cid::CID, lexer::Token};
+use serde::Serialize;
+use std::{borrow, slice};
+
+///
+pub trait Node<'a>: Serialize {
+    ///
+    type Key: 'a + Into<Key> = &'static str;
+
+    ///
+    type Child: 'a + Node<'a> = ();
+
+    ///
+    type ListIter: Iterator<Item = &'a Self::Child> = slice::Iter<'a, Self::Child>;
+
+    ///
+    type ListIterMut: Iterator<Item = &'a mut Self::Child> = slice::IterMut<'a, Self::Child>;
+
+    ///
+    type MapIter: Iterator<Item = (&'a Self::Key, &'a Self::Child)> =
+        slice::Iter<'a, (Self::Key, Self::Child)>;
+
+    ///
+    type MapIterMut: Iterator<Item = (&'a Self::Key, &'a mut Self::Child)> =
+        slice::IterMut<'a, (Self::Key, Self::Child)>;
+
+    ///
     fn kind(&self) -> Token;
 
+    ///
     fn len(&self) -> Option<usize> {
         None
     }
 
+    ///
     fn is_null(&self) -> bool {
         false
     }
 
+    ///
     fn as_bool(&self) -> Option<bool> {
         None
     }
 
+    ///
     fn as_int(&self) -> Option<Int> {
         None
     }
 
+    ///
     fn as_float(&self) -> Option<Float> {
         None
     }
 
+    ///
     fn as_str(&self) -> Option<&str> {
         None
     }
 
+    ///
     fn as_bytes(&self) -> Option<&[u8]> {
         None
     }
 
+    ///
     fn as_link(&self) -> Option<CID> {
         None
     }
 
-    fn list_iter<I, N>(&self) -> Option<I>
-    where
-        I: Iterator<Item = N>,
-        N: Node,
-    {
+    ///
+    fn list_iter(&'a self) -> Option<Self::ListIter> {
         None
     }
 
-    fn list_iter_mut<I, N>(&mut self) -> Option<I>
-    where
-        I: Iterator<Item = N>,
-        N: Node,
-    {
+    ///
+    fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
         None
     }
 
-    fn map_iter<I, K, N>(&self) -> Option<I>
-    where
-        I: Iterator<Item = (K, N)>,
-        K: Into<Key>,
-        N: Node,
-    {
+    ///
+    fn map_iter(&'a self) -> Option<Self::MapIter> {
         None
     }
 
-    fn map_iter_mut<I, K, N>(&mut self) -> Option<I>
-    where
-        I: Iterator<Item = (K, N)>,
-        K: Into<Key>,
-        N: Node,
-    {
+    ///
+    fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
         None
     }
 
-    fn traverse_index<N>(&self, index: usize) -> Option<&N>
-    where
-        N: Node,
-    {
+    ///
+    fn traverse_index(&self, _index: usize) -> Option<&Self::Child> {
         None
     }
 
-    fn traverse_index_mut<N>(&mut self, index: usize) -> Option<&mut N>
-    where
-        N: Node,
-    {
+    ///
+    fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Child> {
         None
     }
 
-    fn traverse_field<K, N>(&self, key: &K) -> Option<&N>
-    where
-        K: Into<Key>,
-        N: Node,
-    {
+    ///
+    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
         None
     }
 
-    fn traverse_field_mut<K, N>(&mut self, key: &K) -> Option<&mut N>
-    where
-        K: Into<Key>,
-        N: Node,
-    {
+    ///
+    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
         None
     }
 }
 
-impl Node for bool {
+impl<'a> Node<'a> for () {
+    #[inline]
+    fn kind(&self) -> Token {
+        Token::Null
+    }
+
+    #[inline]
+    fn is_null(&self) -> bool {
+        true
+    }
+}
+
+impl<'a> Node<'a> for bool {
     #[inline]
     fn kind(&self) -> Token {
         Token::Bool(*self)
@@ -121,7 +140,7 @@ impl Node for bool {
 macro_rules! for_integer {
     ($($ty:ident)*) => {
         $(
-            impl Node for $ty {
+            impl<'a> Node<'a> for $ty {
                 #[inline]
                 fn kind(&self) -> Token {
                     Token::Integer((*self).into())
@@ -139,7 +158,7 @@ macro_rules! for_integer {
 macro_rules! for_float {
     ($($ty:ident)*) => {
         $(
-            impl Node for $ty {
+            impl<'a> Node<'a> for $ty {
                 #[inline]
                 fn kind(&self) -> Token {
                     Token::Float((*self).into())
@@ -157,7 +176,7 @@ macro_rules! for_float {
 for_integer! { i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 }
 for_float! { f32 f64 }
 
-impl Node for String {
+impl<'a> Node<'a> for String {
     #[inline]
     fn kind(&self) -> Token {
         Token::Str(&self)
@@ -169,7 +188,7 @@ impl Node for String {
     }
 }
 
-impl<'a> Node for &'a str {
+impl<'a> Node<'a> for &'a str {
     #[inline]
     fn kind(&self) -> Token {
         Token::Str(self)
@@ -181,7 +200,7 @@ impl<'a> Node for &'a str {
     }
 }
 
-impl<'a> Node for borrow::Cow<'a, str> {
+impl<'a> Node<'a> for borrow::Cow<'a, str> {
     #[inline]
     fn kind(&self) -> Token {
         Token::Str(self)
@@ -193,7 +212,7 @@ impl<'a> Node for borrow::Cow<'a, str> {
     }
 }
 
-impl<'a> Node for &'a [u8] {
+impl<'a> Node<'a> for &'a [u8] {
     #[inline]
     fn kind(&self) -> Token {
         Token::Bytes(self)
@@ -205,9 +224,9 @@ impl<'a> Node for &'a [u8] {
     }
 }
 
-impl<T> Node for Option<T>
+impl<'a, T> Node<'a> for Option<T>
 where
-    T: Node,
+    T: Node<'a>,
 {
     #[inline]
     fn kind(&self) -> Token {
@@ -223,92 +242,95 @@ where
     }
 }
 
-impl Node for CID {
+impl<'a> Node<'a> for CID {
     #[inline]
     fn kind(&self) -> Token {
-        Token::Link(*self)
+        Token::Link(self.clone())
     }
 
     #[inline]
     fn as_link(&self) -> Option<CID> {
-        Some(*self)
+        Some(self.clone())
     }
 }
 
-impl<T> Node for T {
-    fn kind(&self) -> Token {
+impl<'a, T> Node<'a> for T
+where
+    T: Serialize,
+{
+    default fn kind(&self) -> Token {
         Token::Invalid
     }
 
-    // ListIterator() ListIterator
-    default fn list_iter<I, N>(&self) -> Option<I>
-    where
-        I: Iterator<Item = N>,
-        N: Node,
-    {
+    default fn len(&self) -> Option<usize> {
         None
     }
 
-    // ListIterator() ListIterator
-    default fn list_iter_mut<I, N>(&mut self) -> Option<I>
-    where
-        I: Iterator<Item = N>,
-        N: Node,
-    {
+    default fn is_null(&self) -> bool {
+        false
+    }
+
+    default fn as_bool(&self) -> Option<bool> {
         None
     }
 
-    // MapIterator() MapIterator
-    default fn map_iter<I, K, N>(&self) -> Option<I>
-    where
-        I: Iterator<Item = (K, N)>,
-        K: Into<Key>,
-        N: Node,
-    {
+    default fn as_int(&self) -> Option<Int> {
         None
     }
 
-    // MapIterator() MapIterator
-    default fn map_iter_mut<I, K, N>(&mut self) -> Option<I>
-    where
-        I: Iterator<Item = (K, N)>,
-        K: Into<Key>,
-        N: Node,
-    {
+    default fn as_float(&self) -> Option<Float> {
+        None
+    }
+
+    default fn as_str(&self) -> Option<&str> {
+        None
+    }
+
+    default fn as_bytes(&self) -> Option<&[u8]> {
+        None
+    }
+
+    default fn as_link(&self) -> Option<CID> {
+        None
+    }
+
+    // ListIter() ListIter
+    default fn list_iter(&'a self) -> Option<Self::ListIter> {
+        None
+    }
+
+    // ListIter() ListIter
+    default fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
+        None
+    }
+
+    // MapIterMut() MapIterMut
+    default fn map_iter(&'a self) -> Option<Self::MapIter> {
+        None
+    }
+
+    // MapIterMut() MapIterMut
+    default fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
         None
     }
 
     // TraverseIndex(idx int) Node
-    default fn traverse_index<N>(&self, index: usize) -> Option<&N>
-    where
-        N: Node,
-    {
+    default fn traverse_index(&self, _index: usize) -> Option<&Self::Child> {
         None
     }
 
     // TraverseIndex(idx int) Node
-    default fn traverse_index_mut<N>(&mut self, index: usize) -> Option<&mut N>
-    where
-        N: Node,
-    {
+    default fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Child> {
         None
     }
 
     // TraverseField(path string) Node
-    default fn traverse_field<K, N>(&self, key: &K) -> Option<&N>
-    where
-        K: Into<Key>,
-        N: Node,
-    {
+    default fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
         None
     }
 
     // TraverseField(path string) Node
-    default fn traverse_field_mut<K, N>(&mut self, key: &K) -> Option<&mut N>
-    where
-        K: Into<Key>,
-        N: Node,
-    {
+    default fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
         None
     }
 }
