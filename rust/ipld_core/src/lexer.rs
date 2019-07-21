@@ -1,8 +1,11 @@
-use super::{Float, Int};
-use crate::{base::Base, cid::CID};
+use crate::{
+    base::Base,
+    cid::CID,
+    freenode::{Float, Int},
+};
 use nom::{
     error::{ErrorKind, ParseError},
-    IResult, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice
+    IResult, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice,
 };
 use std::{iter::Enumerate, slice::Iter};
 
@@ -15,6 +18,9 @@ use std::{iter::Enumerate, slice::Iter};
 pub enum Token<'a> {
     ///
     EOF,
+
+    ///
+    Invalid,
 
     ///
     Null,
@@ -94,7 +100,10 @@ impl<'a> InputLength for Token<'a> {
 ///
 ///
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Lexer<'a, P> {
+pub struct Lexer<'a, P>
+where
+    P: Fn(&'a [u8]) -> IResult<&'a [u8], Token, ParseError>,
+{
     parser: P,
     // tokens: &'a [Token<'a>],
     start: usize,
@@ -120,6 +129,7 @@ impl<'a, P> Lexer<'a, P> {
 
     #[inline]
     fn parse(&mut self, bytes: &'a [u8]) -> IResult<&'a [u8], (), ParseError> {
+
         // Lexer {
         //     tokens: &[],
         //     start: 0,

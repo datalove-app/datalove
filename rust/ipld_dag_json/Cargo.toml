@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 delegate = "0.2.0"
-ipld_dag = {path = "../ipld_dag"}
+ipld_core = {path = "../ipld_core"}
 nom = "5"
 serde = "1.0"
 serde_json = {git = "https://github.com/sunny-g/serde_json", branch = "master"}

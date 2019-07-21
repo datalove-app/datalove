@@ -1,8 +1,8 @@
-use crate::{dag::Int, Error};
+use crate::{freenode::Int, Error};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An IPLD Dag map key.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Key {
     /// An integer key, signed or unsigned.
     Int(Int),

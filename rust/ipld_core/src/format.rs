@@ -1,6 +1,6 @@
 //!
 
-use crate::{base::Base, Error, Token, CID};
+use crate::{base::Base, Error, Node, Token, CID};
 use futures::{Sink, Stream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Read, Write};
@@ -59,10 +59,17 @@ pub trait Format<'de> {
 
 ///
 pub trait Encoder: Serializer {
+    /// Encodes an IPLD Node, returning it's encoded representation as `Vec<u8>` and the resulting `CID`.
+    fn encode<N>(self, node: N) -> Result<(CID, Vec<u8>), Self::Error> where N: Node;
+
+    /// Encodes `&[u8]`.
+    ///
     /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error>;
 
-    /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
+    /// Encodes an IPLD Link `CID`.
+    ///
+    /// Encodes `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error>;
 }
 

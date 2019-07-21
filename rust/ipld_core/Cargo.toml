@@ -1,5 +1,5 @@
 [package]
-name = "ipld_dag"
+name = "ipld_core"
 version = "0.0.1"
 authors = ["Sunny G <sunny.gonna@gmail.com>"]
 edition = "2018"

@@ -1,5 +1,5 @@
 use delegate::delegate;
-use ipld_dag::{
+use ipld_core::{
     base::{to_name, Base, Encodable},
     format, CID,
 };
@@ -592,7 +592,7 @@ mod tests {
     use crate::encoder::to_string;
     use ipld_dag::{
         base::{Base, Encodable},
-        Dag, CID,
+        FreeNode, CID,
     };
     use serde::Serialize;
 
@@ -613,7 +613,7 @@ mod tests {
         let bytes: Vec<u8> = vec![0, 1, 2, 3];
         let expected = make_bytes_json(&bytes);
 
-        let dag = Dag::ByteBuf(bytes, None);
+        let dag = FreeNode::ByteBuf(bytes, None);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual);
     }
@@ -622,7 +622,7 @@ mod tests {
     fn test_cid() {
         let expected = make_cid_json(EXAMPLE_CID_STR);
 
-        let dag = Dag::Link(example_cid(), None);
+        let dag = FreeNode::Link(example_cid(), None);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual);
     }
@@ -632,8 +632,8 @@ mod tests {
         let bytes: Vec<u8> = vec![0, 1, 2, 3];
         let expected = make_vec2_json(&make_bytes_json(&bytes));
 
-        let map_elem = Dag::ByteBuf(bytes, None);
-        let dag = Dag::List(vec![map_elem.clone(), map_elem]);
+        let map_elem = FreeNode::ByteBuf(bytes, None);
+        let dag = FreeNode::List(vec![map_elem.clone(), map_elem]);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual)
     }
@@ -642,8 +642,8 @@ mod tests {
     fn test_cid_vec() {
         let expected = make_vec2_json(&make_cid_json(EXAMPLE_CID_STR));
 
-        let map_elem = Dag::Link(example_cid(), None);
-        let dag = Dag::List(vec![map_elem.clone(), map_elem]);
+        let map_elem = FreeNode::Link(example_cid(), None);
+        let dag = FreeNode::List(vec![map_elem.clone(), map_elem]);
         let actual = to_string(&dag).unwrap();
         assert_eq!(expected, actual)
     }

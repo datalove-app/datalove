@@ -1,5 +1,6 @@
-use ipld_dag::{Token, CID};
+use ipld_core::{Token, CID};
 use nom::{number::streaming::double, IResult};
+use std::str::FromStr;
 use util::parse_string;
 
 /******************************************************************************
@@ -8,19 +9,17 @@ use util::parse_string;
 
 // TODO: wrap in ws!?
 named!(lex<&[u8], Token>, alt!(
-    null |
-    boolean |
-    number |
-    string |
-    bytes |
-    link |
-    map_start |
-    map_end |
-    list_start |
-    list_end
+    bytes
+    | link
+    | null
+    | boolean
+    | number
+    | string
+    | list_start
+    | list_end
+    | map_start
+    | map_end
 ));
-
-named!(map_key<&[u8], Token>, alt!(integer | string));
 
 /******************************************************************************
  * Raw token parsers
@@ -55,11 +54,11 @@ named!(string<&[u8], Token>, map!(util::parse_string, Token::Str));
  *  Bytes
  */
 named!(bytes<&[u8], Token>, do_parse!(
-        tag!(b"{\"/\":{")       >>
-        parse_string            >>
-        eat_separator!(b":")    >>
-    s:  parse_string            >>
-        tag!(b"}}")             >>
+        tag!(b"{\"/\":{") >>
+        parse_string >>
+        eat_separator!(b":") >>
+    s:  parse_string >>
+        tag!(b"}}") >>
         (Token::ByteStr(&s))
 ));
 
@@ -74,17 +73,18 @@ named!(list_end<&[u8], Token>, value!(Token::ListEnd, tag!(b"]")));
  */
 named!(map_start<&[u8], Token>, value!(Token::Map(None), tag!(b"{")));
 named!(map_end<&[u8], Token>, value!(Token::MapEnd, tag!(b"}")));
+named!(map_key<&[u8], Token>, alt!(integer | string));
 
 /*
  * Link
  */
-// TODO: possibly move parse until after the matches
-// TODO - not doing so might not consume the end tag
 named!(link<&[u8], Token>, do_parse!(
-        tag!(b"{\"/\":")                                    >>
-    c:  map_res!(parse_string, |s: &str| s.parse::<CID>())  >>
-        tag!(b"}")                                          >>
-        (Token::Link(c))
+            tag!(b"{\"/\":") >>
+    cid:    map_res!(parse_string, CID::from_str) >>
+            // TODO: possibly move parse until after the matches
+            // not doing so might not consume the end tag
+            tag!(b"}") >>
+            (Token::Link(cid))
 ));
 
 #[allow(dead_code)]

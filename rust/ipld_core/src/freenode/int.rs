@@ -60,6 +60,6 @@ impl std::str::FromStr for Int {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Err(Error::Custom("".into()))
+        unimplemented!();
     }
 }

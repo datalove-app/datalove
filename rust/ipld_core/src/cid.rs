@@ -22,7 +22,7 @@ const V0_PREFIX: Prefix = Prefix {
 };
 
 /// An IPLD [`CID`](https://github.com/ipld/specs/blob/master/block-layer/CID.md).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CID {
     base: Option<Base>,
     prefix: Prefix,
@@ -165,6 +165,8 @@ impl hash::Hash for CID {
 
 impl str::FromStr for CID {
     type Err = Error;
+
+    // TODO: CIDs can be context dependent, so v1 is some cases impliable...
 
     /// Creates a new `CID` from an `str`, decoding its `multibase::Base`.
     fn from_str(s: &str) -> Result<Self, Error> {

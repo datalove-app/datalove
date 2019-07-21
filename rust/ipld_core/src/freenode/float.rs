@@ -2,7 +2,7 @@ use crate::error::Error;
 use serde::{Serialize, Serializer};
 
 /// Float wrapper
-#[derive(Clone, Debug, From, PartialEq)]
+#[derive(Clone, Copy, Debug, From, PartialEq)]
 pub enum Float {
     /// `f32`
     F32(f32),

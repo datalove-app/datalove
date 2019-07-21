@@ -1,4 +1,4 @@
-use ipld_dag::Error;
+use ipld_core::Error;
 use serde_json::Error as JsonError;
 use std::{error::Error as StdError, fmt::Display};
 
