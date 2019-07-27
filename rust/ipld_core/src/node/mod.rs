@@ -4,7 +4,8 @@ mod key;
 
 pub use self::{float::Float, int::Int, key::Key};
 use crate::{cid::CID, lexer::Token};
-use serde::Serialize;
+use indexmap::map::{Iter as MapIter, IterMut as MapIterMut};
+use serde::ser::Serialize;
 use std::{borrow, slice};
 
 ///
@@ -242,95 +243,99 @@ where
     }
 }
 
-impl<'a> Node<'a> for CID {
+impl<'a, T> Node<'a> for Vec<T>
+where
+    T: 'a + Node<'a>,
+{
+    type Key = &'static str;
+    type Child = T;
+    type ListIter = slice::Iter<'a, Self::Child>;
+    type ListIterMut = slice::IterMut<'a, Self::Child>;
+    type MapIter = MapIter<'a, Self::Key, Self::Child>;
+    type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
+
     #[inline]
     fn kind(&self) -> Token {
-        Token::Link(self.clone())
+        Token::List(Node::len(self))
+    }
+
+    #[inline]
+    fn len(&self) -> Option<usize> {
+        Some(self.len())
+    }
+
+    #[inline]
+    fn is_null(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn as_bool(&self) -> Option<bool> {
+        None
+    }
+
+    #[inline]
+    fn as_int(&self) -> Option<Int> {
+        None
+    }
+
+    #[inline]
+    fn as_float(&self) -> Option<Float> {
+        None
+    }
+
+    #[inline]
+    fn as_str(&self) -> Option<&str> {
+        None
+    }
+
+    #[inline]
+    fn as_bytes(&self) -> Option<&[u8]> {
+        None
     }
 
     #[inline]
     fn as_link(&self) -> Option<CID> {
-        Some(self.clone())
-    }
-}
-
-impl<'a, T> Node<'a> for T
-where
-    T: Serialize,
-{
-    default fn kind(&self) -> Token {
-        Token::Invalid
-    }
-
-    default fn len(&self) -> Option<usize> {
         None
     }
 
-    default fn is_null(&self) -> bool {
-        false
+    #[inline]
+    fn list_iter(&'a self) -> Option<Self::ListIter> {
+        Some(self.iter())
     }
 
-    default fn as_bool(&self) -> Option<bool> {
+    #[inline]
+    fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
+        Some(self.iter_mut())
+    }
+
+    #[inline]
+    fn map_iter(&'a self) -> Option<Self::MapIter> {
         None
     }
 
-    default fn as_int(&self) -> Option<Int> {
+    #[inline]
+    fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
         None
     }
 
-    default fn as_float(&self) -> Option<Float> {
+    #[inline]
+    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
+        self.get(index)
+    }
+
+    #[inline]
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
+        self.get_mut(index)
+    }
+
+    #[inline]
+    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
         None
     }
 
-    default fn as_str(&self) -> Option<&str> {
-        None
-    }
-
-    default fn as_bytes(&self) -> Option<&[u8]> {
-        None
-    }
-
-    default fn as_link(&self) -> Option<CID> {
-        None
-    }
-
-    // ListIter() ListIter
-    default fn list_iter(&'a self) -> Option<Self::ListIter> {
-        None
-    }
-
-    // ListIter() ListIter
-    default fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
-        None
-    }
-
-    // MapIterMut() MapIterMut
-    default fn map_iter(&'a self) -> Option<Self::MapIter> {
-        None
-    }
-
-    // MapIterMut() MapIterMut
-    default fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
-        None
-    }
-
-    // TraverseIndex(idx int) Node
-    default fn traverse_index(&self, _index: usize) -> Option<&Self::Child> {
-        None
-    }
-
-    // TraverseIndex(idx int) Node
-    default fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Child> {
-        None
-    }
-
-    // TraverseField(path string) Node
-    default fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
-        None
-    }
-
-    // TraverseField(path string) Node
-    default fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
+    #[inline]
+    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
         None
     }
 }

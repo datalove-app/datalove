@@ -1,4 +1,5 @@
-use crate::error::Error;
+use super::Node;
+use crate::{error::Error, lexer::Token};
 use serde::{Serialize, Serializer};
 
 /// Float wrapper
@@ -9,6 +10,18 @@ pub enum Float {
 
     /// `f64`
     F64(f64),
+}
+
+impl<'a> Node<'a> for Float {
+    #[inline]
+    fn kind(&self) -> Token {
+        Token::Float(*self)
+    }
+
+    #[inline]
+    fn as_float(&self) -> Option<Float> {
+        Some(*self)
+    }
 }
 
 impl Serialize for Float {
@@ -28,8 +41,6 @@ impl std::str::FromStr for Float {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Err(Error::Custom("".into()))
+        unimplemented!();
     }
 }
-
-// TODO: impl Node

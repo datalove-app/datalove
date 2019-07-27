@@ -9,17 +9,22 @@ use util::parse_string;
 
 // TODO: wrap in ws!?
 named!(lex<&[u8], Token>, alt!(
-    bytes
-    | link
-    | null
-    | boolean
-    | number
-    | string
-    | list_start
-    | list_end
-    | map_start
-    | map_end
+    primitive
+    | compound_start
+    | compound_end
 ));
+
+named!(primitive<&[u8], Token>, alt!(
+   bytes
+   | link
+   | null
+   | boolean
+   | number
+   | string
+));
+
+named!(compound_start<&[u8], Token>, alt!(list_start | map_start));
+named!(compound_end<&[u8], Token>, alt!(list_end | map_end));
 
 /******************************************************************************
  * Raw token parsers
@@ -74,6 +79,13 @@ named!(list_end<&[u8], Token>, value!(Token::ListEnd, tag!(b"]")));
 named!(map_start<&[u8], Token>, value!(Token::Map(None), tag!(b"{")));
 named!(map_end<&[u8], Token>, value!(Token::MapEnd, tag!(b"}")));
 named!(map_key<&[u8], Token>, alt!(integer | string));
+// named!(map_pair<&[u8], (Token, Token)>, do_parse!(
+//     k:  map_key >>
+//         eat_separator!(b":") >>
+//     v:  value >>
+//         opt!(eat_separator!(b",")) >>
+//         (k, v)
+// ));
 
 /*
  * Link
@@ -143,6 +155,9 @@ mod util {
     named!(parse_int_str<&[u8], &str>, map_res!(digit1, from_utf8));
 
     /****************************************/
+
+    named!(pub(crate) comma<&[u8], Option<&[u8]>>, opt!(eat_separator!(b",")));
+    named!(pub(crate) semicolon<&[u8], &[u8]>, eat_separator!(b":"));
 
     // named!(whitespace<&[u8], Token>, ws!)
     // named!(esc_quote<&[u8]>, escaped!(b"\\\"", '\\', |_| "\""));

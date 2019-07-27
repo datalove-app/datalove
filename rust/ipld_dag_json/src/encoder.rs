@@ -15,14 +15,14 @@ pub struct Encoder<W: io::Write>(JsonSerializer<W>);
 
 ///
 #[inline]
-pub fn to_writer<T, W>(value: &T, mut writer: W) -> Result<W, JsonError>
+pub fn to_writer<T, W>(value: &T, writer: &mut W) -> Result<(), JsonError>
 where
     T: Serialize,
     W: io::Write,
 {
-    let mut ser = Encoder::new(&mut writer);
+    let mut ser = Encoder::new(writer);
     value.serialize(&mut ser)?;
-    Ok(writer)
+    Ok(())
 }
 
 ///
@@ -31,7 +31,9 @@ pub fn to_vec<T>(value: &T) -> Result<Vec<u8>, JsonError>
 where
     T: Serialize,
 {
-    to_writer(value, Vec::new())
+    let mut vec = Vec::new();
+    to_writer(value, &mut vec)?;
+    Ok(vec)
 }
 
 ///

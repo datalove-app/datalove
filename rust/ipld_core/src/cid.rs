@@ -6,6 +6,8 @@ use crate::{
     base::{Base, Decodable, Encodable},
     error::Error,
     format::Encoder,
+    lexer::Token,
+    node::Node,
     Prefix, Version,
 };
 use ::cid::{Cid, Codec};
@@ -127,6 +129,18 @@ impl CID {
         res.write_varint(u64::from(self.prefix.codec)).unwrap();
         res.extend_from_slice(&self.hash);
         res
+    }
+}
+
+impl<'a> Node<'a> for CID {
+    #[inline]
+    fn kind(&self) -> Token {
+        Token::Link(self.clone())
+    }
+
+    #[inline]
+    fn as_link(&self) -> Option<CID> {
+        Some(self.clone())
     }
 }
 

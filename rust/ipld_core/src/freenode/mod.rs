@@ -109,7 +109,7 @@ impl<'a> Node<'a> for FreeNode {
             FreeNode::Float(f) => f.kind(),
             FreeNode::String(s) => s.kind(),
             FreeNode::ByteBuf(bytes, _base) => bytes.kind(),
-            FreeNode::List(vec) => Token::List(Some(vec.len())),
+            FreeNode::List(vec) => vec.kind(),
             FreeNode::Map(map) => Token::Map(Some(map.len())),
             FreeNode::Link(cid, _) => cid.kind(),
         }

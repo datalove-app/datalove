@@ -25,7 +25,7 @@ impl StdError for Error {
             Error::InvalidCIDStr => "invalid CID str",
             Error::CID(ref err) => err.description(),
             Error::Multibase(ref err) => err.description(),
-            Error::Custom(ref s) => s,
+            Error::Custom(ref msg) => msg,
         }
     }
 }
@@ -33,7 +33,7 @@ impl StdError for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Custom(ref s) => write!(f, "{}", s),
+            Error::Custom(ref msg) => write!(f, "{}", msg),
             _ => write!(f, "{}", self.description()),
         }
     }

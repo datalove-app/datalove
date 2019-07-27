@@ -1,4 +1,5 @@
-use crate::error::Error;
+use super::Node;
+use crate::{error::Error, lexer::Token};
 use serde::{Serialize, Serializer};
 
 /// Signed and unsigned integer wrapper
@@ -35,6 +36,18 @@ pub enum Int {
     I128(i128),
 }
 
+impl<'a> Node<'a> for Int {
+    #[inline]
+    fn kind(&self) -> Token {
+        Token::Integer(*self)
+    }
+
+    #[inline]
+    fn as_int(&self) -> Option<Int> {
+        Some(*self)
+    }
+}
+
 impl Serialize for Int {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -63,5 +76,3 @@ impl std::str::FromStr for Int {
         unimplemented!();
     }
 }
-
-// TODO: impl Node

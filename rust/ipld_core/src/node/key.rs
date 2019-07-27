@@ -1,4 +1,5 @@
-use crate::{node::Int, Error};
+use super::{Int, Node};
+use crate::{error::Error, lexer::Token};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An IPLD Dag map key.
@@ -9,6 +10,32 @@ pub enum Key {
 
     /// A `String` key.
     String(String),
+}
+
+impl<'a> Node<'a> for Key {
+    #[inline]
+    fn kind(&self) -> Token {
+        match self {
+            Key::Int(i) => i.kind(),
+            Key::String(s) => s.kind(),
+        }
+    }
+
+    #[inline]
+    fn as_int(&self) -> Option<Int> {
+        match self {
+            Key::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn as_str(&self) -> Option<&str> {
+        match self {
+            Key::String(s) => Some(&s),
+            _ => None,
+        }
+    }
 }
 
 impl Serialize for Key {
