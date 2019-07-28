@@ -1,5 +1,5 @@
-use super::Node;
-use crate::{error::Error, lexer::Token};
+use super::{Kind, Node};
+use crate::{error::Error, format::Token};
 use serde::{Serialize, Serializer};
 
 /// Float wrapper
@@ -14,8 +14,8 @@ pub enum Float {
 
 impl<'a> Node<'a> for Float {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Float(*self)
+    fn kind(&self) -> Kind {
+        Kind::Float
     }
 
     #[inline]

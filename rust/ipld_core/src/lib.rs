@@ -13,15 +13,14 @@ mod cid;
 mod error;
 pub mod format;
 mod freenode;
-mod lexer;
 mod node;
 
 pub use crate::cid::CID;
 // pub use cownode::CowNode;
 pub use error::Error;
+pub use format::Token;
 pub use freenode::FreeNode;
-pub use lexer::Token;
-pub use node::{Float, Int, Key, Node};
+pub use node::{Float, Int, Key, Kind, Node};
 
 pub use ::cid::{Codec, Prefix, Version};
 pub use indexmap;

@@ -17,8 +17,8 @@ mod serde;
 use crate::{
     base::Base,
     cid::CID,
-    lexer::Token,
-    node::{Float, Int, Key, Node},
+    format::Token,
+    node::{Float, Int, Key, Kind, Node},
 };
 use indexmap::{
     map::{Iter as MapIter, IterMut as MapIterMut},
@@ -101,16 +101,16 @@ impl<'a> Node<'a> for FreeNode {
     type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
 
     #[inline]
-    fn kind(&self) -> Token {
+    fn kind(&self) -> Kind {
         match self {
-            FreeNode::Null => Token::Null,
+            FreeNode::Null => Kind::Null,
             FreeNode::Bool(b) => b.kind(),
-            FreeNode::Integer(i) => i.kind(),
-            FreeNode::Float(f) => f.kind(),
-            FreeNode::String(s) => s.kind(),
+            FreeNode::Integer(int) => int.kind(),
+            FreeNode::Float(float) => float.kind(),
+            FreeNode::String(string) => string.kind(),
             FreeNode::ByteBuf(bytes, _base) => bytes.kind(),
             FreeNode::List(vec) => vec.kind(),
-            FreeNode::Map(map) => Token::Map(Some(map.len())),
+            FreeNode::Map(map) => Kind::Map(Some(map.len())),
             FreeNode::Link(cid, _) => cid.kind(),
         }
     }
@@ -118,7 +118,7 @@ impl<'a> Node<'a> for FreeNode {
     #[inline]
     fn len(&self) -> Option<usize> {
         match self {
-            FreeNode::List(vec) => Some(vec.len()),
+            FreeNode::List(vec) => Node::len(vec),
             FreeNode::Map(map) => Some(map.len()),
             _ => None,
         }
@@ -139,22 +139,22 @@ impl<'a> Node<'a> for FreeNode {
 
     #[inline]
     fn as_int(&self) -> Option<Int> {
-        match_freenode!(self, FreeNode::Integer(i) => Some(*i))
+        match_freenode!(self, FreeNode::Integer(int) => Some(*int))
     }
 
     #[inline]
     fn as_float(&self) -> Option<Float> {
-        match_freenode!(self, FreeNode::Float(f) => Some(*f))
+        match_freenode!(self, FreeNode::Float(float) => Some(*float))
     }
 
     #[inline]
     fn as_str(&self) -> Option<&str> {
-        match_freenode!(self, FreeNode::String(s) => Some(&s))
+        match_freenode!(self, FreeNode::String(string) => Some(&string))
     }
 
     #[inline]
     fn as_bytes(&self) -> Option<&[u8]> {
-        match_freenode!(self, FreeNode::ByteBuf(bytes, _) => Some(&bytes))
+        match_freenode!(self, FreeNode::ByteBuf(bytes, _base) => Some(&bytes))
     }
 
     #[inline]
@@ -164,12 +164,12 @@ impl<'a> Node<'a> for FreeNode {
 
     #[inline]
     fn list_iter(&'a self) -> Option<Self::ListIter> {
-        match_freenode!(self, FreeNode::List(vec) => Some(vec.iter()))
+        match_freenode!(self, FreeNode::List(vec) => vec.list_iter())
     }
 
     #[inline]
     fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
-        match_freenode!(self, FreeNode::List(vec) => Some(vec.iter_mut()))
+        match_freenode!(self, FreeNode::List(vec) => vec.list_iter_mut())
     }
 
     #[inline]
@@ -232,7 +232,7 @@ macro_rules! from_float {
 from_integer! { i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 }
 from_float! { f32 f64 }
 
-impl<'a> From<&'a str> for FreeNode {
+impl From<&str> for FreeNode {
     #[inline]
     fn from(v: &str) -> Self {
         FreeNode::String(v.to_string())
@@ -246,15 +246,22 @@ impl<'a> From<borrow::Cow<'a, str>> for FreeNode {
     }
 }
 
+impl From<&[u8]> for FreeNode {
+    #[inline]
+    fn from(bytes: &[u8]) -> Self {
+        FreeNode::ByteBuf(bytes.into(), None)
+    }
+}
+
 impl<T> From<Option<T>> for FreeNode
 where
     T: Into<FreeNode>,
 {
     #[inline]
-    fn from(o: Option<T>) -> Self {
-        match o {
+    fn from(opt: Option<T>) -> Self {
+        match opt {
             None => FreeNode::Null,
-            Some(t) => t.into(),
+            Some(node) => node.into(),
         }
     }
 }

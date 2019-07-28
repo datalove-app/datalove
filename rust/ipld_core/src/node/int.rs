@@ -1,5 +1,5 @@
-use super::Node;
-use crate::{error::Error, lexer::Token};
+use super::{Kind, Node};
+use crate::{error::Error, format::Token};
 use serde::{Serialize, Serializer};
 
 /// Signed and unsigned integer wrapper
@@ -38,8 +38,8 @@ pub enum Int {
 
 impl<'a> Node<'a> for Int {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Integer(*self)
+    fn kind(&self) -> Kind {
+        Kind::Integer
     }
 
     #[inline]

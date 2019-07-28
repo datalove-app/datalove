@@ -1,5 +1,5 @@
-use super::{Int, Node};
-use crate::{error::Error, lexer::Token};
+use super::{Int, Kind, Node};
+use crate::{error::Error, format::Token};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An IPLD Dag map key.
@@ -14,7 +14,7 @@ pub enum Key {
 
 impl<'a> Node<'a> for Key {
     #[inline]
-    fn kind(&self) -> Token {
+    fn kind(&self) -> Kind {
         match self {
             Key::Int(i) => i.kind(),
             Key::String(s) => s.kind(),
@@ -48,6 +48,13 @@ impl Serialize for Key {
             Key::Int(int) => int.serialize(serializer),
             Key::String(s) => serializer.serialize_str(s),
         }
+    }
+}
+
+impl From<&[u8]> for Key {
+    #[inline]
+    fn from(bytes: &[u8]) -> Self {
+        unimplemented!();
     }
 }
 

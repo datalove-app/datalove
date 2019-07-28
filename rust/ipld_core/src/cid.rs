@@ -5,9 +5,8 @@
 use crate::{
     base::{Base, Decodable, Encodable},
     error::Error,
-    format::Encoder,
-    lexer::Token,
-    node::Node,
+    format::{Encoder, Token},
+    node::{Kind, Node},
     Prefix, Version,
 };
 use ::cid::{Cid, Codec};
@@ -134,8 +133,8 @@ impl CID {
 
 impl<'a> Node<'a> for CID {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Link(self.clone())
+    fn kind(&self) -> Kind {
+        Kind::Link
     }
 
     #[inline]

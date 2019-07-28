@@ -3,10 +3,23 @@ mod int;
 mod key;
 
 pub use self::{float::Float, int::Int, key::Key};
-use crate::{cid::CID, lexer::Token};
+use crate::{cid::CID, format::Token};
 use indexmap::map::{Iter as MapIter, IterMut as MapIterMut};
 use serde::ser::Serialize;
 use std::{borrow, slice};
+
+///
+pub enum Kind {
+    Null,
+    Bool,
+    Integer,
+    Float,
+    Str,
+    Bytes,
+    List(Option<usize>),
+    Map(Option<usize>),
+    Link,
+}
 
 ///
 pub trait Node<'a>: Serialize {
@@ -31,84 +44,100 @@ pub trait Node<'a>: Serialize {
         slice::IterMut<'a, (Self::Key, Self::Child)>;
 
     ///
-    fn kind(&self) -> Token;
+    fn kind(&self) -> Kind;
 
     ///
+    #[inline]
     fn len(&self) -> Option<usize> {
         None
     }
 
     ///
+    #[inline]
     fn is_null(&self) -> bool {
         false
     }
 
     ///
+    #[inline]
     fn as_bool(&self) -> Option<bool> {
         None
     }
 
     ///
+    #[inline]
     fn as_int(&self) -> Option<Int> {
         None
     }
 
     ///
+    #[inline]
     fn as_float(&self) -> Option<Float> {
         None
     }
 
     ///
+    #[inline]
     fn as_str(&self) -> Option<&str> {
         None
     }
 
     ///
+    #[inline]
     fn as_bytes(&self) -> Option<&[u8]> {
         None
     }
 
     ///
+    #[inline]
     fn as_link(&self) -> Option<CID> {
         None
     }
 
     ///
+    #[inline]
     fn list_iter(&'a self) -> Option<Self::ListIter> {
         None
     }
 
     ///
+    #[inline]
     fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
         None
     }
 
     ///
+    #[inline]
     fn map_iter(&'a self) -> Option<Self::MapIter> {
         None
     }
 
     ///
+    #[inline]
     fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
         None
     }
 
     ///
+    #[inline]
     fn traverse_index(&self, _index: usize) -> Option<&Self::Child> {
         None
     }
 
     ///
+    #[inline]
     fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Child> {
         None
     }
 
     ///
+    #[inline]
     fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
         None
     }
 
     ///
+    #[inline]
     fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
         None
     }
@@ -116,8 +145,8 @@ pub trait Node<'a>: Serialize {
 
 impl<'a> Node<'a> for () {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Null
+    fn kind(&self) -> Kind {
+        Kind::Null
     }
 
     #[inline]
@@ -128,8 +157,8 @@ impl<'a> Node<'a> for () {
 
 impl<'a> Node<'a> for bool {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Bool(*self)
+    fn kind(&self) -> Kind {
+        Kind::Bool
     }
 
     #[inline]
@@ -143,8 +172,8 @@ macro_rules! for_integer {
         $(
             impl<'a> Node<'a> for $ty {
                 #[inline]
-                fn kind(&self) -> Token {
-                    Token::Integer((*self).into())
+                fn kind(&self) -> Kind {
+                    Kind::Integer
                 }
 
                 #[inline]
@@ -161,8 +190,8 @@ macro_rules! for_float {
         $(
             impl<'a> Node<'a> for $ty {
                 #[inline]
-                fn kind(&self) -> Token {
-                    Token::Float((*self).into())
+                fn kind(&self) -> Kind {
+                    Kind::Float
                 }
 
                 #[inline]
@@ -179,8 +208,8 @@ for_float! { f32 f64 }
 
 impl<'a> Node<'a> for String {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Str(&self)
+    fn kind(&self) -> Kind {
+        Kind::Str
     }
 
     #[inline]
@@ -191,8 +220,8 @@ impl<'a> Node<'a> for String {
 
 impl<'a> Node<'a> for &'a str {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Str(self)
+    fn kind(&self) -> Kind {
+        Kind::Str
     }
 
     #[inline]
@@ -203,8 +232,8 @@ impl<'a> Node<'a> for &'a str {
 
 impl<'a> Node<'a> for borrow::Cow<'a, str> {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Str(self)
+    fn kind(&self) -> Kind {
+        Kind::Str
     }
 
     #[inline]
@@ -215,8 +244,8 @@ impl<'a> Node<'a> for borrow::Cow<'a, str> {
 
 impl<'a> Node<'a> for &'a [u8] {
     #[inline]
-    fn kind(&self) -> Token {
-        Token::Bytes(self)
+    fn kind(&self) -> Kind {
+        Kind::Bytes
     }
 
     #[inline]
@@ -225,21 +254,114 @@ impl<'a> Node<'a> for &'a [u8] {
     }
 }
 
+macro_rules! match_option {
+    ($node:ident, $($variant:pat => $opt:expr)*) => {{
+        match $node {
+            $($variant => $opt)*,
+            _ => None,
+        }
+    }}
+}
+
 impl<'a, T> Node<'a> for Option<T>
 where
     T: Node<'a>,
 {
+    type Key = T::Key;
+    type Child = T::Child;
+    type ListIter = T::ListIter;
+    type ListIterMut = T::ListIterMut;
+    type MapIter = T::MapIter;
+    type MapIterMut = T::MapIterMut;
+
     #[inline]
-    fn kind(&self) -> Token {
+    fn kind(&self) -> Kind {
         match self {
-            None => Token::Null,
-            Some(t) => t.kind(),
+            None => Kind::Null,
+            Some(node) => node.kind(),
         }
+    }
+
+    fn len(&self) -> Option<usize> {
+        match_option!(self, Some(node) => Node::len(node))
     }
 
     #[inline]
     fn is_null(&self) -> bool {
-        self.is_none()
+        match self {
+            None => true,
+            Some(node) => node.is_null(),
+        }
+    }
+
+    #[inline]
+    fn as_bool(&self) -> Option<bool> {
+        match_option!(self, Some(node) => node.as_bool())
+    }
+
+    #[inline]
+    fn as_int(&self) -> Option<Int> {
+        match_option!(self, Some(node) => node.as_int())
+    }
+
+    #[inline]
+    fn as_float(&self) -> Option<Float> {
+        match_option!(self, Some(node) => node.as_float())
+    }
+
+    #[inline]
+    fn as_str(&self) -> Option<&str> {
+        match_option!(self, Some(node) => node.as_str())
+    }
+
+    #[inline]
+    fn as_bytes(&self) -> Option<&[u8]> {
+        match_option!(self, Some(node) => node.as_bytes())
+    }
+
+    #[inline]
+    fn as_link(&self) -> Option<CID> {
+        match_option!(self, Some(node) => node.as_link())
+    }
+
+    #[inline]
+    fn list_iter(&'a self) -> Option<Self::ListIter> {
+        match_option!(self, Some(node) => node.list_iter())
+    }
+
+    #[inline]
+    fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
+        match_option!(self, Some(node) => node.list_iter_mut())
+    }
+
+    #[inline]
+    fn map_iter(&'a self) -> Option<Self::MapIter> {
+        match_option!(self, Some(node) => node.map_iter())
+    }
+
+    #[inline]
+    fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
+        match_option!(self, Some(node) => node.map_iter_mut())
+    }
+
+    #[inline]
+    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
+        match_option!(self, Some(node) => node.traverse_index(index))
+    }
+
+    #[inline]
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
+        match_option!(self, Some(node) => node.traverse_index_mut(index))
+    }
+
+    #[inline]
+    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
+        match_option!(self, Some(node) => node.traverse_field(key))
+    }
+
+    #[inline]
+    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
+        match_option!(self, Some(node) => node.traverse_field_mut(key))
     }
 }
 
@@ -255,8 +377,8 @@ where
     type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
 
     #[inline]
-    fn kind(&self) -> Token {
-        Token::List(Node::len(self))
+    fn kind(&self) -> Kind {
+        Kind::List(Node::len(self))
     }
 
     #[inline]
@@ -330,12 +452,12 @@ where
     }
 
     #[inline]
-    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
+    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
         None
     }
 
     #[inline]
-    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
+    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
         None
     }
 }

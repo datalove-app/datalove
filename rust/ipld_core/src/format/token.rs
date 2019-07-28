@@ -34,13 +34,16 @@ pub enum Token<'a> {
     ///
     Float(Float),
 
-    ///
+    /// A UTF-8 string.
     Str(&'a str),
 
     /// Raw bytes.
     Bytes(&'a [u8]),
 
-    /// [`multibase`]-encoded `str`.
+    /// Raw bytes of a UTF-8 string.
+    StrBytes(&'a [u8]),
+
+    /// An `str` of [`multibase`]-encoded bytes.
     ByteStr(&'a str),
 
     ///
@@ -56,7 +59,10 @@ pub enum Token<'a> {
     MapEnd,
 
     ///
-    Link(CID),
+    LinkStr(&'a str),
+
+    ///
+    LinkBytes(&'a [u8]),
     // RawValue?
 
     // TODO: a link to another `Dag`, possibly of another format
