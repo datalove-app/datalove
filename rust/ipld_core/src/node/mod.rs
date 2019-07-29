@@ -23,23 +23,31 @@ pub enum Kind {
 
 ///
 pub trait Node<'a>: Serialize {
-    ///
+    /// The key type of a Map-like `Node`.
     type Key: 'a + Into<Key> = &'static str;
 
-    ///
+    /// The value type of a List- or Map-like `Node`.
     type Child: 'a + Node<'a> = ();
 
+    /// [`Iterator`] over `&Self::Child` of a List-like `Node`.
     ///
+    /// [`Iterator`]:
     type ListIter: Iterator<Item = &'a Self::Child> = slice::Iter<'a, Self::Child>;
 
+    /// [`Iterator`] over `&mut Self::Child` of a List-like `Node`.
     ///
+    /// [`Iterator`]:
     type ListIterMut: Iterator<Item = &'a mut Self::Child> = slice::IterMut<'a, Self::Child>;
 
+    /// [`Iterator`] over `(&Self::Key, &Self::Child) of a Map-like `Node`.
     ///
+    /// [`Iterator`]:
     type MapIter: Iterator<Item = (&'a Self::Key, &'a Self::Child)> =
         slice::Iter<'a, (Self::Key, Self::Child)>;
 
+    /// [`Iterator`] over `(&Self::Key, &mut Self::Child) of a Map-like `Node`.
     ///
+    /// [`Iterator`]:
     type MapIterMut: Iterator<Item = (&'a Self::Key, &'a mut Self::Child)> =
         slice::IterMut<'a, (Self::Key, Self::Child)>;
 
@@ -432,12 +440,12 @@ where
     }
 
     #[inline]
-    fn map_iter(&'a self) -> Option<Self::MapIter> {
+    fn map_iter(&self) -> Option<Self::MapIter> {
         None
     }
 
     #[inline]
-    fn map_iter_mut(&'a mut self) -> Option<Self::MapIterMut> {
+    fn map_iter_mut(&mut self) -> Option<Self::MapIterMut> {
         None
     }
 

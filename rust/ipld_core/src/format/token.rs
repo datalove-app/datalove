@@ -1,6 +1,6 @@
 use crate::{
-    base::Base,
     cid::CID,
+    multibase::Base,
     node::{Float, Int},
 };
 use nom::{
@@ -29,10 +29,16 @@ pub enum Token<'a> {
     Bool(bool),
 
     ///
-    Integer(Int),
+    IntegerStr(&'a str),
 
     ///
-    Float(Float),
+    IntegerBytes(&'a [u8]),
+
+    ///
+    FloatStr(&'a str),
+
+    ///
+    FloatBytes(&'a [u8]),
 
     /// A UTF-8 string.
     Str(&'a str),

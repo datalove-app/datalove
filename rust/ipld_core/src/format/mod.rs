@@ -4,7 +4,7 @@ mod encoder;
 mod token;
 
 pub use self::{encoder::Encoder, token::Token};
-use crate::{base::Base, Error, Node, CID};
+use crate::{multibase::Base, Error, Node, CID};
 use futures::{Sink, Stream};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Read, Write};

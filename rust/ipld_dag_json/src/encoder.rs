@@ -1,7 +1,8 @@
 use delegate::delegate;
 use ipld_core::{
-    base::{to_name, Base, Encodable},
-    format, CID,
+    format,
+    multibase::{to_name, Base, Encodable},
+    CID,
 };
 use serde::ser::{self, Serialize, Serializer};
 use serde_json::{
@@ -593,7 +594,7 @@ where
 mod tests {
     use crate::encoder::to_string;
     use ipld_core::{
-        base::{Base, Encodable},
+        multibase::{Base, Encodable},
         FreeNode, CID,
     };
     use serde::Serialize;

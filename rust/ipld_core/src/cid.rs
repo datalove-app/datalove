@@ -3,9 +3,9 @@
 // TODO: add decoder functions for the various rust types (that can parse multibases from strings)
 
 use crate::{
-    base::{Base, Decodable, Encodable},
     error::Error,
     format::{Encoder, Token},
+    multibase::{Base, Decodable, Encodable},
     node::{Kind, Node},
     Prefix, Version,
 };

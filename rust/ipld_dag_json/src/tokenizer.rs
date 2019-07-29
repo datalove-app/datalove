@@ -1,7 +1,9 @@
-use ipld_core::{Token, CID};
-use nom::{number::streaming::double, IResult};
-use std::str::FromStr;
-use util::parse_string;
+use ipld_core::Token;
+use nom;
+use util::{
+    parse_string, semicolon, string_bytes, tag_bytes_end, tag_bytes_start, tag_link_start,
+    tag_map_end,
+};
 
 /******************************************************************************
  * Main single token parser
@@ -17,8 +19,8 @@ named!(lex<&[u8], Token>, alt!(
 named!(primitive<&[u8], Token>, alt!(
    bytes
    | link
-   | null
    | boolean
+   | null
    | number
    | string
 ));
@@ -31,53 +33,53 @@ named!(compound_end<&[u8], Token>, alt!(list_end | map_end));
  *****************************************************************************/
 
 /*
- *  Null
+ * Null
  */
-named!(null<&[u8], Token>, value!(Token::Null, tag!(b"null")));
+named!(null<&[u8], Token>, value!(Token::Null, util::tag_null));
 
 /*
- *  Boolean
+ * Boolean
  */
 named!(boolean<&[u8], Token>, alt!(
-    value!(Token::Bool(true), tag!(b"true")) |
-    value!(Token::Bool(false), tag!(b"false"))
+    value!(Token::Bool(false), util::tag_false) |
+    value!(Token::Bool(true), util::tag_true)
 ));
 
 /*
- *  Number
+ * Number
  */
 named!(number<&[u8], Token>, alt!(float | integer));
+named!(float<&[u8], Token>, map!(util::float_as_str, Token::FloatStr));
 named!(integer<&[u8], Token>, alt!(util::signed | util::unsigned));
-named!(float<&[u8], Token>, map!(double, |f| Token::Float(f.into())));
 
 /*
- *  String
+ * String
  */
 named!(string<&[u8], Token>, map!(util::parse_string, Token::Str));
 
 /*
- *  Bytes
+ * Bytes
  */
 named!(bytes<&[u8], Token>, do_parse!(
-        tag!(b"{\"/\":{") >>
-        parse_string >>
-        eat_separator!(b":") >>
-    s:  parse_string >>
-        tag!(b"}}") >>
-        (Token::ByteStr(&s))
+            tag_bytes_start >>
+    _base:  string_bytes >>
+            semicolon >>
+    bytes:  parse_string >>
+            tag_bytes_end >>
+            (Token::ByteStr(&bytes))
 ));
 
 /*
  * List
  */
-named!(list_start<&[u8], Token>, value!(Token::List(None), tag!(b"[")));
-named!(list_end<&[u8], Token>, value!(Token::ListEnd, tag!(b"]")));
+named!(list_start<&[u8], Token>, value!(Token::List(None), util::tag_list_start));
+named!(list_end<&[u8], Token>, value!(Token::ListEnd, util::tag_list_end));
 
 /*
  * Map
  */
-named!(map_start<&[u8], Token>, value!(Token::Map(None), tag!(b"{")));
-named!(map_end<&[u8], Token>, value!(Token::MapEnd, tag!(b"}")));
+named!(map_start<&[u8], Token>, value!(Token::Map(None), util::tag_map_start));
+named!(map_end<&[u8], Token>, value!(Token::MapEnd, util::tag_map_end));
 named!(map_key<&[u8], Token>, alt!(integer | string));
 // named!(map_pair<&[u8], (Token, Token)>, do_parse!(
 //     k:  map_key >>
@@ -91,73 +93,88 @@ named!(map_key<&[u8], Token>, alt!(integer | string));
  * Link
  */
 named!(link<&[u8], Token>, do_parse!(
-            tag!(b"{\"/\":") >>
-    cid:    map_res!(parse_string, CID::from_str) >>
-            // TODO: possibly move parse until after the matches
-            // not doing so might not consume the end tag
-            tag!(b"}") >>
-            (Token::Link(cid))
+                tag_link_start >>
+    cid_str:    parse_string >>
+                tag_map_end >>
+                (Token::LinkStr(cid_str))
 ));
 
 #[allow(dead_code)]
 mod util {
-    use ipld_core::{Int, Token};
-    use nom::{character::streaming::digit1, IResult};
-    use std::str::{from_utf8, FromStr};
+    use ipld_core::Token;
+    use nom::{
+        character::streaming::{alphanumeric1, digit1},
+        number::streaming::recognize_float,
+    };
 
-    type StrResult<'a, E> = IResult<&'a [u8], &'a str, E>;
+    /****************************************/
+    // string-related
+    /****************************************/
 
-    // TODO: possibly move parse until after the matches
-    named!(pub(crate) parse_string<&[u8], &str>, do_parse!(
-        tag!(b"\"") >>
-        s: map_res!(take_until!("\""), from_utf8) >>
-        tag!(b"\"") >>
-        (s)
+    // TODO: support unicode characters
+    fn is_string_char(c: u8) -> bool {
+        c != b'"' && c != b'\\'
+    }
+
+    named_attr!(#[inline], pub(crate) string_bytes<&[u8], &[u8]>, do_parse!(
+            tag!(b"\"") >>
+        // s:  take_until!("\"") >>
+        s:  escaped!(alphanumeric1, '\\', one_of!("\"n\\")) >>
+            tag!(b"\"") >>
+            (s)
+    ));
+
+    named_attr!(#[inline], pub(crate) parse_string<&[u8], &str>, map!(
+        string_bytes,
+        |string| unsafe { std::str::from_utf8_unchecked(string) }
     ));
 
     /****************************************/
-
-    named!(pub(crate) signed<&[u8], Token>, do_parse!(
-        tag!(b"-") >>
-        token: alt!(
-            map_res!(parse_int_str, to_int_token::<i64>) |
-            map_res!(parse_int_str, to_int_token::<i128>)
-        ) >>
-        (token)
-    ));
-    named!(pub(crate) unsigned<&[u8], Token>, do_parse!(
-        opt!(tag!(b"+")) >>
-        token: alt!(
-            map_res!(parse_int_str, to_uint_token::<u64>) |
-            map_res!(parse_int_str, to_uint_token::<u128>)
-        ) >>
-        (token)
-    ));
-
-    #[inline]
-    fn to_int_token<N>(s: &str) -> Result<Token, N::Err>
-    where
-        N: FromStr + From<i8> + std::ops::Mul<Output = N> + Into<Int>,
-    {
-        // negated i64/i128 is always in-bounds, so this should always be safe
-        s.parse::<N>()
-            .map(|n| Token::Integer(n.mul(N::from(-1)).into()))
-    }
-
-    #[inline]
-    fn to_uint_token<N>(s: &str) -> Result<Token, N::Err>
-    where
-        N: FromStr + Into<Int>,
-    {
-        s.parse::<N>().map(|n| Token::Integer(n.into()))
-    }
-
-    named!(parse_int_str<&[u8], &str>, map_res!(digit1, from_utf8));
-
+    // number-related
     /****************************************/
 
-    named!(pub(crate) comma<&[u8], Option<&[u8]>>, opt!(eat_separator!(b",")));
-    named!(pub(crate) semicolon<&[u8], &[u8]>, eat_separator!(b":"));
+    named_attr!(#[inline], pub(crate) signed<&[u8], Token>, do_parse!(
+                peek!(tag!(b"-")) >>
+        token:  map!(int_as_str, Token::IntegerStr) >>
+                (token)
+    ));
+    named_attr!(#[inline], pub(crate) unsigned<&[u8], Token>, do_parse!(
+                opt!(tag!(b"+")) >>
+        token:  map!(uint_as_str, Token::IntegerStr) >>
+                (token)
+    ));
+
+    named_attr!(#[inline], pub(crate) float_as_str<&[u8], &str>, map!(
+        recognize_float,
+        |string| unsafe { std::str::from_utf8_unchecked(string) }
+    ));
+
+    named_attr!(#[inline], int_as_str<&[u8], &str>, map!(
+        recognize!(preceded!(opt!(tag!(b"-")), digit1)),
+        |string| unsafe { std::str::from_utf8_unchecked(string) }
+    ));
+    named_attr!(#[inline], uint_as_str<&[u8], &str>, map!(
+        digit1,
+        |string| unsafe { std::str::from_utf8_unchecked(string) }
+    ));
+
+    /****************************************/
+    // whitespace, punctuation, tags
+    /****************************************/
+
+    named_attr!(#[inline], pub(crate) tag_null<&[u8], &[u8]>, tag!(b"null"));
+    named_attr!(#[inline], pub(crate) tag_true<&[u8], &[u8]>, tag!(b"true"));
+    named_attr!(#[inline], pub(crate) tag_false<&[u8], &[u8]>, tag!(b"false"));
+    named_attr!(#[inline], pub(crate) tag_bytes_start<&[u8], &[u8]>, tag!(b"{\"/\":{"));
+    named_attr!(#[inline], pub(crate) tag_bytes_end<&[u8], &[u8]>, tag!(b"}}"));
+    named_attr!(#[inline], pub(crate) tag_list_start<&[u8], &[u8]>, tag!(b"["));
+    named_attr!(#[inline], pub(crate) tag_list_end<&[u8], &[u8]>, tag!(b"]"));
+    named_attr!(#[inline], pub(crate) tag_map_start<&[u8], &[u8]>, tag!(b"{"));
+    named_attr!(#[inline], pub(crate) tag_map_end<&[u8], &[u8]>, tag!(b"}"));
+    named_attr!(#[inline], pub(crate) tag_link_start<&[u8], &[u8]>, tag!(b"{\"/\":"));
+
+    named_attr!(#[inline], pub(crate) comma<&[u8], Option<&[u8]>>, opt!(eat_separator!(b",")));
+    named_attr!(#[inline], pub(crate) semicolon<&[u8], &[u8]>, eat_separator!(b":"));
 
     // named!(whitespace<&[u8], Token>, ws!)
     // named!(esc_quote<&[u8]>, escaped!(b"\\\"", '\\', |_| "\""));
@@ -167,7 +184,7 @@ mod util {
 mod tests {
     use crate::{encoder::to_vec, tokenizer};
     use ipld_core::{
-        base::{Base, Encodable},
+        multibase::{Base, Encodable},
         Token,
     };
     use serde::Serialize;
@@ -176,70 +193,84 @@ mod tests {
 
     #[test]
     fn test_null() {
-        let json = to_json(None as Option<()>);
+        let json = to_newlined_json(None as Option<()>);
         let (_, actual) = tokenizer::null(&json).unwrap();
         assert_eq!(Token::Null, actual);
     }
 
     #[test]
-    fn test_true() {
-        let json = to_json(true);
+    fn test_boolean() {
+        let json = to_newlined_json(true);
         let (_, actual) = tokenizer::boolean(&json).unwrap();
         assert_eq!(Token::Bool(true), actual);
-    }
 
-    #[test]
-    fn test_false() {
-        let json = to_json(false);
+        let json = to_newlined_json(false);
         let (_, actual) = tokenizer::boolean(&json).unwrap();
         assert_eq!(Token::Bool(false), actual);
     }
 
     #[test]
     fn test_integer() {
-        let num: u128 = std::u128::MAX.into();
-        let json = to_json(&num);
+        let num: i128 = std::i128::MIN;
+        let json = to_newlined_json(&num);
         let (_, actual) = tokenizer::integer(&json).unwrap();
-        assert_eq!(Token::Integer(num.into()), actual);
+        assert_eq!(Token::IntegerStr(&format(num)), actual);
+
+        let num: u128 = std::u128::MAX;
+        let json = to_newlined_json(&num);
+        let (_, actual) = tokenizer::integer(&json).unwrap();
+        assert_eq!(Token::IntegerStr(&format(num)), actual);
     }
 
     #[test]
     fn test_float() {
         let pi: f64 = 3.14159265358979323846264338327950288;
-        let json = to_json(&pi);
+        let json = to_newlined_json(&pi);
         let (_, actual) = tokenizer::float(&json).unwrap();
-        assert_eq!(Token::Float(pi.into()), actual);
+        assert_eq!(Token::FloatStr(&format(pi)), actual);
     }
 
     #[test]
     fn test_string() {
         let string = "hello world";
-        let json = to_json(&string);
+        let json = to_newlined_json(&string);
+        println!("{:?}\n{:?}", format_vec(&json), &json);
+
         let (_, actual) = tokenizer::string(&json).unwrap();
-        assert_eq!(Token::Str(&string), actual);
+        assert_eq!(Token::StrBytes(&string.as_bytes()), actual);
 
         let string = r#"hello "double-quoted world""#;
-        let json = to_json(&string);
+        let json = to_newlined_json(&string);
+        println!("{:?}\n", &json);
+        // println!("{:?}\n{:?}", format_vec(&json), &json);
+
         let (_, actual) = tokenizer::string(&json).unwrap();
-        assert_eq!(Token::Str(&string), actual);
+        assert_eq!(Token::StrBytes(&string.as_bytes()), actual);
     }
 
     #[test]
     fn test_bytes() {
         let bytes = ByteBuf::from(vec![0, 1, 2, 3]);
         let byte_str = bytes.encode(Base::Base64);
-        let json = to_json(&bytes);
-        println!("{:?}\n{:?}", std::str::from_utf8(&json).unwrap(), &json);
+        let json = to_newlined_json(&bytes);
+        println!("{:?}\n{:?}", format_vec(&json), &json);
 
         let (_, actual) = tokenizer::bytes(&json).unwrap();
-
         assert_eq!(Token::ByteStr(&byte_str), actual);
     }
 
     // Newline ends each vec
-    fn to_json<T: Serialize>(t: T) -> Vec<u8> {
+    fn to_newlined_json<T: Serialize>(t: T) -> Vec<u8> {
         let mut vec = to_vec(&t).unwrap();
         writeln!(&mut vec).unwrap();
         vec
+    }
+
+    fn format<T: std::fmt::Display>(t: T) -> String {
+        format!("{}", t)
+    }
+
+    fn format_vec(v: &Vec<u8>) -> &str {
+        std::str::from_utf8(v).unwrap()
     }
 }

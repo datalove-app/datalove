@@ -1,4 +1,4 @@
-use crate::{base::Base, CID};
+use crate::{multibase::Base, CID};
 use serde::Serializer;
 
 ///

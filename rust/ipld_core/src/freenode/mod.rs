@@ -15,9 +15,9 @@
 mod serde;
 
 use crate::{
-    base::Base,
     cid::CID,
     format::Token,
+    multibase::Base,
     node::{Float, Int, Key, Kind, Node},
 };
 use indexmap::{

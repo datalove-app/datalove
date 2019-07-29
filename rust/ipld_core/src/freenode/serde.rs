@@ -1,4 +1,4 @@
-use crate::{base::Base, format::Encoder, FreeNode};
+use crate::{format::Encoder, multibase::Base, FreeNode};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 impl Serialize for FreeNode {
