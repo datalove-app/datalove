@@ -27,29 +27,29 @@ pub trait Node<'a>: Serialize {
     type Key: 'a + Into<Key> = &'static str;
 
     /// The value type of a List- or Map-like `Node`.
-    type Child: 'a + Node<'a> = ();
+    type Element: 'a + Node<'a> = ();
 
-    /// [`Iterator`] over `&Self::Child` of a List-like `Node`.
+    /// [`Iterator`] over `&Self::Element` of a List-like `Node`.
     ///
     /// [`Iterator`]:
-    type ListIter: Iterator<Item = &'a Self::Child> = slice::Iter<'a, Self::Child>;
+    type ListIter: Iterator<Item = &'a Self::Element> = slice::Iter<'a, Self::Element>;
 
-    /// [`Iterator`] over `&mut Self::Child` of a List-like `Node`.
+    /// [`Iterator`] over `&mut Self::Element` of a List-like `Node`.
     ///
     /// [`Iterator`]:
-    type ListIterMut: Iterator<Item = &'a mut Self::Child> = slice::IterMut<'a, Self::Child>;
+    type ListIterMut: Iterator<Item = &'a mut Self::Element> = slice::IterMut<'a, Self::Element>;
 
-    /// [`Iterator`] over `(&Self::Key, &Self::Child) of a Map-like `Node`.
+    /// [`Iterator`] over `(&Self::Key, &Self::Element) of a Map-like `Node`.
     ///
     /// [`Iterator`]:
-    type MapIter: Iterator<Item = (&'a Self::Key, &'a Self::Child)> =
-        slice::Iter<'a, (Self::Key, Self::Child)>;
+    type MapIter: Iterator<Item = (&'a Self::Key, &'a Self::Element)> =
+        slice::Iter<'a, (Self::Key, Self::Element)>;
 
-    /// [`Iterator`] over `(&Self::Key, &mut Self::Child) of a Map-like `Node`.
+    /// [`Iterator`] over `(&Self::Key, &mut Self::Element) of a Map-like `Node`.
     ///
     /// [`Iterator`]:
-    type MapIterMut: Iterator<Item = (&'a Self::Key, &'a mut Self::Child)> =
-        slice::IterMut<'a, (Self::Key, Self::Child)>;
+    type MapIterMut: Iterator<Item = (&'a Self::Key, &'a mut Self::Element)> =
+        slice::IterMut<'a, (Self::Key, Self::Element)>;
 
     ///
     fn kind(&self) -> Kind;
@@ -128,25 +128,25 @@ pub trait Node<'a>: Serialize {
 
     ///
     #[inline]
-    fn traverse_index(&self, _index: usize) -> Option<&Self::Child> {
+    fn traverse_index(&self, _index: usize) -> Option<&Self::Element> {
         None
     }
 
     ///
     #[inline]
-    fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Child> {
+    fn traverse_index_mut(&mut self, _index: usize) -> Option<&mut Self::Element> {
         None
     }
 
     ///
     #[inline]
-    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
+    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Element> {
         None
     }
 
     ///
     #[inline]
-    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
+    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Element> {
         None
     }
 }
@@ -276,7 +276,7 @@ where
     T: Node<'a>,
 {
     type Key = T::Key;
-    type Child = T::Child;
+    type Element = T::Element;
     type ListIter = T::ListIter;
     type ListIterMut = T::ListIterMut;
     type MapIter = T::MapIter;
@@ -353,22 +353,22 @@ where
     }
 
     #[inline]
-    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
+    fn traverse_index(&self, index: usize) -> Option<&Self::Element> {
         match_option!(self, Some(node) => node.traverse_index(index))
     }
 
     #[inline]
-    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Element> {
         match_option!(self, Some(node) => node.traverse_index_mut(index))
     }
 
     #[inline]
-    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
+    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Element> {
         match_option!(self, Some(node) => node.traverse_field(key))
     }
 
     #[inline]
-    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
+    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Element> {
         match_option!(self, Some(node) => node.traverse_field_mut(key))
     }
 }
@@ -378,11 +378,11 @@ where
     T: 'a + Node<'a>,
 {
     type Key = &'static str;
-    type Child = T;
-    type ListIter = slice::Iter<'a, Self::Child>;
-    type ListIterMut = slice::IterMut<'a, Self::Child>;
-    type MapIter = MapIter<'a, Self::Key, Self::Child>;
-    type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
+    type Element = T;
+    type ListIter = slice::Iter<'a, Self::Element>;
+    type ListIterMut = slice::IterMut<'a, Self::Element>;
+    type MapIter = MapIter<'a, Self::Key, Self::Element>;
+    type MapIterMut = MapIterMut<'a, Self::Key, Self::Element>;
 
     #[inline]
     fn kind(&self) -> Kind {
@@ -450,22 +450,120 @@ where
     }
 
     #[inline]
-    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
+    fn traverse_index(&self, index: usize) -> Option<&Self::Element> {
         self.get(index)
     }
 
     #[inline]
-    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Element> {
         self.get_mut(index)
     }
 
     #[inline]
-    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Child> {
+    fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Element> {
         None
     }
 
     #[inline]
-    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Child> {
+    fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Element> {
         None
     }
 }
+
+// impl<'a, K, V> Node<'a> for std::collections::HashMap<K, V>
+// where
+//     K: 'a + Into<Key>,
+//     V: 'a + Node<'a>,
+// {
+//     type Key = &'static str;
+//     type Element = T;
+//     type ListIter = slice::Iter<'a, Self::Element>;
+//     type ListIterMut = slice::IterMut<'a, Self::Element>;
+//     type MapIter = MapIter<'a, Self::Key, Self::Element>;
+//     type MapIterMut = MapIterMut<'a, Self::Key, Self::Element>;
+
+//     #[inline]
+//     fn kind(&self) -> Kind {
+//         Kind::List(Node::len(self))
+//     }
+
+//     #[inline]
+//     fn len(&self) -> Option<usize> {
+//         Some(self.len())
+//     }
+
+//     #[inline]
+//     fn is_null(&self) -> bool {
+//         false
+//     }
+
+//     #[inline]
+//     fn as_bool(&self) -> Option<bool> {
+//         None
+//     }
+
+//     #[inline]
+//     fn as_int(&self) -> Option<Int> {
+//         None
+//     }
+
+//     #[inline]
+//     fn as_float(&self) -> Option<Float> {
+//         None
+//     }
+
+//     #[inline]
+//     fn as_str(&self) -> Option<&str> {
+//         None
+//     }
+
+//     #[inline]
+//     fn as_bytes(&self) -> Option<&[u8]> {
+//         None
+//     }
+
+//     #[inline]
+//     fn as_link(&self) -> Option<CID> {
+//         None
+//     }
+
+//     #[inline]
+//     fn list_iter(&'a self) -> Option<Self::ListIter> {
+//         Some(self.iter())
+//     }
+
+//     #[inline]
+//     fn list_iter_mut(&'a mut self) -> Option<Self::ListIterMut> {
+//         Some(self.iter_mut())
+//     }
+
+//     #[inline]
+//     fn map_iter(&self) -> Option<Self::MapIter> {
+//         None
+//     }
+
+//     #[inline]
+//     fn map_iter_mut(&mut self) -> Option<Self::MapIterMut> {
+//         None
+//     }
+
+//     #[inline]
+//     fn traverse_index(&self, index: usize) -> Option<&Self::Element> {
+//         self.get(index)
+//     }
+
+//     #[inline]
+//     fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Element> {
+//         self.get_mut(index)
+//     }
+
+//     #[inline]
+//     fn traverse_field(&self, _key: &Self::Key) -> Option<&Self::Element> {
+//         None
+//     }
+
+//     #[inline]
+//     fn traverse_field_mut(&mut self, _key: &Self::Key) -> Option<&mut Self::Element> {
+//         None
+//     }
+// }

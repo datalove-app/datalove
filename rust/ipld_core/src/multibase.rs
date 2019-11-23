@@ -5,7 +5,7 @@ pub use multibase::{decode, encode, Base, Decodable, Encodable};
 
 ///
 #[inline]
-pub fn to_name(base: Base) -> &'static str {
+pub fn to_str(base: Base) -> &'static str {
     match base {
         Base::Base2 => "base2",
         Base::Base8 => "base8",
@@ -26,7 +26,7 @@ pub fn to_name(base: Base) -> &'static str {
 
 ///
 #[inline]
-pub fn from_name(name: &str) -> Result<Base, Error> {
+pub fn from_str(name: &str) -> Result<Base, Error> {
     match name {
         "base2" => Ok(Base::Base2),
         "base8" => Ok(Base::Base8),

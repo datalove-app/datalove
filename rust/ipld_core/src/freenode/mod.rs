@@ -94,11 +94,11 @@ macro_rules! match_freenode {
 
 impl<'a> Node<'a> for FreeNode {
     type Key = Key;
-    type Child = FreeNode;
-    type ListIter = slice::Iter<'a, Self::Child>;
-    type ListIterMut = slice::IterMut<'a, Self::Child>;
-    type MapIter = MapIter<'a, Self::Key, Self::Child>;
-    type MapIterMut = MapIterMut<'a, Self::Key, Self::Child>;
+    type Element = FreeNode;
+    type ListIter = slice::Iter<'a, Self::Element>;
+    type ListIterMut = slice::IterMut<'a, Self::Element>;
+    type MapIter = MapIter<'a, Self::Key, Self::Element>;
+    type MapIterMut = MapIterMut<'a, Self::Key, Self::Element>;
 
     #[inline]
     fn kind(&self) -> Kind {
@@ -183,22 +183,22 @@ impl<'a> Node<'a> for FreeNode {
     }
 
     #[inline]
-    fn traverse_index(&self, index: usize) -> Option<&Self::Child> {
+    fn traverse_index(&self, index: usize) -> Option<&Self::Element> {
         match_freenode!(self, FreeNode::List(vec) => vec.get(index))
     }
 
     #[inline]
-    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Child> {
+    fn traverse_index_mut(&mut self, index: usize) -> Option<&mut Self::Element> {
         match_freenode!(self, FreeNode::List(vec) => vec.get_mut(index))
     }
 
     #[inline]
-    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Child> {
+    fn traverse_field(&self, key: &Self::Key) -> Option<&Self::Element> {
         match_freenode!(self, FreeNode::Map(map) => map.get(key))
     }
 
     #[inline]
-    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Child> {
+    fn traverse_field_mut(&mut self, key: &Self::Key) -> Option<&mut Self::Element> {
         match_freenode!(self, FreeNode::Map(map) => map.get_mut(key))
     }
 }

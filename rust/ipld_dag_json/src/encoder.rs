@@ -1,7 +1,7 @@
 use delegate::delegate;
 use ipld_core::{
     format,
-    multibase::{to_name, Base, Encodable},
+    multibase::{to_str, Base, Encodable},
     CID,
 };
 use serde::ser::{self, Serialize, Serializer};
@@ -72,7 +72,7 @@ where
         use ser::SerializeStructVariant as SV;
 
         let base = base.or(Some(Base::Base64)).unwrap();
-        let base_name = to_name(base);
+        let base_name = to_str(base);
 
         let mut sv_ser = self.serialize_struct_variant("", 0, "/", 1)?;
         SV::serialize_field(&mut sv_ser, base_name, &bytes.encode(base))?;
