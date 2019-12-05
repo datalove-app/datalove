@@ -5,13 +5,15 @@ authors = ["Sunny G <sunny.gonna@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-cid = "0.3"
+cid = { git = "https://github.com/datalove-app/rust-cid" }
 derive_more = "0.15"
-futures = "0.1"
+futures = { version = "^0.3", features = ["compat"] }
 indexmap = "1.0"
 integer-encoding = "1.0"
 multibase = "0.6"
 multicodec = "0.1"
 multihash = "0.8"
 nom = "5.0.0"
-serde = {version = "1.0", features = ["derive"]}
+serde = { version = "1.0", features = ["derive"] }
+tendril = "0.4.1"
+buf_redux = "0.8.4"

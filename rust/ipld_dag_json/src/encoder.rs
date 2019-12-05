@@ -115,7 +115,7 @@ where
     }
 
     /*
-     * The following are either directly ripped and adapted from `serde_json`, or delegate to the underlying `serde_json::Serializer`.
+     * The following either are directly ripped and adapted from `serde_json`, or delegate to the underlying `serde_json::Serializer`.
      */
     delegate! {
         target self.0 {
@@ -171,7 +171,7 @@ where
     }
 
     /*
-     * Duplicated here b/c we need to recursively send our `Encoder` (rather than `serde_json::Serializer`).
+     * The following code is duplicated here b/c we need to recursively descend with our `Encoder` rather than the `serde_json::Serializer`.
      * This will be necessary until we can override trait method impls on types from external crates.
      */
 

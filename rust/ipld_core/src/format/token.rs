@@ -3,10 +3,12 @@ use crate::{
     multibase::Base,
     node::{Float, Int},
 };
+use futures::{AsyncRead, Stream};
 use nom::{
     error::{ErrorKind, ParseError},
     IResult, InputIter, InputLength, InputTake, InputTakeAtPosition, Slice,
 };
+use serde::Deserialize;
 use std::{iter::Enumerate, slice::Iter};
 
 // TODO: ideas:
@@ -18,7 +20,7 @@ use std::{iter::Enumerate, slice::Iter};
 //          - a pull-type method to parse n tokens and attempt to resolve the selector
 
 ///
-#[derive(Clone, Copy, Debug, From, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token<'a> {
     ///
     EOF,
@@ -73,13 +75,6 @@ pub enum Token<'a> {
 
     ///
     LinkStr(&'a str),
-    // RawValue?
-
-    // TODO: a link to another `Dag`, possibly of another format
-    // LinkedData(Option<Prefix>),
-
-    // TODO:
-    // LinkedDataEnd,
 }
 
 impl<'a> InputLength for Token<'a> {
@@ -89,20 +84,46 @@ impl<'a> InputLength for Token<'a> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum State {
-    Initial,
+/// Tokenizer
+pub trait Tokenizer {
+    fn start(input: &[u8]) -> IResult<&[u8], Token>;
+    fn list_end(input: &[u8]) -> IResult<&[u8], Token>;
+    fn map_end(input: &[u8]) -> IResult<&[u8], Token>;
+    fn map_key(input: &[u8]) -> IResult<&[u8], Token>;
+}
+
+// impl<'a, T> Iterator for T where T: Tokenizer {
+//     type Item = LexResult<'a>;
+// }
+
+// impl<'a, T> Stream for T where T: Tokenizer {
+//     type Item = LexResult<'a>;
+// }
+
+#[derive(Debug)]
+enum State {
     ListStart,
-    ListElement,
     MapStart,
-    MapValue,
+    MapKey,
     Finished,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug)]
+pub struct Lexer<'a, T> {
+    input: &'a [u8],
+    position: usize,
+    states: Vec<State>,
+    tokenizer: std::marker::PhantomData<T>,
+}
+
+// pub struct AsyncLexer<'a, T> {
+//     lexer: Lexer<'a, T>,
+// }
+
+#[derive(Debug)]
 pub enum LexResult<'a> {
     ///
-    Ok(&'a [u8], Token<'a>),
+    Token(Token<'a>),
 
     ///
     Incomplete(usize, usize),
@@ -111,155 +132,155 @@ pub enum LexResult<'a> {
     Err,
 }
 
-pub struct Tokenizer<'a, S, E>
-where
-    S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-    E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-{
-    ///
-    ///
-    /// TODO: look into slice_deque or buf_reduxe6
-    input: &'a [u8],
-    /// Position (in bytes) of the input byte (stream).
-    position: usize,
-    // length: usize,
-    states: Vec<State>,
+// pub struct Tokenizer<'a, S, E>
+// where
+//     S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+//     E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+// {
+//     ///
+//     ///
+//     /// TODO: look into slice_deque or buf_reduxe6
+//     input: &'a [u8],
+//     /// Position (in bytes) of the input byte (stream).
+//     position: usize,
+//     // length: usize,
+//     states: Vec<State>,
 
-    lex_start: S,
-    lex_end: E,
-}
+//     lex_start: S,
+//     lex_end: E,
+// }
 
-macro_rules! lex_start {
-    ($lex:expr, $input:expr) => {
-        match ($lex)($input) {
-            Ok(res) => res,
-            // Err(Incomplete) => return Some(LexResult::Incomplete(_))
-            Err(_) => return None,
-        }
-    };
-}
+// macro_rules! lex_start {
+//     ($lex:expr, $input:expr) => {
+//         match ($lex)($input) {
+//             Ok(res) => res,
+//             // Err(Incomplete) => return Some(LexResult::Incomplete(_))
+//             Err(_) => return None,
+//         }
+//     };
+// }
 
-impl<'a, S, E> Tokenizer<'a, S, E>
-where
-    S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-    E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-{
-    pub fn new(input: &'a [u8], lex_start: S, lex_end: E) -> Self {
-        Tokenizer {
-            input,
-            position: 0,
-            states: vec![State::Initial],
-            lex_start,
-            lex_end,
-        }
-    }
+// impl<'a, S, E> Tokenizer<'a, S, E>
+// where
+//     S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+//     E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+// {
+// pub fn new(input: &'a [u8], lex_start: S, lex_end: E) -> Self {
+//     Tokenizer {
+//         input,
+//         position: 0,
+//         states: vec![State::Initial],
+//         lex_start,
+//         lex_end,
+//     }
+// }
 
-    // fn extend(&mut self, input: &[u8]) {
-    //     self.input.copy_from_slice(input)
-    // }
+// fn extend(&mut self, input: &[u8]) {
+//     self.input.copy_from_slice(input)
+// }
 
-    ///
-    /// lex_start -> token
-    /// if State::Finished => None
-    /// if State::Initial
-    ///         if list/map start
-    ///             push State::ListStart/MapStart
-    ///         if list/map end
-    ///
-    ///             return Token::Finished
-    ///             // pop current state, assert that it is State::ListStart/MapStart
-    ///                 // if not,
-    ///     return token
-    /// if State::ListStart     (expecting elem)
-    ///     get_token token
-    ///         if list/map start
-    ///         if list/map end
-    /// if State::ListElement   (expecting ...)
-    ///     if can eat a list_separator
-    ///         get_token
-    ///     else
-    ///         expect Token::ListEnd, return error if not found
-    ///
-    /// if State::MapStart      (expecting a key and semicolon)
-    ///     get_token a key token and eat a key_value_separator
-    ///     get_token token
-    /// if State::MapValue      (expecting ...)
-    ///     if can eat a map_separator
-    ///         get_token
-    ///     else
-    ///         expect Token::MapEnd, return error if not found
-    ///
-    fn peek(&self) -> Option<LexResult<'a>> {
-        let state = self.states.last().unwrap();
-        if state.eq(&State::Finished) {
-            return None;
-        }
+// /
+// / lex_start -> token
+// / if State::Finished => None
+// / if State::Initial
+// /         if list/map start
+// /             push State::ListStart/MapStart
+// /         if list/map end
+// /
+// /             return Token::Finished
+// /             // pop current state, assert that it is State::ListStart/MapStart
+// /                 // if not,
+// /     return token
+// / if State::ListStart     (expecting elem)
+// /     get_token token
+// /         if list/map start
+// /         if list/map end
+// / if State::ListElement   (expecting ...)
+// /     if can eat a list_separator
+// /         get_token
+// /     else
+// /         expect Token::ListEnd, return error if not found
+// /
+// / if State::MapStart      (expecting a key and semicolon)
+// /     get_token a key token and eat a key_value_separator
+// /     get_token token
+// / if State::MapValue      (expecting ...)
+// /     if can eat a map_separator
+// /         get_token
+// /     else
+// /         expect Token::MapEnd, return error if not found
+// /
+// fn peek(&self) -> Option<LexResult<'a>> {
+//     let state = self.states.last().unwrap();
+//     if state.eq(&State::Finished) {
+//         return None;
+//     }
 
-        if state.eq(&State::ListElement) {
-            // match
-        }
+//     if state.eq(&State::ListElement) {
+//         // match
+//     }
 
-        let (input, token) = lex_start!(self.lex_start, self.input);
+//     let (input, token) = lex_start!(self.lex_start, self.input);
 
-        match state {
-            State::Initial => match token {
-                Token::ListEnd | Token::MapEnd => Some(LexResult::Err),
-                _ => Some(LexResult::Ok(input, token)),
-            },
-            State::ListStart => None,
-            State::MapStart => None,
-            State::ListElement => None,
-            State::MapValue => None,
-            State::Finished => return None,
-        }
-    }
+//     match state {
+//         State::Initial => match token {
+//             Token::ListEnd | Token::MapEnd => Some(LexResult::Err),
+//             _ => Some(LexResult::Ok(input, token)),
+//         },
+//         State::ListStart => None,
+//         State::MapStart => None,
+//         State::ListElement => None,
+//         State::MapValue => None,
+//         State::Finished => return None,
+//     }
+// }
 
-    // fn eat(&mut self, (input, token): (&'a [u8], Token<'a>)) {
-    //     match self.states.last() {
-    //         State::Initial => match token {
-    //             Token::ListEnd | Token::MapEnd => Some(LexResult::Failure),
-    //             _ => Some(LexResult::Ok(input, token)),
-    //         },
-    //         State::ListStart => None,
-    //         State::MapStart => None,
-    //         State::ListElement => None,
-    //         State::MapValue => None,
-    //         State::Finished => return None,
-    //     }
-    // }
-}
+// fn eat(&mut self, (input, token): (&'a [u8], Token<'a>)) {
+//     match self.states.last() {
+//         State::Initial => match token {
+//             Token::ListEnd | Token::MapEnd => Some(LexResult::Failure),
+//             _ => Some(LexResult::Ok(input, token)),
+//         },
+//         State::ListStart => None,
+//         State::MapStart => None,
+//         State::ListElement => None,
+//         State::MapValue => None,
+//         State::Finished => return None,
+//     }
+// }
+// }
 
-impl<'a, S, E> Iterator for Tokenizer<'a, S, E>
-where
-    S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-    E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
-{
-    type Item = LexResult<'a>;
+// impl<'a, S, E> Iterator for Tokenizer<'a, S, E>
+// where
+//     S: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+//     E: Fn(&'a [u8]) -> IResult<&'a [u8], Token<'a>>,
+// {
+//     type Item = LexResult<'a>;
 
-    /// Produces the next `Token`.
-    ///
-    /// Parses the next token, then performs any tokenizer state changes.
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = self.peek();
-        let (input, token) = match res {
-            None => return None,
-            Some(LexResult::Incomplete(_, _)) => return res,
-            Some(LexResult::Err) => {
-                *self.states.last_mut().unwrap() = State::Finished;
-                return None;
-            }
-            Some(LexResult::Ok(input, token)) => (input, token),
-        };
+//     /// Produces the next `Token`.
+//     ///
+//     /// Parses the next token, then performs any tokenizer state changes.
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let res = self.peek();
+//         let (input, token) = match res {
+//             None => return None,
+//             Some(LexResult::Incomplete(_, _)) => return res,
+//             Some(LexResult::Err) => {
+//                 *self.states.last_mut().unwrap() = State::Finished;
+//                 return None;
+//             }
+//             Some(LexResult::Ok(input, token)) => (input, token),
+//         };
 
-        match token {
-            Token::ListStart(_) => self.states.push(State::ListStart),
-            Token::MapStart(_) => self.states.push(State::MapStart),
-            _ => {}
-        };
+//         match token {
+//             Token::ListStart(_) => self.states.push(State::ListStart),
+//             Token::MapStart(_) => self.states.push(State::MapStart),
+//             _ => {}
+//         };
 
-        None
-    }
-}
+//         None
+//     }
+// }
 
 // /
 // /
@@ -460,3 +481,7 @@ where
 //         self.slice(..)
 //     }
 // }
+
+// TODO: impl feature where any type that can be associated with a particular format can be Deserialized from a Lexer Iterator/Stream
+// impl<'de, T> Deserialize<'de> for T where T: Iterator<Item = IResult> {}
+// impl<'de, T> Deserialize<'de> for T where T: Stream<Item = IResult> {}

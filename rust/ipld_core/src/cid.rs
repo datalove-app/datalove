@@ -15,7 +15,7 @@ use multihash::Hash;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, hash, str};
 
-const V0_PREFIX: Prefix = Prefix {
+pub const V0_PREFIX: Prefix = Prefix {
     version: Version::V0,
     codec: Codec::DagProtobuf,
     mh_type: Hash::SHA2256,
@@ -101,6 +101,21 @@ impl CID {
         }
     }
 
+    ///
+    #[inline]
+    pub fn to_v1(self) -> CID {
+        CID {
+            base: self.base,
+            hash: self.hash,
+            prefix: Prefix {
+                version: Version::V1,
+                codec: self.prefix.codec,
+                mh_type: self.prefix.mh_type,
+                mh_len: self.prefix.mh_len,
+            },
+        }
+    }
+
     /// Defaults to `Base58Btc`.
     #[inline]
     fn to_string_v0(&self) -> String {
@@ -161,6 +176,12 @@ impl Serialize for CID {
 //         Ok(CID::new())
 //     }
 // }
+
+impl fmt::Display for CID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string(None))
+    }
+}
 
 impl Encodable for CID {
     #[inline]

@@ -3,6 +3,10 @@
 use serde::{de, ser};
 use std::{error::Error as StdError, fmt};
 
+// pub fn map_ser_err<E>(error: E) -> Error where E: ser::Error {
+//     Error::Custom(error.description().to_string())
+// }
+
 ///
 #[derive(Debug)]
 pub enum Error {

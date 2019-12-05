@@ -68,13 +68,13 @@ pub enum FreeNode {
     ByteBuf(Vec<u8>, Option<Base>),
 
     /// Represents a list of `FreeNode` nodes.
-    List(Vec<Self>),
+    List(Vec<FreeNode>),
 
     /// Represents a map of `FreeNode` nodes.
     /// Uses an [`IndexMap`] to preserve key order.
     ///
     /// [`IndexMap`]: https://docs.rs/indexmap/1.0.2/indexmap/map/struct.IndexMap.html
-    Map(IndexMap<Key, Self>),
+    Map(IndexMap<Key, FreeNode>),
 
     /// Represents an IPLD [`CID`] [`Link`].
     ///

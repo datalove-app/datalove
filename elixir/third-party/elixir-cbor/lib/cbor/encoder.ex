@@ -4,15 +4,16 @@ defmodule Cbor.Encoder do
 
   def encode(value) when is_nil(value) or is_boolean(value) or value == :undefined,
     do: concat(Types.primitive(), encode_primitive(value))
-
-  def encode(value) when is_integer(value), do: concat(Types.uint(), encode_uint(value))
-  def encode(value) when is_atom(value), do: concat(Types.string(), encode_string(value))
-
+  def encode(value) when is_integer(value),
+    do: concat(Types.uint(), encode_uint(value))
+  def encode(value) when is_atom(value),
+    do: concat(Types.string(), encode_string(value))
   def encode(value) when is_binary(value),
     do: concat(Types.byte_string(), encode_byte_string(value))
-
-  def encode(value) when is_list(value), do: concat(Types.array(), encode_array(value))
-  def encode(value) when is_map(value), do: concat(Types.map(), encode_map(value))
+  def encode(value) when is_list(value),
+    do: concat(Types.array(), encode_array(value))
+  def encode(value) when is_map(value),
+    do: concat(Types.map(), encode_map(value))
 
   def concat(left, right) do
     <<left::bitstring, right::bitstring>>
@@ -52,8 +53,10 @@ defmodule Cbor.Encoder do
 
   def encode_uint(value) when value in 0..23, do: <<value::5>>
   def encode_uint(value) when value in 24..0x100, do: <<24::size(5), value>>
-  def encode_uint(value) when value in 0x101..0x10000, do: <<25::size(5), value::size(16)>>
-  def encode_uint(value) when value in 0x10001..0x100000000, do: <<26::size(5), value::size(32)>>
+  def encode_uint(value) when value in 0x101..0x10000,
+    do: <<25::size(5), value::size(16)>>
+  def encode_uint(value) when value in 0x10001..0x100000000,
+    do: <<26::size(5), value::size(32)>>
   def encode_uint(value) when value in 0x100000001..0x10000000000000000,
     do: <<27::size(5), value::size(64)>>
 

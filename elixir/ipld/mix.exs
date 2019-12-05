@@ -38,6 +38,7 @@ defmodule IPLD.Mixfile do
     [ {:ex_multihash,   path: "../third-party/ex_multihash"},
       {:multibase,      "~> 0.0.1"},
       {:multicodec,     path: "../third-party/ex-multicodec"},
+      {:ord_map,        "~> 0.1.0"},
     ]
   end
 

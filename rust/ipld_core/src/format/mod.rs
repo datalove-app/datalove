@@ -61,30 +61,30 @@ pub trait Format<'de> {
     //     R: Read;
 }
 
-///
-pub trait Decode<'de>: Sized {
-    ///
-    fn decode<D>(&self, decoder: D) -> Result<Self, D::Error>
-    where
-        D: Decoder<'de>;
+// ///
+// pub trait Decode<'de>: Sized {
+//     ///
+//     fn decode<D>(&self, decoder: D) -> Result<Self, D::Error>
+//     where
+//         D: Decoder<'de>;
 
-    ///
-    fn decode_tokens<D, S>(&self, decoder: D, sink: S) -> Result<(), D::Error>
-    where
-        D: Decoder<'de>,
-        S: Sink<SinkItem = Token<'de>>;
-}
+//     ///
+//     fn decode_tokens<D, S>(&self, decoder: D, sink: S) -> Result<(), D::Error>
+//     where
+//         D: Decoder<'de>,
+//         S: Sink<SinkItem = Token<'de>>;
+// }
 
-///
-pub trait Decoder<'de>: Sized {
-    ///
-    type Ok;
+// ///
+// pub trait Decoder<'de>: Sized {
+//     ///
+//     type Ok;
 
-    ///
-    type Error: From<Error>;
+//     ///
+//     type Error: From<Error>;
 
-    ///
-    fn decode<R>(self, blob: R) -> Result<(), Self::Error>
-    where
-        R: Read;
-}
+//     ///
+//     fn decode<R>(self, blob: R) -> Result<(), Self::Error>
+//     where
+//         R: Read;
+// }

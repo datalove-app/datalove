@@ -42,8 +42,8 @@ named_attr!(#[inline], null<&[u8], Token>, value!(Token::Null, util::tag_null));
  * Boolean
  */
 named_attr!(#[inline], boolean<&[u8], Token>, alt!(
-    value!(Token::Bool(false), util::tag_false) |
-    value!(Token::Bool(true), util::tag_true)
+    value!(Token::Bool(true), util::tag_true) |
+    value!(Token::Bool(false), util::tag_false)
 ));
 
 /*

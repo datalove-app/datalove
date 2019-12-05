@@ -1,7 +1,7 @@
 use crate::{multibase::Base, CID};
 use serde::Serializer;
 
-///
+/// Adds IPLD-specific methods to a `serde::Serializer`.
 pub trait Encoder: Serializer {
     // /// Encodes an IPLD Node, returning it's encoded representation as `Vec<u8>` and the resulting `CID`.
     // fn encode<'a, N>(self, node: N) -> Result<(CID, Vec<u8>), Self::Error>
@@ -14,14 +14,14 @@ pub trait Encoder: Serializer {
     //     N: Node<'a>,
     //     W: std::io::Write;
 
-    /// Encodes `&[u8]`.
+    /// Encodes a byte sequence as IPLD bytes.
     ///
-    /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
+    /// By default, serializes `&[u8]` as raw bytes.
     fn encode_bytes(self, bytes: &[u8], base: Option<Base>) -> Result<Self::Ok, Self::Error>;
 
-    /// Encodes an IPLD Link `CID`.
+    /// Encodes a `CID` as an IPLD link.
     ///
-    /// Encodes `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
+    /// By default, encodes the `CID` as bytes if its `multibase::Base` is missing, otherwise as a string.
     fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error>;
 }
 
@@ -30,7 +30,6 @@ impl<T> Encoder for T
 where
     T: Serializer,
 {
-    /// By default, serializes `&[u8]` as bytes, or as a `multibase`-encoded `str`.
     default fn encode_bytes(
         self,
         bytes: &[u8],
@@ -39,7 +38,6 @@ where
         self.serialize_bytes(bytes)
     }
 
-    /// Encodes a `CID` as bytes if `multibase::Base` is missing, otherwise as a string.
     default fn encode_link(self, cid: &CID) -> Result<Self::Ok, Self::Error> {
         match cid.base() {
             None => self.serialize_bytes(&cid.to_vec()),
