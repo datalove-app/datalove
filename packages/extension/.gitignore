@@ -1,5 +1,0 @@
-.vscode
-
-# extension, build
-dist/*.hot-update*
-dist/*.js
