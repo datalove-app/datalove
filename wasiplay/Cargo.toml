@@ -1,0 +1,47 @@
+[package]
+name = "wasiplay"
+version = "0.1.0"
+authors = ["sunny-g <sunny.gonna@gmail.com>"]
+edition = "2018"
+
+################################################################################
+# WASI libs
+#
+# datalove_wasi::runtime:
+#   - uses and is modelled after `wasmtime`
+# datalove_wasi::wasi:
+#   - modelled after `wasmtime-wasi`
+################################################################################
+# demo using WASI executor
+#
+# uses `datalove_wasi::Host` to execute a sample WASI app (eventually one using libipld-schema)
+# - `$ cargo run --example demo`
+################################################################################
+[[bin]]
+name = "demo"
+path = "src/demo.rs"
+
+[target.'cfg(not(target_os="wasi"))'.dependencies]
+cranelift-codegen = "0.50"
+cranelift-entity = "0.50"
+cranelift-wasm = "0.50"
+lazy_static = "1"
+log = { version = "0.4.8", default-features = false }
+target-lexicon = "0.9.0"
+wasi-common = "^0.8"
+wasmtime = "*"
+wasmtime-environ = "^0.8"
+wasmtime-runtime = "^0.8"
+
+################################################################################
+# example WASI app (eventually using libipld-schema)
+#
+# `$ cargo wasi build --bin ipld`
+################################################################################
+[[bin]]
+name = "ipld"
+path = "examples/ipld.rs"
+
+[target.'cfg(target_os="wasi")'.dependencies]
+juniper = "^0.14"
+libipld-schema = { version = "*", features = ["graphql"] }

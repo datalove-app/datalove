@@ -1,4 +1,10 @@
 [workspace]
 members = [
-  "rust/core"
+  "wasiplay"
+  # "lib/core"
 ]
+
+[patch.crates-io]
+errno = { git = "https://github.com/lambda-fairy/rust-errno" }
+libipld-schema = { path = "../datalove-vendor/rust-ipld/schema" }
+net2 = { git = "https://github.com/sunny-g/net2-rs", branch = "wasi" }
