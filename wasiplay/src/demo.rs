@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate lazy_static;
 
-mod runtime;
+mod host;
 mod wasi;
 
-use runtime::Host;
-use std::env;
+use host::Host;
+use std::{env, fs::File};
 
 /** TODO:
  *  - get this to run (capabilities? arguments?)
@@ -15,19 +15,35 @@ use std::env;
  */
 
 lazy_static! {
-    static ref WASM_LOCATION: String = {
-        let path = env::var("WASM_FILE").expect("Failed to load wasm file env var WASM_FILE");
-
-        String::from(path)
-    };
+    static ref APP_NAME: String =
+        env::var("APP_NAME").expect("Failed to load wasm file env var APP_NAME");
+    static ref APP_LOCATION: String =
+        env::var("APP_LOCATION").expect("Failed to load wasm file env var APP_LOCATION");
 }
 
 fn main() {
-    let host = Host::new(WASM_LOCATION.as_str());
+    let main_dir_path = String::from(".");
+    let main_dir = File::open(&main_dir_path)
+        .unwrap_or_else(|_| panic!("Failed to preopen dir: {}", &main_dir_path));
+    let preopened_dirs = [(main_dir_path, main_dir)];
+    let argv = [
+        APP_NAME.clone(),
+        String::from("wasiplay/test.txt"),
+        String::from("wasiplay/test_output.txt"),
+    ];
+
+    let _host = Host::new(
+        APP_NAME.as_str(),
+        APP_LOCATION.as_str(),
+        &preopened_dirs,
+        &argv,
+    );
 
     println!("loaded wasm");
 
-    // host.call("answer")
+    // let start_fn = "_start";
+    // host.call(start_fn, &[])
+    //     .expect(&format!("Function `{}` failed to execute", start_fn));
 
     // let answer = instance
     //     .find_export_by_name("answer")

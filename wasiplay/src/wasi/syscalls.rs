@@ -86,11 +86,7 @@ fn get_wasi_ctx(vmctx: &mut VMContext) -> Result<&mut WasiCtx, wasi::__wasi_errn
 fn get_memory(vmctx: &mut VMContext) -> Result<&mut [u8], wasi::__wasi_errno_t> {
     unsafe {
         match vmctx.lookup_global_export("memory") {
-            Some(Export::Memory {
-                definition,
-                vmctx: _,
-                memory: _,
-            }) => Ok(std::slice::from_raw_parts_mut(
+            Some(Export::Memory { definition, .. }) => Ok(std::slice::from_raw_parts_mut(
                 (*definition).base,
                 (*definition).current_length,
             )),

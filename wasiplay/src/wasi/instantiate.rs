@@ -1,37 +1,91 @@
 use super::syscalls;
-use cranelift_codegen::ir::types;
-use cranelift_codegen::{ir, isa};
+use cranelift_codegen::{
+    ir::{self, types},
+    isa,
+};
 use cranelift_entity::PrimaryMap;
 use cranelift_wasm::DefinedFuncIndex;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fs::File;
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, fs::File, rc::Rc};
 use target_lexicon::HOST;
 use wasi_common::{WasiCtx, WasiCtxBuilder};
+use wasmtime::{HostRef, Instance, Module as WasmModule, Store};
 use wasmtime_environ::{translate_signature, Export, Module};
-use wasmtime_runtime::{Imports, InstanceHandle, InstantiationError, VMFunctionBody};
+use wasmtime_runtime::{Imports, InstanceHandle, InstantiationError, LinkError, VMFunctionBody};
+
+pub type Argv = [String];
+pub type EnvVars = [(String, String)];
+pub type VMFuncMap = PrimaryMap<DefinedFuncIndex, *const VMFunctionBody>;
+pub type PreopenedDir = (String, File);
+pub type PreopenedDirs = [PreopenedDir];
 
 /// Creates `wasmtime::Instance` object implementing the "wasi" interface.
 pub fn create_wasi_instance(
-    store: &wasmtime::HostRef<wasmtime::Store>,
-    preopened_dirs: &[(String, File)],
-    argv: &[String],
-    environ: &[(String, String)],
-) -> Result<wasmtime::Instance, InstantiationError> {
+    store: &HostRef<Store>,
+    preopened_dirs: &PreopenedDirs,
+    argv: &Argv,
+    environ: &EnvVars,
+) -> Result<HostRef<Instance>, InstantiationError> {
     let global_exports = store.borrow().global_exports().clone();
-    let wasi = instantiate_wasi(global_exports, preopened_dirs, argv, environ)?;
-    let instance = wasmtime::Instance::from_handle(&store, wasi);
+
+    let wasi_ctx = create_wasi_context(preopened_dirs, argv, environ)?;
+    let wasi = instantiate_wasi_with_context(global_exports, wasi_ctx)?;
+    let instance = HostRef::new(Instance::from_handle(&store, wasi));
     Ok(instance)
 }
 
-/// Return an instance implementing the "wasi" interface.
-pub fn instantiate_wasi(
-    global_exports: Rc<RefCell<HashMap<String, Option<wasmtime_runtime::Export>>>>,
-    preopened_dirs: &[(String, File)],
-    argv: &[String],
-    environ: &[(String, String)],
-) -> Result<InstanceHandle, InstantiationError> {
+/// Creates a `wasmtime::Instance` object from a WASM module.
+pub fn create_app_instance(
+    store: &HostRef<Store>,
+    registry: &HashMap<String, HostRef<Instance>>,
+    module_name: &str,
+    module_bin: &[u8],
+) -> (HostRef<Instance>, HostRef<WasmModule>) {
+    let module = HostRef::new(
+        WasmModule::new(store, module_bin)
+            .unwrap_or_else(|_| panic!("Failed to load wasm module: {}", module_name)),
+    );
+
+    // Resolve import using registry.
+    let imports = module
+        .borrow()
+        .imports()
+        .iter()
+        .map(|i| {
+            let module_name = i.module().as_str();
+            if let Some(instance) = registry.get(module_name) {
+                let field_name = i.name().as_str();
+                if let Some(export) = instance.borrow().find_export_by_name(field_name) {
+                    Ok(export.clone())
+                } else {
+                    Err(InstantiationError::Link(LinkError(format!(
+                        "Import {} was not found in module {}",
+                        field_name, module_name
+                    ))))
+                }
+            } else {
+                Err(InstantiationError::Link(LinkError(format!(
+                    "Import module {} was not found",
+                    module_name
+                ))))
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap_or_else(|_| panic!("Failed to resolve imports for module: {}", module_name));
+
+    let instance = HostRef::new(
+        Instance::new(store, &module, &imports)
+            .unwrap_or_else(|_| panic!("Failed to initialize module instance: {}", module_name)),
+    );
+
+    (instance, module)
+}
+
+/// Creates `WasiCtx`.
+fn create_wasi_context(
+    preopened_dirs: &PreopenedDirs,
+    argv: &Argv,
+    environ: &EnvVars,
+) -> Result<WasiCtx, InstantiationError> {
     let mut wasi_ctx_builder = WasiCtxBuilder::new()
         .inherit_stdio()
         .args(argv)
@@ -49,23 +103,21 @@ pub fn instantiate_wasi(
         );
     }
 
-    let wasi_ctx = wasi_ctx_builder.build().map_err(|err| {
+    wasi_ctx_builder.build().map_err(|err| {
         InstantiationError::Resource(format!("couldn't assemble WASI context object: {}", err))
-    })?;
-    instantiate_wasi_with_context(global_exports, wasi_ctx)
+    })
 }
 
 /// Return an instance implementing the "wasi" interface.
 ///
 /// The wasi context is configured by
-pub fn instantiate_wasi_with_context(
+fn instantiate_wasi_with_context(
     global_exports: Rc<RefCell<HashMap<String, Option<wasmtime_runtime::Export>>>>,
     wasi_ctx: WasiCtx,
 ) -> Result<InstanceHandle, InstantiationError> {
     let pointer_type = types::Type::triple_pointer_type(&HOST);
     let mut module = Module::new();
-    let mut finished_functions: PrimaryMap<DefinedFuncIndex, *const VMFunctionBody> =
-        PrimaryMap::new();
+    let mut finished_functions: VMFuncMap = PrimaryMap::new();
     let call_conv = isa::CallConv::triple_default(&HOST);
 
     macro_rules! signature {
@@ -146,6 +198,7 @@ pub fn instantiate_wasi_with_context(
         Rc::new(module),
         global_exports,
         finished_functions.into_boxed_slice(),
+        // these are empty defaults
         imports,
         &data_initializers,
         signatures.into_boxed_slice(),
