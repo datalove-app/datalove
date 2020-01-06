@@ -1,10 +1,14 @@
 [workspace]
 members = [
-  "wasiplay"
+  "wasiplay",
+  "wasiplay/examples/ipld"
   # "lib/core"
 ]
 
 [patch.crates-io]
-errno = { git = "https://github.com/lambda-fairy/rust-errno" }
 libipld-schema = { path = "../datalove-vendor/rust-ipld/schema" }
-net2 = { git = "https://github.com/sunny-g/net2-rs", branch = "wasi" }
+lucet-module = { path = "../datalove-vendor/lucet/lucet-module" }
+lucet-runtime = { path = "../datalove-vendor/lucet/lucet-runtime" }
+lucet-runtime-internals = { path = "../datalove-vendor/lucet/lucet-runtime/lucet-runtime-internals" }
+lucet-wasi = { path = "../datalove-vendor/lucet/lucet-wasi" }
+rand = { git = "https://github.com/sunny-g/rand", branch = "patch-1" }

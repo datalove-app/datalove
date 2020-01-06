@@ -1,4 +1,5 @@
-mod instantiate;
+mod hostcalls;
 mod syscalls;
 
-pub use instantiate::{create_app_instance, create_wasi_instance, PreopenedDirs};
+pub use hostcalls::export_wasi_funcs;
+pub use wasi_common::{wasi::__wasi_exitcode_t, Error, WasiCtxBuilder};

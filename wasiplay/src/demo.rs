@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
-mod host;
-mod wasi;
+pub mod host;
+pub mod wasi;
 
+use env_logger;
 use host::Host;
 use std::{env, fs::File};
 
@@ -22,6 +25,8 @@ lazy_static! {
 }
 
 fn main() {
+    env_logger::init();
+
     let main_dir_path = String::from(".");
     let main_dir = File::open(&main_dir_path)
         .unwrap_or_else(|_| panic!("Failed to preopen dir: {}", &main_dir_path));
@@ -32,24 +37,13 @@ fn main() {
         String::from("wasiplay/test_output.txt"),
     ];
 
-    let _host = Host::new(
+    let mut host = Host::new(
         APP_NAME.as_str(),
         APP_LOCATION.as_str(),
         &preopened_dirs,
         &argv,
+        &[],
     );
 
-    println!("loaded wasm");
-
-    // let start_fn = "_start";
-    // host.call(start_fn, &[])
-    //     .expect(&format!("Function `{}` failed to execute", start_fn));
-
-    // let answer = instance
-    //     .find_export_by_name("answer")
-    //     .expect("answer")
-    //     .func()
-    //     .expect("function");
-    // let result = answer.borrow().call(&[]).expect("success");
-    // println!("Answer: {}", result[0].i32());
+    host.init();
 }

@@ -1,17 +1,25 @@
-use super::wasi as datalovewasi;
+use super::wasi as datalove_wasi;
 // use anyhow::{bail, Result};
-use datalovewasi::PreopenedDirs;
-use std::{collections::HashMap, fs::read};
-// use wasm_webidl_bindings::ast;
-use wasmtime::{Engine, HostRef, Instance, Store, Val};
-// use wasmtime_interface_types::{ModuleData, Value};
+use datalove_wasi::{WasiCtxBuilder, __wasi_exitcode_t};
+use lucet_runtime::{
+    DlModule, Error, InstanceHandle, Limits, MmapRegion, Region, RunResult, TerminationDetails, Val,
+};
+use std::{
+    collections::HashMap,
+    fs::{read, File},
+    path::Path,
+    sync::Arc,
+};
+
+pub type InitArgv = [String];
+pub type CallArgv = [Val];
+pub type EnvVars = [(String, String)];
+pub type PreopenedDir = (String, File);
+pub type PreopenedDirs = [PreopenedDir];
 
 pub struct Host {
-    // engine: HostRef<Engine>,
-    // store: HostRef<Store>,
-    // registry: HashMap<String, HostRef<Instance>>,
-    app: HostRef<Instance>,
-    // app_data: ModuleData,
+    region: Arc<MmapRegion>,
+    app_instance: InstanceHandle,
 }
 
 impl Host {
@@ -19,50 +27,66 @@ impl Host {
         app_name: &str,
         app_location: &str,
         preopened_dirs: &PreopenedDirs,
-        argv: &[String],
+        argv: &InitArgv,
+        environ: &EnvVars,
     ) -> Self {
-        let engine = HostRef::new(Engine::default());
-        let store = HostRef::new(Store::new(&engine));
-        let mut registry = HashMap::new();
+        // lucet_runtime::lucet_internal_ensure_linked();
+        datalove_wasi::export_wasi_funcs();
 
-        // the wasi instance
-        let wasi = datalovewasi::create_wasi_instance(&store, preopened_dirs, argv, &[])
-            .expect("Failed to initialize wasi instance");
-        registry.insert("wasi_snapshot_preview1".to_owned(), wasi);
+        let mut ctx = WasiCtxBuilder::new()
+            .inherit_stdio()
+            .args(argv)
+            .envs(environ);
 
-        // the main wasm instance
-        let app_bin = read(app_location)
-            .unwrap_or_else(|_| panic!("Failed to load wasm file: {}", app_location));
-        let (app, _app_module) =
-            datalovewasi::create_app_instance(&store, &registry, app_name, &app_bin);
-        // let app_data = ModuleData::new(&app_bin).unwrap_or_else(|_| panic!(
-        //     "Failed to load wasm module data for module: {}",
-        //     app_name
-        // ));
+        for (guest_path, ref dir) in preopened_dirs {
+            ctx = ctx.preopened_dir(
+                dir.try_clone()
+                    .unwrap_or_else(|_| panic!("Failed to preopen required dir: {}", guest_path)),
+                guest_path,
+            );
+        }
+
+        let module = DlModule::load(app_location).unwrap_or_else(|err| {
+            panic!(
+                "Failed to load WASM program .so `{}` from {}: {:?}",
+                app_name, app_location, err
+            )
+        });
+        let region =
+            MmapRegion::create(1, &Limits::default()).expect("Failed to create memory region");
+        let app_instance = region
+            .new_instance_builder(module)
+            // TODO: here is where we put additional contexts into the instance (one of any given type)
+            // TODO: then use `get
+            .with_embed_ctx(ctx.build().expect("WASI ctx could not be created"))
+            .build()
+            .expect("Instance could not be created");
 
         Host {
-            // engine,
-            // store,
-            // registry,
-            app,
-            // app_data,
+            region,
+            app_instance,
         }
     }
 
-    // ///
-    // /// TODO: be generic over args that can be ref'ed into instance memory
-    // ///     then get the i32 addresses
-    // pub fn call(&self, fn_name: &str, args: &[Val]) -> Result<(), String> {
-    //     let instance = self.app.borrow();
-    //     let func = instance
-    //         .find_export_by_name(fn_name)
-    //         .ok_or(format!("Failed to find func: {}", fn_name))?
-    //         .func()
-    //         .ok_or(format!("Failed to load func: {}", fn_name))?;
-    //     let result = func.borrow().call(args).expect("success");
-    //     println!("Answer: {}", result[0].i32());
-    //     Ok(())
-    // }
+    ///
+    /// TODO: be generic over args that can be ref'ed into instance memory
+    ///     then get the i32 addresses
+    pub fn init(&mut self) -> u32 {
+        match self.app_instance.run("_start", &[]) {
+            // normal termination implies 0 exit code
+            Ok(RunResult::Returned(_)) => 0,
+            // none of the WASI hostcalls use yield yet, so this shouldn't happen
+            Ok(RunResult::Yielded(_)) => panic!("lucet-wasi unexpectedly yielded"),
+            Err(Error::RuntimeTerminated(TerminationDetails::Provided(any))) => *any
+                .downcast_ref::<__wasi_exitcode_t>()
+                .expect("termination yields an exitcode"),
+            Err(Error::RuntimeTerminated(TerminationDetails::Remote)) => {
+                println!("Terminated via remote kill switch (likely a timeout)");
+                std::u32::MAX
+            }
+            Err(e) => panic!("lucet-wasi runtime error: {}", e),
+        }
+    }
 }
 
 // fn invoke_export(
@@ -129,4 +153,3 @@ impl Host {
 
 //     Ok(())
 // }
-

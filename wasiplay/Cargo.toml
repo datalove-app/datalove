@@ -21,27 +21,9 @@ edition = "2018"
 name = "demo"
 path = "src/demo.rs"
 
-[target.'cfg(not(target_os="wasi"))'.dependencies]
-cranelift-codegen = "0.50"
-cranelift-entity = "0.50"
-cranelift-wasm = "0.50"
+[target.'cfg(not(target_os = "wasi"))'.dependencies]
+env_logger = "^0.7"
 lazy_static = "1"
 log = { version = "0.4.8", default-features = false }
-target-lexicon = "0.9.0"
+lucet-runtime = "^0.5"
 wasi-common = "^0.8"
-wasmtime = "*"
-wasmtime-environ = "^0.8"
-wasmtime-runtime = "^0.8"
-
-################################################################################
-# example WASI app (eventually using libipld-schema)
-#
-# `$ cargo wasi build --bin ipld`
-################################################################################
-[[bin]]
-name = "ipld"
-path = "examples/ipld.rs"
-
-[target.'cfg(target_os="wasi")'.dependencies]
-juniper = "^0.14"
-libipld-schema = { version = "*", features = ["graphql"] }
