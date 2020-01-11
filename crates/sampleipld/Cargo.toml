@@ -12,7 +12,7 @@ edition = "2018"
 name = "sampleipld"
 path = "main.rs"
 
-[target.'cfg(target_os = "wasi")'.dependencies]
-async-std = { version = "0.99", default-features = false, features = ["async-task", "std"] }
+[target.'cfg(target_os="wasi")'.dependencies]
+async-std = { version = "0.99", default-features = false, features = ["std"] }
 juniper = "^0.14"
 libipld-schema = { version = "0.0.1", features = ["graphql"] }

@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate libipld_schema;
 
-// use async_std::task;
 // use libipld_schema::{Context, Error, Representation};
 use std::{
     env,
@@ -56,9 +55,6 @@ fn main() {
         return;
     }
 
-    // let res = task::block_on(async {
-    //     process(&args[1], &args[2]);
-    // });
     let res = process(&args[1], &args[2]);
     if let Err(err) = res {
         eprintln!("{}", err)
