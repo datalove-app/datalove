@@ -2,14 +2,6 @@
 #
 .DS_Store
 
-# node.js
+# rust
 #
-node_modules/
-npm-debug.log
-yarn-error.log
-*.map
-
-# random files
-#
-*.sketch
-*.sublime*
+target/
