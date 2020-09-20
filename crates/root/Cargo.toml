@@ -1,0 +1,13 @@
+[package]
+name = "datalove-root"
+version = "0.0.1-alpha.1"
+description = "root of trust types and interfaces for datalove devices"
+authors = ["sunny-g <sunny.gonna@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+datalove-core = { path = "../core" }
+# zinc-vm = { git = "https://github.com/datalove-app/zinc", branch = "master" }
+
+[target.'cfg(any(target_arch = "x86_64-apple-darwin", target_arch = "x86_64-apple-ios", target_arch = "aarch64-apple-ios"))'.dependencies]
+security-framework = "2.0.0"

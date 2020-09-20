@@ -1,4 +1,72 @@
+[package]
+name = "datalove"
+version = "0.0.1-alpha.1"
+description = "reference implementation of a datalove node"
+authors = ["sunny-g <sunny.gonna@gmail.com>"]
+edition = "2018"
+
+# [lib]
+# name = "datalove"
+# path = "src/lib.rs"
+
+[[bin]]
+name = "datalove"
+path = "src/main.rs"
+# TODO:
+# 	- halt wicker binary progress
+#			- start importing wicker lib types to flesh out datalove binary
+#			- use comparative impls to make configurable types generic
+#			- keep wicker lib and minimal wicker binary for testing and later OSS
+#		- impl yaml spec for datalove
+
+[dependencies]
+async-std = "1.4"
+async-trait = "^0.1"
+datalove-core = { path = "crates/core" }
+datalove-runtime = { path = "crates/runtime" }
+env_logger = "^0.7"
+failure = { version = "0.1", features = ["derive"] }
+futures = "0.3"
+hbbft = "0.1.1"
+lazy_static = "1"
+log = { version = "0.4.8", default-features = false }
+raft = "0.5"
+# lucet-runtime = { version = "^0.5", git = "https://github.com/sunny-g/lucet", branch = "patch-1" }
+signature = "0.3"
+structopt = "0.2"
+# wasi-common = "^0.8"
+# wicker = { path = "../wicker" }
+
 [workspace]
-members = [
-  "rust/core"
+exclude = [
+	"examples/sampleipld"
 ]
+members = [
+	"crates/core",
+	"crates/root",
+	"crates/runtime",
+	"crates/sdk",
+
+	# "vendor/signatory-apple"
+]
+
+[patch.crates-io]
+## rust-ipld
+# libipld-schema = { path = "../datalove-vendor/rust-ipld/schema" }
+
+## zk
+# bellman = { package = "bellman_ce", version = "0.3" }
+# circuit = { path = "zk/rollup-impls/rollup-matterlabs/core/circuit" }
+# key_generator = { path = "zk/rollup-impls/rollup-matterlabs/core/key_generator" }
+# models = { path = "zk/rollup-impls/rollup-matterlabs/core/models" }
+# plasma = { path = "zk/rollup-impls/rollup-matterlabs/core/plasma" }
+# prover = { path = "zk/rollup-impls/rollup-matterlabs/core/prover" }
+# server = { path = "zk/rollup-impls/rollup-matterlabs/core/server" }
+# storage = { path = "zk/rollup-impls/rollup-matterlabs/core/storage" }
+
+## wasm, lucet
+# lucet-module = { version = "^0.5", path = "../datalove-vendor/lucet/lucet-module" }
+# lucet-runtime = { version = "^0.5", path = "../datalove-vendor/lucet/lucet-runtime" }
+# lucet-runtime-internals = { version = "^0.5", path = "../datalove-vendor/lucet/lucet-runtime/lucet-runtime-internals" }
+# lucet-wasi = { version = "^0.5", path = "../datalove-vendor/lucet/lucet-wasi" }
+# rand = { git = "https://github.com/sunny-g/rand", branch = "patch-1" }

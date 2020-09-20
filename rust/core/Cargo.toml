@@ -1,9 +1,0 @@
-[package]
-name = "datalove_core"
-version = "0.0.1"
-authors = ["sunny-g <sunny.gonna@gmail.com>"]
-edition = "2018"
-
-[dependencies]
-actix = "0.8.3"
-futures = {version = "0.3.1", features = ["compat"]}
