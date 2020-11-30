@@ -1,12 +1,9 @@
+use crate::drivers::KeystoreError;
 use thiserror::Error;
 
 ///
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Root error: {0}")]
-    Root(#[from] RootError),
+    #[error("Keystore error: {0}")]
+    Keystore(#[from] KeystoreError),
 }
-
-///
-#[derive(Debug, Error)]
-pub enum RootError {}

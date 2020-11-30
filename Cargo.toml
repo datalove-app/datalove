@@ -1,6 +1,6 @@
 [package]
 name = "datalove"
-version = "0.0.1-alpha.1"
+version = "0.0.1"
 description = "reference implementation of a datalove node"
 authors = ["sunny-g <sunny.gonna@gmail.com>"]
 edition = "2018"
@@ -23,7 +23,6 @@ path = "src/main.rs"
 async-std = "1.4"
 async-trait = "^0.1"
 datalove-core = { path = "crates/core" }
-datalove-runtime = { path = "crates/runtime" }
 env_logger = "^0.7"
 failure = { version = "0.1", features = ["derive"] }
 futures = "0.3"
@@ -44,8 +43,6 @@ exclude = [
 members = [
 	"crates/core",
 	"crates/root",
-	"crates/runtime",
-	"crates/sdk",
 
 	# "vendor/signatory-apple"
 ]

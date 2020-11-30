@@ -1,9 +1,0 @@
-//!
-//! The 'ledger' main module.
-//!
-
-fn main(witness: u8) -> u8 {
-    dbg!("Zello, World!");
-
-    witness
-}
