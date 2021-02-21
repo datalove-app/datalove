@@ -14,10 +14,13 @@ use std::{
 ///
 pub trait Service<C: Core>: Sized {
     type Config: Debug;
+    // type State: hidden::Persistable;
 
     fn start(config: Self::Config) -> Self;
 
     fn reconfigure(&mut self, config: Self::Config) {}
+
+    // fn snapshot(&self) -> Self::State;
 }
 
 ///
@@ -34,7 +37,10 @@ pub trait QueryHandler<C: Core, Q: Query<C> + From<C::Query>> {
 ///
 /// ... describe's a read-only query against a `Service`'s state.
 pub trait Query<C: Core>: hidden::Persistable {
+    // type Response: Into<<C::Query as Query<C, C>>::Response>;
     type Response: hidden::Persistable;
+
+    // fn resolve(&self, state: &S::State) -> Self::Response;
 }
 
 /// Base trait for event-driven datalove services.
@@ -58,6 +64,7 @@ pub trait EventHandler<C: Core, E: Event<C> + From<C::Event>> {
 ///
 /// ... describes a `Service`'s requirements to satisfy a `Core` use case action.
 pub trait Event<C: Core>: hidden::Persistable {
+    // type Effect: Effect + Into<<C::Event as Event<C, C>>::Effect>;
     type Effect: Effect;
 
     fn id(&self) -> &Uuid;

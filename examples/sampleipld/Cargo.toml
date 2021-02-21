@@ -1,0 +1,18 @@
+################################################################################
+# example WASI app (eventually using libipld-schema)
+#
+# `$ cargo wasi build --cmd ipld`
+################################################################################
+[package]
+name = "sampleipld"
+version = "0.0.0"
+edition = "2018"
+
+[[bin]]
+name = "sampleipld"
+path = "main.rs"
+
+[target.'cfg(target_os="wasi")'.dependencies]
+async-std = { version = "0.99", default-features = false, features = ["std"] }
+juniper = "^0.14"
+libipld-schema = { version = "0.0.1", features = ["derive", "graphql"] }

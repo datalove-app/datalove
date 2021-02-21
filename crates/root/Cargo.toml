@@ -9,27 +9,52 @@ edition = "2018"
 datalove-core = { path = "../core" }
 num-bigint = "0.3"
 rand = "0.7"
-rayon = { version = "1", optional = true }
 serde = "1.0"
+# zk deps
+# algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["mnt4_298", "mnt6_298"] }
+# crypto-primitives = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["r1cs", "groth16"] }
+# groth16 = { git = "https://github.com/scipr-lab/zexe", default-features = false }
+# r1cs-core = { git = "https://github.com/scipr-lab/zexe", default-features = false }
+# r1cs-std = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["mnt4_298", "mnt6_298"] }
+rayon = { version = "1", optional = true }
+zeroize = "1.1"
+# file keystore deps
+chacha20poly1305 = { version = "0.1", optional = true }
+pwbox = { version = "0.3", optional = true, features = ["pure"] }
+secret-tree = { version = "0.3.0", optional = true }
+secrecy = { version = "0.7", optional = true }
+toml = { version = "0.5", optional = true }
+# keyring_keystore deps
+keyring = { version = "0.10", optional = true }
 
-[dev-dependencies]
-rand_xorshift = { version = "0.2" }
-algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["bls12_381"] }
+# [dev-dependencies]
+# algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["bls12_381"] }
+# rand_xorshift = { version = "0.2" }
 
 [features]
-default = [ "std", "parallel" ]
+default = [ "std", "parallel", "file" ]
 std = [
+  # "algebra/std",
+  # "crypto-primitives/std",
+  # "groth16/std",
+  # "r1cs-core/std",
+  # "r1cs-std/std"
 ]
 parallel = [
+  "std",
+  # "algebra/parallel",
+  # "crypto-primitives/parallel",
+  # "groth16/parallel",
+  # "r1cs-std/parallel",
   "rayon"
 ]
-
-[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
-chacha20poly1305 = "0.1"
-keyring = "0.10"
-pwbox = { version = "0.3", features = ["pure"], default-features = false }
-toml = "0.5"
-zeroize = "1.1"
+file = [
+  "chacha20poly1305",
+  "pwbox",
+  "secret-tree",
+  "secrecy",
+  "toml",
+]
 
 [target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
 security-framework = "2.0.0"

@@ -1,0 +1,12 @@
+paths = [
+  # "../datalove-vendor/zk/zinc",
+  # "crates/core",
+  # "crates/root",
+  # "crates/sdk",
+
+  "vendor/libp2p-consensus",
+  "vendor/rust-security-framework",
+]
+
+# [build]
+# rustflags = ["-C", "link-args=-Wl,--export-dynamic"]
