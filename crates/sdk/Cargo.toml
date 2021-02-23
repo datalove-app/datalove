@@ -1,8 +1,0 @@
-[package]
-name = "datalove-sdk"
-version = "0.0.1"
-description = "WASM SDK for easily interacting with the datalove runtime environment"
-authors = ["sunny-g <sunny.gonna@gmail.com>"]
-edition = "2018"
-
-[dependencies]

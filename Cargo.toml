@@ -1,17 +1,17 @@
-[package]
-name = "datalove"
-version = "0.0.1"
-description = "reference implementation of a datalove node"
-authors = ["sunny-g <sunny.gonna@gmail.com>"]
-edition = "2018"
+# [package]
+# name = "datalove"
+# version = "0.0.1"
+# description = "datalove monorepo"
+# authors = ["sunny-g <sunny.gonna@gmail.com>"]
+# edition = "2018"
 
 # [lib]
 # name = "datalove"
 # path = "src/lib.rs"
 
-[[bin]]
-name = "datalove"
-path = "src/main.rs"
+# [[bin]]
+# name = "datalove"
+# path = "src/main.rs"
 # TODO:
 # 	- halt wicker binary progress
 #			- start importing wicker lib types to flesh out datalove binary
@@ -19,20 +19,19 @@ path = "src/main.rs"
 #			- keep wicker lib and minimal wicker binary for testing and later OSS
 #		- impl yaml spec for datalove
 
-[dependencies]
-async-std = "1.4"
-async-trait = "^0.1"
-datalove-core = { path = "crates/core" }
-env_logger = "^0.7"
-failure = { version = "0.1", features = ["derive"] }
-futures = "0.3"
-hbbft = "0.1.1"
-lazy_static = "1"
-log = { version = "0.4.8", default-features = false }
-raft = "0.5"
-signature = "0.3"
-structopt = "0.2"
-# wicker = { path = "../wicker" }
+# [dependencies]
+# async-std = "1.4"
+# async-trait = "^0.1"
+# env_logger = "^0.7"
+# # failure = { version = "0.1", features = ["derive"] }
+# futures = "0.3"
+# # hbbft = "0.1.1"
+# lazy_static = "1"
+# log = { version = "0.4.8", default-features = false }
+# raft = "0.5"
+# signature = "0.3"
+# structopt = "0.2"
+# # wicker = { path = "../wicker" }
 
 [workspace]
 exclude = [
@@ -41,15 +40,15 @@ exclude = [
 members = [
 	# "apps/home",
 
-	"crates/core",
-	"crates/root",
+	# "crates/core",
+	# "crates/root",
 	# "crates/sdk",
 
 	"vendor/asm-ed25519",
 	# "vendor/frost-dalek",
-	"vendor/libp2p-consensus",
+	# "vendor/libp2p-consensus",
 	"vendor/merkle-log",
-	"vendor/multi-party-eddsa",
+	# "vendor/multi-party-eddsa",
 	# "vendor/signatory-apple"
 ]
 
