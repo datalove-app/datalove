@@ -40,6 +40,8 @@ exclude = [
 members = [
 	# "apps/home",
 
+	"circuits",
+
 	# "crates/core",
 	# "crates/root",
 	# "crates/sdk",
