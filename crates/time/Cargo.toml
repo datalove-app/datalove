@@ -1,0 +1,30 @@
+[package]
+name = "datalove-time"
+version = "0.0.1"
+description = "reference implementation of the datalove time protocol"
+authors = ["sunny-g <sunny.gonna@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+digest = "0.9"
+num-traits = "0.2"
+# primitive-types = { version = "0.9", features = ["num-traits", "serde"] }
+serde = "1.0"
+sha2 = "0.9"
+
+# # primitive-types work-around for https://github.com/myrrlyn/funty/issues/3
+# funty = "=1.1"
+
+# zk deps
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16", default-features = false }
+ark-pcd = { path = "../../reference/pcd", default-features = false }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", default-features = false }
+ark-relations = { git = "https://github.com/arkworks-rs/snark", default-features = false }
+ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
+
+[features]
+default = ["parallel"]
+# ark features
+std = ["ark-ff/std", "ark-groth16/std", "ark-pcd/std", "ark-r1cs-std/std", "ark-relations/std", "ark-std/std"]
+parallel = ["std", "ark-ff/parallel", "ark-groth16/parallel", "ark-pcd/parallel", "ark-r1cs-std/parallel", "ark-std/parallel"]
