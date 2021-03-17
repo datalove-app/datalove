@@ -56,6 +56,8 @@ library Verifier
         ok = check_1 * check_2 * check_3 * check_4
         assert ok == FQ12.one()
     */
+
+    /// @dev
     function Verify(
         uint256[14] memory in_vk,
         uint256[] memory vk_gammaABC,
