@@ -18,11 +18,12 @@ each proof proves:
 -
 
 the entire payload:
-- proof
-- timestamp
-- persistent id
-- ... other public inputs
-  - ? digest/multihash of current keys?
+- proof (or proof cid)
+- multihash of new keyset
+- ? timestamp
+- ? persona id (might just be implied by request for payload)
+- ? identity metadata cid
+- ...
 
 proof structure:
 
@@ -30,23 +31,23 @@ proof structure:
   - public inputs
     - new timestamp
     - persona id
+    - digest of new keyset
+    - ? current/new metadata digest?
   - witnesses
-    - operation and its params
+    - (?signed) operation and its params (and current/new metadata digest?)
+    - current keyset
     - ...
 
 - if genesis:
   - public inputs
-    - initial timestamp
-    - persistent persona id (digest of pubkey and random commitment)
+    - ...
   - witnesses
-    - init operation (max_u8 + pubkey + signature(random commitment))
+    - init operation (max_u8 weight + pubkey + signature)
       - verifies signature
       - verifies digest of pubkey + random commitment == persona id
 
 - public inputs
-  - latest timestamp
-  - persistent persona id
-  - ? latest keyset and their weights
+  - ...
 - witnesses
   - existing keys and weights ([u8 + pubkey])
   - group signature (subgroupid + signature(op))

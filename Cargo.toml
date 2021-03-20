@@ -4,8 +4,8 @@ members = [
   "crates/time",
 
   # vendored
-  # "vendor/asm-ed25519",
-  "vendor/bls",
+  "vendor/asm-ed25519",
+  # "vendor/bls",
   # "vendor/ed25519-dalek",
-  # "vendor/multi-party-eddsa",
+  "vendor/multi-party-eddsa",
 ]

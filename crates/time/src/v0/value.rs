@@ -65,14 +65,19 @@ impl<C: Counter, D: Digest, const K: usize, const M: usize> BloomClock<C, D, K, 
 
     /// Returns the indices in the clock to be incremented for a given event's
     /// bytes.
-    pub fn increment_indices(event: &[u8]) -> [usize; K] {
+    pub fn indices_for_event(event: &[u8]) -> [usize; K] {
+        Self(D::new().chain(event))
+    }
+
+    ///
+    pub fn indices_for_prehashed(prehashed: D) -> [usize; K] {
         let mut indices = [0usize; K];
-        let mut digest = D::digest(event);
-        indices[0] = Self::index_from_digest(digest.as_slice());
+        let mut digest = prehashed.finalize();
+        indices[0] = Self::index_for_digest(digest.as_slice());
 
         for round in 1..K {
             digest = D::digest(digest.as_slice());
-            indices[round] = Self::index_from_digest(digest.as_slice());
+            indices[round] = Self::index_for_digest(digest.as_slice());
         }
 
         indices
@@ -80,8 +85,8 @@ impl<C: Counter, D: Digest, const K: usize, const M: usize> BloomClock<C, D, K, 
 
     /// This currently takes the count of the digest's 1 bits mod M. An
     /// alternative could just count 1 bits in the digest's first M bits.
-    /// TODO: this may not random enough
-    fn index_from_digest(digest: &[u8]) -> usize {
+    /// TODO: is this random enough?
+    fn index_for_digest(digest: &[u8]) -> usize {
         digest.iter().map(|b| b.count_ones()).sum::<u32>() as usize
     }
 
@@ -126,7 +131,7 @@ impl<C: Counter, D: Digest + Clone, const K: usize, const M: usize> ClockExt
     fn contains(&self, event: &impl AsRef<[u8]>, since: Option<&Self>) -> Option<(bool, f64)> {
         // self's n = k * sum
         //
-        let indices = Self::increment_indices(event.as_ref());
+        let indices = Self::indices_for_event(event.as_ref());
         match since {
             None => Some(self.contains(indices)),
             Some(other) => self.contains_since(indices, other),
@@ -138,7 +143,7 @@ impl<'a, C: Counter, D: Digest, const K: usize, const M: usize> AddAssign<&'a [u
     for BloomClock<C, D, K, M>
 {
     fn add_assign(&mut self, rhs: &[u8]) {
-        for idx in Self::increment_indices(rhs).iter() {
+        for idx in Self::indices_for_event(rhs).iter() {
             self.inner[*idx] += C::one();
         }
     }
