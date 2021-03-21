@@ -1,11 +1,34 @@
 [workspace]
 members = [
-  "crates/credit",
-  "crates/time",
+  # "ex_swarm/nif",
+  # "ex_wasm/nif",
+  "drivers/datastore",
+  "drivers/keystore",
+  "drivers/swarm",
+  # "drivers/unison",
+  "drivers/wasm",
+  "drivers/wasm-sdk",
+  "protocols/alias",
+  "protocols/credit",
+  "protocols/persona",
+  # "crates/time",
 
   # vendored
   "vendor/asm-ed25519",
   # "vendor/bls",
+  # "vendor/crepe-crdts",
+  "vendor/declarative-dataflow",
   # "vendor/ed25519-dalek",
-  "vendor/multi-party-eddsa",
+  "vendor/merkle-log",
+  # "vendor/multi-party-eddsa",
+  "vendor/rust-crdt",
+  # "vendor/rust-libp2p",
+  # "vendor/unison",
+  # "vendor/unison-rs/shared",
 ]
+
+[patch.crates-io]
+# libp2p = { path = "vendor/rust-libp2p" }
+# libp2p-core = { path = "vendor/rust-libp2p/core" }
+# libp2p = { git = "https://github.com/datalove-app/rust-libp2p", branch = "feat/convenience" }
+# libp2p-core = { git = "https://github.com/datalove-app/rust-libp2p", branch = "feat/convenience" }
