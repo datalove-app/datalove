@@ -2,26 +2,17 @@
 // pub mod asset;
 pub mod offer;
 
-use self::offer::Offer;
-use std::collections::MTreeMap;
-
 ///
 pub type Address = u160;
 
 ///
 pub type Amount = u248;
 
-///
-pub type BlockNumber = u32;
+// ///
+// pub type BlockNumber = u32;
 
 // ///
 // pub type PedersenHash = (field, field);
 
-///
-pub type Sha256Hash = [bool; 256];
-
-///
-pub type OfferPath = [(Address, u16); 7];
-
-///
-pub type OffersMap = MTreeMap<Address, [Offer; 65535]>;
+// ///
+// pub type Sha256Hash = [bool; 256];

@@ -1,17 +1,16 @@
-use crate::types::{Address, Amount, Sha256Hash};
+use crate::types;
 
 ///
-pub const ZERO: Amount = 0;
+pub const ZERO: types::Amount = 0;
 
-///
-pub const ZERO_HASH: Sha256Hash = [false; 256];
+// ///
+// pub const ZERO_HASH: types::Sha256Hash = [false; 256];
 
-///
-pub const MAX_BLOCK_NUMBER: BlockNumber
-    = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+// ///
+// pub const MAX_BLOCK_NUMBER: types::BlockNumber = 0xFFFFFFFF;
 
-/* Token Addresses */
-pub const ETH: Address = 0x0000000000000000000000000000000000000000;
+// /* Token Addresses */
+// pub const ETH: types::Address = 0x0000000000000000000000000000000000000000;
 
-/// DAI Rinkeby Testnet Address
-pub const DAI_RINKEBY: Address = 0x2e055eee18284513b993db7568a592679ab13188;
+// /// DAI Rinkeby Testnet Address
+// pub const DAI_RINKEBY: types::Address = 0x2e055eee18284513b993db7568a592679ab13188;

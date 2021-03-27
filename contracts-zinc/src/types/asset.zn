@@ -1,0 +1,15 @@
+// use crate::types::{Address, PedersenHash};
+
+// ///
+// pub struct Asset {
+//     /// If a token, this is the hash of the token contract's address; otherwise,
+//     /// its the hash of the recipient's address.
+//     asset_address: Address,
+//     /// Merkle root of the account's offers placed against this asset.
+//     offer_tree_hash: PedersenHash,
+//     // is_user_asset: bool,
+//     // /// Balance withdrawn to the account's sole control.
+//     // personal_balance: Amount
+// }
+
+// impl Asset {}

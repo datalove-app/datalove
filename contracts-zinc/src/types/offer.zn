@@ -1,23 +1,34 @@
-use crate::types::{Address, Amount, BlockNumber, Sha256Hash};
+use crate::types;
+use std::collections::MTreeMap;
+
+///
+pub type OfferPath = [(types::Address, u16); 7];
+
+///
+pub enum PathIndex {
+    First = 0,
+    Last = 1,
+    Other = 2,
+}
 
 ///
 pub struct Offer {
     /// Flags used to configure the offer's mutability invariants.
     flags: Flags,
     ///
-    counterparty_asset_address: Address,
+    counterparty_asset_address: types::Address,
     // /// Block number after which this offer will expire.
-    // expiry_block_no: BlockNumber,
+    // expiry_block_no: types::BlockNumber,
     /// Maximum amount of the asset the owner is willing to hold in the offer.
-    limit: Amount,
+    limit: types::Amount,
     /// Current amount of the asset the owner holds in the offer.
-    balance: Amount,
+    balance: types::Amount,
     // ///
     // bid: u64,
     // ///
     // ask: u64,
-    /// Associated offer metadata; likely stored in IPFS.
-    metadata: Sha256Hash,
+    // /// Associated offer metadata; likely stored in IPFS.
+    // metadata: types::Sha256Hash,
 }
 
 impl Offer {
@@ -29,42 +40,39 @@ impl Offer {
     /// address.
     pub fn spend(
         mut self,
-        owner: Address,
-        sender: Address,
-        amount: Amount,
-    ) -> Address {
-        if !first {
-            require(!self.is_personal(), "");
+        owner: types::Address,
+        sender: types::Address,
+        amount: types::Amount,
+        initial: bool,
+    ) -> types::Address {
+        if !initial {
+            require(
+                !self.flags.is_personal(),
+                "account not allowed to spend or exercise offer"
+            );
         }
 
         if sender == owner {
             // sender is spending retained balance
-            require(self.flags.is_bidirectional(), "");
-            require(amount <= self.balance, "");
+            require(
+                self.flags.is_bidirectional(),
+                "offer owner not allowed to spend offer"
+            );
+            require(amount <= self.balance, "insufficient balance");
 
             self.balance -= amount;
-            counterparty_asset_address
-        } else if sender == counterparty_asset_address {
+            self.counterparty_asset_address
+        } else if sender == self.counterparty_asset_address {
             // sender is exercising offered balance
             self.balance += amount;
+            require(self.balance <= self.limit, "balance would exceed limit");
 
-            require(self.balance <= self.limit, "");
             owner
         } else {
-            require(false, "not allowed to spend or exercise offer");
+            require(false, "account not allowed to spend or exercise offer");
+            sender
         }
     }
-}
-
-/// Gets an offer from the
-pub fn get_offer_strict(offers: OffersMap, owner: Address, offer_idx: u16) -> Offer {
-    let (offer_list, offer_list_exists) = offers.get(owner);
-    require(offer_list_exists, "account does not exist");
-
-    let offer = offer_list[offer_idx];
-    require(!offer.is_empty(), "offer does not exist");
-
-    offer
 }
 
 ///
@@ -73,13 +81,19 @@ pub fn get_offer_strict(offers: OffersMap, owner: Address, offer_idx: u16) -> Of
 ///     henceforth cannot be changed.
 /// 1. bidirectionality: any offer balance can be spent by both the offer owner
 ///     (down to zero) and the recipient (up to offer limit).
-/// 2. personal: can only be spent or exercised directly, not as an intermediate
-///     offer in a path payment.
+/// 2. personal: can only be spent or exercised by either offer party directly,
+///     not as an intermediate offer in a path payment.
 struct Flags {
     inner: [bool; 8],
 }
 
+const EMPTY_FLAGS: [bool; 8] = [false; 8];
+
 impl Flags {
+    // fn are_empty(self) -> bool {
+    //     self.inner == EMPTY_FLAGS
+    // }
+
     fn is_immutable(self) -> bool {
         self.inner[0]
     }
@@ -87,4 +101,10 @@ impl Flags {
     fn is_bidirectional(self) -> bool {
         self.inner[1]
     }
+
+    fn is_personal(self) -> bool {
+        self.inner[2]
+    }
 }
+
+

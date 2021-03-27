@@ -1,36 +1,17 @@
-use crate::types::{Address, Amount, OfferPath};
-use crate::types::offer::{get_offer_strict, OffersMap};
+// use crate::types;
 
-enum PathIndex {
-    First = 0,
-    Last = 1,
-    Other = 2,
-}
+// enum PathIndex {
+//     First = 0,
+//     Last = 1,
+//     Other = 2,
+// }
 
-pub fn do(
-    mut offers: OffersMap,
-    sender: Address,
-    recipient: Address,
-    spend_amount: Amount,
-    path: OfferPath,
-) {
-    let mut path_index = PathIndex::First;
-    let mut current_sender = sender;
+// pub fn do(
+//     mut offers: std::collections::MTreeMap<types::Address, [types::offer::Offer; 65535]>,
+//     sender: types::Address,
+//     recipient: types::Address,
+//     spend_amount: types::Amount,
+//     path: types::OfferPath,
+// ) {
 
-    for i in 0..7 while path_index != PathIndex::Last {
-        let (offer_addr, offer_idx) = path[i];
-        let mut offer = get_offer_strict(offers, offer_addr, offer_idx);
-
-        if path_index == PathIndex::First {
-            path_index = PathIndex::Other;
-        }
-
-        current_sender = offer.spend(offer_addr, current_sender, spend_amount);
-
-        if current_sender == recipient {
-            path_index = PathIndex::Last;
-        }
-    }
-
-    require(current_sender == recipient, "path payment does not end with recipient");
-}
+// }
