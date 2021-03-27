@@ -1,0 +1,17 @@
+use crate::types::{Address, Amount, Sha256Hash};
+
+///
+pub const ZERO: Amount = 0;
+
+///
+pub const ZERO_HASH: Sha256Hash = [false; 256];
+
+///
+pub const MAX_BLOCK_NUMBER: BlockNumber
+    = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
+/* Token Addresses */
+pub const ETH: Address = 0x0000000000000000000000000000000000000000;
+
+/// DAI Rinkeby Testnet Address
+pub const DAI_RINKEBY: Address = 0x2e055eee18284513b993db7568a592679ab13188;

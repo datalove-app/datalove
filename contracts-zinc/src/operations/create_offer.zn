@@ -1,0 +1,14 @@
+use crate::types::{Address, Amount, Sha256Hash};
+use crate::types::offer::{get_offer, OffersMap};
+
+pub fn do(
+    mut offers: OffersMap,
+    sender: Address,
+    offer_idx: u16,
+    counterparty_asset_address: Address,
+    limit: Amount,
+    balance: Amount,
+    metadata: Sha256Hash,
+) {
+    let mut offer = get_offer(offers, offer_addr, offer_idx);
+}

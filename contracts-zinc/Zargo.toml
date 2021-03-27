@@ -1,0 +1,6 @@
+[project]
+name = 'datalove-zk'
+type = 'contract'
+version = '0.0.1'
+
+[dependencies]

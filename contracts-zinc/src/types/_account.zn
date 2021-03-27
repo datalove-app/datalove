@@ -1,0 +1,30 @@
+use crate::constants::ZERO_HASH;
+use crate::types::{Address, PedersenHash, Sha256Hash};
+
+///
+pub const MAX_ACCOUNT_SEQUENCE_NUMBER: AccountSequenceNumber
+    = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
+///
+pub type AccountSequenceNumber = u32;
+
+///
+pub struct Account {
+    /// The account's public key.
+    owner_address: Address,
+    /// Sequence number for the account; incremented for each transaction issued
+    /// by the account.
+    seq_no: AccountSequenceNumber,
+    /// Associated account metadata, likely stored in IPFS.
+    metadata: Sha256Hash,
+    /// Merkle root of the account's owned and offered assets.
+    asset_tree_hash: PedersenHash,
+}
+
+impl Account {
+    fn is_empty(self) -> bool {
+        self.owner_address == 0
+            && self.seq_no == 0
+            && self.metadata == ZERO_HASH
+    }
+}

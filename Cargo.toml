@@ -40,16 +40,16 @@ exclude = [
 members = [
 	# "apps/home",
 
-	"circuits",
+	# "circuits",
 
 	# "crates/core",
 	# "crates/root",
 	# "crates/sdk",
 
-	"vendor/asm-ed25519",
+	# "vendor/asm-ed25519",
 	# "vendor/frost-dalek",
 	# "vendor/libp2p-consensus",
-	"vendor/merkle-log",
+	# "vendor/merkle-log",
 	# "vendor/multi-party-eddsa",
 	# "vendor/signatory-apple"
 ]

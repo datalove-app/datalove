@@ -1,0 +1,68 @@
+//!
+//! The 'circuits-zinc' circuit entry.
+//!
+//! owner account tree height: 32
+//! asset tree height: 16
+//! offer tree height: 8
+//!
+//! transaction: submitted by users
+//! operation:
+
+mod constants;
+mod operations;
+mod types;
+
+use self::operations;
+use self::types::{Address, Amount, OffersMap, OfferPath, Sha256Hash};
+use std::collections::MTreeMap;
+
+contract Datalove {
+    ///
+    pub const VERSION: u8 = 0;
+
+    ///
+    pub offers: OffersMap;
+
+    ///
+    pub fn new() -> Self {
+        Self { offers: MTreeMap }
+    }
+
+    /** Main Datalove Operations **/
+
+    ///
+    pub fn create_offer(
+        mut self,
+        offer_idx: u16,
+        counterparty_asset_address: Address,
+        limit: Amount,
+        balance: Amount,
+        metadata: Sha256Hash
+    ) {
+        operations::create_offer::do(
+            self.offers,
+            zksync::msg.sender,
+            offer_idx,
+            counterparty_asset_address,
+            limit,
+            balance,
+            metadata,
+        )
+    }
+
+    ///
+    pub fn path_payment(
+        mut self,
+        recipient: Address,
+        spend_amount: Amount,
+        path: OfferPath
+    ) {
+        operations::path_payment::do(
+            self.offers,
+            zksync::msg.sender,
+            recipient,
+            spend_amount,
+            path
+        )
+    }
+}
