@@ -1,0 +1,100 @@
+[package]
+name = "datalove-persona-core"
+version = "0.0.0"
+description = "types and traits for datalove's cryptographic and networked root of trust"
+documentation = ""
+authors = ["sunny-g <sunny.gonna@gmail.com>"]
+edition = "2021"
+license = "MIT"
+keywords = []
+categories = []
+publish = false
+
+# [patch.crates-io]
+# borsh = { path = "../../vendor/borsh-rs/borsh" }
+
+[dependencies]
+# anchor-lang = { version = "0.22", optional = true }
+# borsh = { path = "../../vendor/borsh-rs/borsh", version = "0.9", default-features = false, features = ["const-generics"] }
+# borsh = { version = "0.9", default-features = false, features = ["const-generics"] }
+bytemuck = { version = "1", default-features = false, features = ["derive", "min_const_generics"] }
+ed25519-dalek = "1"
+ed25519-dalek-bip32 = "0.2"
+snafu = { version = "0.7", default-features = false, features = ["rust_1_46"] }
+static_assertions = "1.1"
+zeroize = "*"
+
+# std dependencies
+# datalove-core = { path = "../core" }
+hmac = { version = "0.12", optional = true }
+# num-bigint = "0.3"
+rand = { version = "0.8", optional = true }
+recrypt = { version = "0.13", optional = true }
+# secrecy = { version = "0.7", features = ["alloc", "serde"] }
+secstr = { version = "0.5", optional = true }
+sha2 = { version = "0.10", optional = true }
+solana-sdk = { version = "1.10", optional = true }
+# zerocopy = { version = "0.6", default-features = false }
+
+# file keystore deps
+# chacha20poly1305 = { version = "0.1", optional = true }
+pwbox = { version = "0.4", optional = true, default-features = false, features = ["pure", "std"] }
+# secret-tree = { version = "0.3.0", optional = true }
+# serde = { version = "1", optional = true, features = ["derive"] }
+toml = { version = "0.5", optional = true }
+# keyring_keystore deps
+# keyring = { version = "0.10", optional = true }
+
+# zk deps
+# algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["mnt4_298", "mnt6_298"] }
+# crypto-primitives = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["r1cs", "groth16"] }
+# groth16 = { git = "https://github.com/scipr-lab/zexe", default-features = false }
+# r1cs-core = { git = "https://github.com/scipr-lab/zexe", default-features = false }
+# r1cs-std = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["mnt4_298", "mnt6_298"] }
+# rayon = { version = "1", optional = true }
+# zeroize = "1.1"
+
+[dev-dependencies]
+# rand = "0.8"
+# algebra = { git = "https://github.com/scipr-lab/zexe", default-features = false, features = ["bls12_381"] }
+# rand_xorshift = { version = "0.2" }
+
+[features]
+default = [ "std", "parallel", "file" ]
+std = [
+  # "algebra/std",
+  # "crypto-primitives/std",
+  # "groth16/std",
+  # "r1cs-core/std",
+  # "r1cs-std/std"
+  # "borsh/std",
+  # "secrecy/alloc",
+  "hmac",
+  "rand",
+  "recrypt",
+  "secstr",
+  "sha2",
+  "snafu/std",
+  "solana-sdk",
+]
+parallel = [
+  "std",
+  # "algebra/parallel",
+  # "crypto-primitives/parallel",
+  # "groth16/parallel",
+  # "r1cs-std/parallel",
+  # "rayon"
+]
+file = [
+  "std",
+  # "chacha20poly1305",
+  "pwbox",
+  # "secret-tree",
+  "toml",
+]
+apple = [
+  "security-framework"
+]
+
+[target.'cfg(any(target_os = "ios", target_os = "macos"))'.dependencies]
+security-framework = { version = "2.0.0", optional = true }

@@ -1,0 +1,26 @@
+[workspace]
+members = [
+  # "app",
+  "persona/persona-core",
+  # "persona/persona-ledger",
+  # "persona/persona-sol",
+  # "sft/sft-explorer",
+  # "sft/sft-stake-sol",
+  # "flow/flow-sol",
+]
+exclude = [
+  "persona/persona-ledger",
+  # "vendor/borsh-rs",
+  "vendor/ledger-nanos-sdk"
+]
+
+
+[patch.crates-io]
+# anchor-lang = { path = "./vendor/anchor/lang" }
+# anchor-spl = { path = "./vendor/anchor/spl" }
+# borsh = { path = "vendor/borsh-rs/borsh" }
+# tikv-jemalloc-sys = { git = "https://github.com/tikv/jemallocator", tag = "0.4.1" }
+tikv-jemalloc-sys = { path = "vendor/jemallocator/jemalloc-sys" }
+
+[patch."https://github.com/LedgerHQ/ledger-nanos-sdk"]
+nanos_sdk = { path = "vendor/ledger-nanos-sdk" }
