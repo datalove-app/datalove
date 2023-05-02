@@ -1,0 +1,6 @@
+.vscode
+*.code-workspace
+
+result*
+target/
+vendor/

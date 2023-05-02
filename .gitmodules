@@ -1,0 +1,18 @@
+[submodule "vendor/lurk-rs"]
+	path = vendor/lurk-rs
+	url = git@github.com:lurk-lab/lurk-rs.git
+[submodule "vendor/lunatic"]
+	path = vendor/lunatic
+	url = git@github.com:lunatic-solutions/lunatic.git
+[submodule "vendor/wasm-bpf"]
+	path = vendor/wasm-bpf
+	url = git@github.com:eunomia-bpf/wasm-bpf
+[submodule "vendor/lurk-lean"]
+	path = vendor/lurk-lean
+	url = git@github.com:lurk-lab/lurk.lean.git
+[submodule "vendor/lake"]
+	path = vendor/lake
+	url = git@github.com:leanprover/lake.git
+[submodule "vendor/std4"]
+	path = vendor/std4
+	url = git@github.com:leanprover/std4.git
