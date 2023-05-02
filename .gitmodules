@@ -16,3 +16,6 @@
 [submodule "vendor/std4"]
 	path = vendor/std4
 	url = git@github.com:leanprover/std4.git
+[submodule "vendor/quote4"]
+	path = vendor/quote4
+	url = git@github.com:gebner/quote4.git
