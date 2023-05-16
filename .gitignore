@@ -3,3 +3,11 @@
 
 result*
 target/
+/build
+/lake-packages/*
+/build
+/lake-packages/*
+/build
+/lake-packages/*
+/build
+/lake-packages/*

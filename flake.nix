@@ -10,7 +10,6 @@
       url = "github:leanprover/lean4";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
 
@@ -18,14 +17,17 @@
       url = "github:leanprover/lake";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-        lean.follows = "lean4";
+        # lean.follows = "lean4";
       };
     };
 
     # std4 = {
-    #   # url = "github:leanprover/std4";
-    #   url = "./vendor/std4";
+    #   url = "github:leanprover/std4";
+    #   # url = "vendor/std4";
+    #   flake = false;
+    # };
+    # yatima = {
+    #   url = "github:lurk-lab/yatima";
     #   flake = false;
     # };
 
@@ -45,6 +47,7 @@
     lean4,
     lake,
     # std4,
+    # yatima,
     ...
   }:
     # let
@@ -63,7 +66,7 @@
           # config.allowUnfree = true;
         };
         leanPkgs = lean4.packages.${system};
-        lakePkg = lake.outputs.defaultPackage.${system};
+        lakePkgs = lake.packages.${system};
 
         # deps
         # lurk = leanPkgs.buildLeanPackage {
@@ -72,37 +75,33 @@
         # };
         # Std = leanPkgs.buildLeanPackage {
         #   name = "Std";
-        #   # roots = ["Std"];
-        #   src = ./vendor/std4/.;
+        #   src = std4;
         # };
-        # yatima = leanPkgs.buildLeanPackage {
+        # Yatima = leanPkgs.buildLeanPackage {
         #   name = "Yatima";
-        #   src = ./vendor/yatima;
-        #   # deps = [ lurk ];
+        #   src = yatima;
         # };
 
         pkg = leanPkgs.buildLeanPackage {
           name = "Datalove";
-          roots = ["Datalove"];
+          # roots = [ "Datalove" ];
           src = ./.;
-          deps = with leanPkgs; [
-            Init Lean
-          ];
+          deps = [ leanPkgs.Init leanPkgs.Lean ];
         };
       in {
+        packages = pkg // {
+          inherit (leanPkgs) lean;
+          inherit (lakePkgs) lake;
+        };
+        defaultPackage = pkg.modRoot;
+
         devShell = pkgs.mkShell rec {
-          buildInputs = with pkgs; [ leanPkgs.lean-all lakePkg ];
+          buildInputs = with pkgs; [ leanPkgs.lean-all lakePkgs.cli ];
           shellHook = ''
             export PATH=${pkgs.lib.makeBinPath buildInputs}:$PATH
           '';
           # LEAN_PATH = "./src:./test";
           # LEAN_SRC_PATH = "./src:./test";
         };
-
-        packages = pkg // {
-          inherit (leanPkgs) lean;
-        };
-
-        defaultPackage = pkg.modRoot;
       });
 }

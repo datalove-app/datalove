@@ -19,3 +19,6 @@
 [submodule "vendor/quote4"]
 	path = vendor/quote4
 	url = git@github.com:gebner/quote4.git
+[submodule "vendor/hvm"]
+	path = vendor/hvm
+	url = git@github.com:higherorderco/hvm.git
