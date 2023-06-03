@@ -58,6 +58,12 @@ def safeName (name : Lean.Name) : CodegenM Lean.Name :=
     | none   => replace name
   else return name
 
+private def toNameSafe (name : String) : Lean.Name :=
+  if name.length >= 2 && name.front == '«' && name.back == '»' then
+    .str .anonymous name
+  else
+    name.toName
+
 private def mkName (name : Lean.Name) : CodegenM Term :=
   toTerm <$> safeName name
 
@@ -77,7 +83,7 @@ private def mkParam : Param → CodegenM String
     return (← safeName fvarId.name).toString false
 
 private def mkParams (params : Array Param) : CodegenM (Array String) :=
-  return ← params.mapM fun p => mkParam p
+  params.mapM mkParam
 
 -- private def mkRule (name : Lean.Name) (args : List Param) (body : Term) : CodegenM Rule := do
 --   let params ← mkParams args.toArray
@@ -95,7 +101,6 @@ private def mkCtr (f : String) (args : List Term) : Term :=
   -- args.foldl (init := f) fun acc e => .app acc e
   Term.ctr f args.toArray
 
-/-FIXME:-/
 private def mkApp (f : Term) (args : List Term) : Term :=
   dbg_trace s!"-> mkApp: {f} {args}"
   -- args.foldl (init := f) fun acc e => .app acc e
@@ -108,7 +113,9 @@ private def mkLambda (args : List String) (body : Term) : Term :=
 
 /-FIXME:-/
 private def mkLet (binders : List $ String × Term) (body : Term) : Term :=
-  binders.foldr (init := body) fun (s, v) acc => .let s v acc
+  match binders with
+  | [] => body
+  | (s, v) :: binders => .let s v (mkLet binders body)
 
 /-FIXME:-/
 private def mkIfElses (ifThens : List (Term × Term)) (finalElse : Term := .nil) : Term :=
@@ -151,21 +158,6 @@ def mkCasesCore (discr : Term) (alts : Array Override.Alt) : CodegenM Term := do
   --           $cases)⟧
   return .nil
 
-/--
-
-FIXME:
--/
-def mkIndLiteral (ind : Lean.InductiveVal) : CodegenM Term := do
-  let (name, params, indices, type) :=
-    (ind.name.toString false, ind.numParams, ind.numIndices, ind.type)
-  let args ← type.getForallBinderNames.mapM safeName
-  let args := args.map (·.toString false)
-  -- if args.isEmpty then
-  --   -- return ⟦,($name $params $indices)⟧
-  -- else
-  --   -- return .mkLambda args ⟦,($name $params $indices)⟧
-  return .nil
-
 private def addRule (r : Rule) (safe := true) : CodegenM Unit := do
   -- let name := if safe then ← safeName r.name else r.name
   modify fun s => { s with rules := s.rules.push r }
@@ -174,40 +166,52 @@ private def addInductiveData (data : InductiveData) : CodegenM Unit := do
   modify fun s => { s with inductives := s.inductives.insert data.name data }
 
 /--
-Appends a `Lean.ConstructorVal`
-TODO:
--/
-private def addConstructor (ctor : Lean.ConstructorVal) : CodegenM Unit := do
-  visit ctor.name
-  let ctorArgs ← ctor.type.getForallBinderNames.mapM safeName
-  let ctorArgNames := ctorArgs.drop ctor.numParams
-  -- let ctorArgNames := ⟦(cons $ctor.cidx $(mkConsListWith $ ctorArgNames.map toTerm))⟧
-  -- let body := if ctorArgs.isEmpty then
-  --   ctorArgNames
-  -- else
-  --   .mkLambda (ctorArgs.map (·.toString false)) ctorData
-  -- addRule Rule { name := ctor.name, lhs :=  rhs := body }
-
-/--
 Appends an `Lean.InductiveVal`
 
 Amazingly, we don't actually have to codeGen recursors...
 FIXME:
 -/
-private def addInductive (ind : Lean.InductiveVal) : CodegenM Unit := do
+private def addInductiveVal (ind : Lean.InductiveVal) : CodegenM Unit := do
   let name := ind.name
   visit name
-  let ctors : List Lean.ConstructorVal ← ind.ctors.mapM fun ctor => do
-    match (← read).env.constants.find? ctor with
-    | some (.ctorInfo ctor) => return ctor
-    | _ => throw s!"malformed environment, {ctor} is not a constructor or doesn't exist"
-  -- let ctorData := ctors.foldl (init := .empty)
-  --   fun acc ctor => acc.insert ctor.name ctor.cidx
-  -- addInductiveData ⟨name, ind.numParams, ind.numIndices, ctorData⟩
-  -- appendBinding (name, ← mkIndLiteral ind)
-  -- for ctor in ctors do
-  --   addConstructor ctor
+
+  let ctorVals ← ind.ctors.mapM getConstructor!
+  let ctors := ctorVals.foldl (init := .empty)
+    fun ctors c => ctors.insert c.name c.cidx
+  dbg_trace s!"-> addInductiveVal {name} {ctors.toList}"
+
+  addInductiveData ⟨name, ind.numParams, ind.numIndices, ctors⟩
+  -- todo: addRule (name, ← mkIndValLit ind)
+  for ctor in ctorVals do
+    addConstructor ctor
   return ()
+  where
+    mkIndValLit (ind : Lean.InductiveVal) : CodegenM Term := do
+      let (name, params, indices, type) :=
+        (ind.name.toString false, ind.numParams, ind.numIndices, ind.type)
+      let args ← type.getForallBinderNames.mapM safeName
+      let args := args.map (·.toString false)
+
+      dbg_trace s!"-> mkIndValLit {name} {args}"
+      -- if args.isEmpty then
+      --   -- return ⟦,($name $params $indices)⟧
+      -- else
+      --   -- return .mkLambda args ⟦,($name $params $indices)⟧
+      return .nil
+    -- Appends a `Lean.ConstructorVal`
+    addConstructor (ctor : Lean.ConstructorVal) : CodegenM Unit := do
+      visit ctor.name
+      let args ← ctor.type.getForallBinderNames.mapM safeName
+      let ctorArgNames := args.drop ctor.numParams
+      -- let ctorArgNames := ⟦(cons $ctor.cidx $(mkConsListWith $ ctorArgNames.map toTerm))⟧
+
+      dbg_trace s!"-> addConstructor {ctor.name} {args} {ctorArgNames}"
+      -- let body := if args.isEmpty then
+      --   ctorArgNames
+      -- else
+      --   .mkLambda (args.map (·.toString false)) ctorData
+      -- addRule Rule { name := ctor.name, lhs :=  rhs := body }
+
 
 mutual
 
@@ -221,7 +225,9 @@ mutual
       let ⟨params⟩ ← mkParams params
       return (fvarId, mkLambda params value)
 
-  /-FIXME:-/
+  /-
+  FIXME:
+  -/
   partial def mkLetDecl : LetDecl → CodegenM (String × Term)
     | ⟨fvarId, _, _, value⟩ => do
       dbg_trace s!"---> mkLetDecl: {fvarId.name}"
@@ -241,14 +247,14 @@ mutual
       return toTerm lit
     | .proj typeName idx struct => do
       dbg_trace s!"---> mkLetValue .proj {typeName} {idx} {struct.name}"
-      addName typeName
+      appendName typeName
       -- -- TODO FIXME: use `typeName` to get params and add to `idx`
       -- -- TODO FIXME: support overrides; this is somewhat non-trivial
       -- return ⟦(getelem! $struct.name $(1 + idx))⟧
       return .nil
     | .const declName _ args => do
       dbg_trace s!"---> mkLetValue .const {declName} isEmpty: {args.isEmpty}"
-      addName declName
+      appendName declName
       if args.isEmpty then return toTerm declName
       else return mkApp (toTerm declName) $ (← args.mapM mkArg).data
     | .fvar fvarId args =>
@@ -261,7 +267,7 @@ mutual
     let ⟨typeName, _, discr, alts⟩ := cases
     dbg_trace s!"---> mkCases: {typeName} discr.name: {discr.name}"
 
-    addName typeName
+    appendName typeName
     let indData := ← match (← get).inductives.find? typeName with
       | some data => return data
       | none => throw s!"{typeName} is not an inductive"
@@ -313,84 +319,82 @@ mutual
       dbg_trace s!"---> mkCode .unreach {u}"
       return .nil
 
-  partial def mkDecl! : Code → CodegenM Term
-    -- | .let decl k => do
-    --   dbg_trace s!"---> mkCode .let: {decl.fvarId.name} {decl.binderName}"
-    --   let (name, decl) ← mkLetDecl decl
-    --   let k ← mkCode k
-    --   return .ctr name.toUpper decl k
-    | code => mkCode code
-
   /-FIXME:-/
-  partial def addDecl (decl : Decl) : CodegenM Unit := do
+  partial def appendDecl (decl : Decl) : CodegenM Unit := do
     let ⟨name, _, _, params, value, _, _, _⟩ := decl
     visit name
-    -- dbg_trace s!"-> addDecl mkCode call: {name} {params.map fun p => p.binderName.toString}"
+    -- dbg_trace s!"-> appendDecl mkCode call: {name} {params.map fun p => p.binderName.toString}"
     -- let ⟨params⟩ := params.map fun p => p.fvarId.name.toString false
     let ⟨params⟩ ← params.mapM fun p => mkFVarId p.fvarId
     let ctr := mkCtr name.toString params
     let value ← mkDecl! value
 
-    dbg_trace s!"-> addDecl mkCode: {ctr} value: {params}"
+    dbg_trace s!"-> appendDecl mkCode: {ctr} value: {params}"
 
     -- let body := if !params.isEmpty then
-    --   dbg_trace s!"-> addDecl no params: {name}"
-    --   dbg_trace s!"-> addDecl w/ params: {name} {params.map ToString.toString}"
+    --   dbg_trace s!"-> appendDecl no params: {name}"
+    --   dbg_trace s!"-> appendDecl w/ params: {name} {params.map ToString.toString}"
     --   mkCtr name params
-    -- dbg_trace s!"-> addDecl body: {name} {body}"
+    -- dbg_trace s!"-> appendDecl body: {name} {body}"
     addRule (Rule.mk name ctr value) false
+    where
+      mkDecl! : Code → CodegenM Term
+      -- | .let decl k => do
+      --   dbg_trace s!"---> mkCode .let: {decl.fvarId.name} {decl.binderName}"
+      --   let (name, decl) ← mkLetDecl decl
+      --   let k ← mkCode k
+      --   return .ctr name.toUpper decl k
+      | code => mkCode code
 
   /-FIXME:-/
-  partial def addOverride (name : Lean.Name) : CodegenM Bool := do
+  partial def appendOverride (name : Lean.Name) : CodegenM Bool := do
     match (← read).overrides.find? name with
+    | none => return false
     | some (.decl ⟨name, decl⟩) =>
       visit name
-      -- todo: appendPrereqs decl
-      -- todo: addRules (name, decl)
-      dbg_trace s!"-> addOverride found override.decl: {name} {decl}"
+      dbg_trace s!"-> appendOverride found override.decl: {name} {decl}"
+      appendPrereqs decl
+      -- addRule (Rule.mk name decl)
       return true
     | some (.ind ⟨indData, ⟨name, decl⟩, ctors, _⟩) =>
       visit name
+      dbg_trace s!"-> appendOverride found override.ind: {name} {decl}"
       addInductiveData indData
-      -- todo: appendPrereqs decl
+      appendPrereqs decl
       -- todo: addRule (name, decl)
       for ⟨name, ctor⟩ in ctors do
         visit name
-        -- todo: appendPrereqs ctor
+        appendPrereqs ctor
         -- todo: addRule (name, ctor)
-      dbg_trace s!"-> addOverride found override.ind: {name} {decl}"
       return true
-    | none =>
-      dbg_trace s!"-> addOverride no override: {name}"
-      return false
-  -- where
-  --   appendPrereqs (x : Term) : CodegenM Unit :=
-  --     (x.getFreeVars).toList.forM fun n => do
-  --       let n := n.toNameSafe
-  --       if !(← isVisited n) then addName n
+    where
+      appendPrereqs (x : Term) : CodegenM Unit :=
+        (x.getFreeVars).toList.forM fun n => do
+          let n := toNameSafe n
+          if !(← isVisited n) then appendName n
 
   /--
   Entrypoint for code generation. Adds overrides and either inductives or a declaration.
 
   FIXME:
   -/
-  partial def addName (name : Lean.Name) : CodegenM Unit := do
-    dbg_trace s!"-> addName: {name}"
+  partial def appendName (name : Lean.Name) : CodegenM Unit := do
+    dbg_trace s!"===> appendName: {name}"
     if ← isVisited name then return
     match ← getCtorOrIndInfo? name with
     | some inds =>
-      dbg_trace s!"===> addName found ctorOrIndInfo: {name}"
+      dbg_trace s!"===> appendName found ctorOrIndInfo: {name}"
       for ind in inds do
-        if ← addOverride ind then continue
+        if ← appendOverride ind then continue
         let ind ← getInductive! ind
-        dbg_trace s!"===> addName found inductiveVal {ind.name} in {name}"
-        addInductive ind
+        dbg_trace s!"===> appendName found+add inductiveVal {ind.name} in {name}"
+        addInductiveVal ind
     | none =>
-      dbg_trace s!"===> addName no ctorOrIndInfo: {name}"
-      if ← addOverride name then return
+      dbg_trace s!"===> appendName no ctorOrIndInfo: {name}"
+      if ← appendOverride name then return
       let decl := ← getDecl! name
-      dbg_trace s!"===> addName found decl: {decl.name}"
-      addDecl decl
+      dbg_trace s!"===> appendName found+add decl: {decl.name}"
+      appendDecl decl
 
 end
 
@@ -458,7 +462,7 @@ def codeGenM (decl : Lean.Name) : CodegenM Unit :=
     preloads.forM fun (name, preload) => do
       visit name
       -- appendBinding (name, preload) false
-    addName decl
+    appendName decl
 
 def codeGen (env : Lean.Environment) (decl : Lean.Name) : Except String Rulebook :=
   match CodegenM.run ⟨env, .empty⟩ default (codeGenM decl) with
@@ -468,6 +472,9 @@ def codeGen (env : Lean.Environment) (decl : Lean.Name) : Except String Rulebook
     --   Rule { name := name, lhs := body, rhs := body }
 
     return s.rules.toList
+
+end HVM.Codegen
+
 
 
 
@@ -588,5 +595,3 @@ def codeGen (env : Lean.Environment) (decl : Lean.Name) : Except String Rulebook
 --     | .error err => IO.eprint err; return 1
 
 --   return 0
-
-end HVM.Codegen

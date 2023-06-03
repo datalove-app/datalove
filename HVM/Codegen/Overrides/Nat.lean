@@ -50,19 +50,17 @@ def Nat.add : Override := Override.decl ⟨``Nat.add, ⟦
   (+ a b)
 ⟧⟩
 
--- def Nat.sub : Override := Override.decl ⟨``Nat.sub, ⟦
---   (lambda (a b)
---     (if (< a b)
---       0
---       (- a b)))
--- ⟧⟩
+def Nat.sub : Override := Override.decl ⟨``Nat.sub, ⟦
+  (U60.if (< a b)
+    0
+    (- a b))
+⟧⟩
 
--- def Nat.pred : Override := Override.decl ⟨``Nat.pred, ⟦
---   (lambda (a)
---     (if (= a 0)
---       0
---       (- a 1)))
--- ⟧⟩
+def Nat.pred : Override := Override.decl ⟨``Nat.pred, ⟦
+  (U60.if (= a 0)
+    0
+    (- a 1))
+⟧⟩
 
 def Nat.mul : Override := Override.decl ⟨``Nat.mul, ⟦
   (* a b)
@@ -74,14 +72,13 @@ def Nat.mul : Override := Override.decl ⟨``Nat.mul, ⟦
 --   (lambda (a b) (num (/ (u64 a) (u64 b))))
 -- ⟧⟩
 
--- def Nat.mod : Override := Override.decl ⟨``Nat.mod, ⟦
---   (lambda (a b)
---     (if (= b 0)
---         a
---         (if (< a b)
---             a
---             (- a (* (Nat.div a b) b)))))
--- ⟧⟩
+def Nat.mod : Override := Override.decl ⟨``Nat.mod, ⟦
+  (U60.if (= b 0)
+    a
+    (U60.if (< a b)
+      a
+      (- a (* (Nat.div a b) b))))
+⟧⟩
 
 -- def Nat.decLe : Override := Override.decl ⟨``Nat.decLe, ⟦
 --   (lambda (a b) (to_bool (<= a b)))
@@ -149,11 +146,11 @@ def Nat.shiftRight : Override := Override.decl ⟨``Nat.shiftRight, ⟦
 def Nat.module := [
   HVM.Overrides.Nat,
   Nat.add,
-  -- Nat.sub,
-  -- Nat.pred,
+  Nat.sub,
+  Nat.pred,
   Nat.mul,
   -- Nat.div,
-  -- Nat.mod,
+  Nat.mod,
   -- Nat.decLe,
   -- Nat.decLt,
   -- Nat.decEq,

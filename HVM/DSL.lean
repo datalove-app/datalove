@@ -1,9 +1,9 @@
 import Lean
-import HVM.Datatypes.Term
+import HVM.AST
 
 namespace HVM.DSL
 
-open HVM Datatypes
+open HVM.AST
 open Lean Elab Meta
 
 /-
@@ -38,6 +38,13 @@ def elabAtom : TSyntax `atom_ → TermElabM Lean.Expr
   | `(atom_| Nil) => mkAppM ``Atom.nil #[]
   | `(atom_| U60 $n:num) => mkAppM ``Atom.u60 #[mkNatLit n.getNat]
   -- | `(atom_| F60 $n:num) => mkAppM ``Atom.f60 #[mkFloatLit n.getNat]
+  | _ => throwUnsupportedSyntax
+
+declare_syntax_cat    op₁
+scoped syntax "!"   : op₁
+
+def elabOp₁ : TSyntax `op₁ → TermElabM Lean.Expr
+  | `(op₁| !) => return mkConst ``Op₁.not
   | _ => throwUnsupportedSyntax
 
 declare_syntax_cat        op₂
@@ -98,6 +105,7 @@ scoped syntax ident                                   : term_
 scoped syntax "let" ident "=" term_ ";" term_         : term_
 scoped syntax "λ" ident term_                         : term_
 -- ops
+scoped syntax "(" op₁ term_ ")"                       : term_
 scoped syntax "(" op₂ term_ term_ ")"                 : term_
 scoped syntax "(" "if" term_ term_ term_ ")"          : term_
 -- ctr
@@ -117,6 +125,8 @@ partial def elabTerm : TSyntax `term_ → TermElabM Lean.Expr
     mkAppM ``Term.atm #[← mkAppM ``Atom.ident #[mkStrLit s.getId.toString]]
 
   -- ops
+  | `(term_| ($o:op₁ $e)) => do
+    mkAppM ``Term.op₁ #[← elabOp₁ o, ← elabTerm e]
   | `(term_| ($o:op₂ $e₁ $e₂)) => do
     mkAppM ``Term.op₂ #[← elabOp₂ o, ← elabTerm e₁, ← elabTerm e₂]
   | `(term_| (if $e₁ $e₂ $e₃)) => do

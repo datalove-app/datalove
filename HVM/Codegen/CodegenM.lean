@@ -28,10 +28,6 @@ abbrev CodegenM := ReaderT CodegenEnv $ EStateM String CodegenState
 def withOverrides (overrides : Lean.NameMap Override) : CodegenM α → CodegenM α :=
   withReader fun env => { env with overrides := overrides }
 
-def CodegenM.run (env : CodegenEnv) (s : CodegenState) (m : CodegenM α) :
-    EStateM.Result String CodegenState α :=
-  m env |>.run s
-
 instance : Lean.MonadNameGenerator CodegenM where
   getNGen := return (← get).ngen
   setNGen ngen := modify fun s => { s with ngen := ngen }
@@ -56,11 +52,18 @@ def replace (name : Lean.Name) : CodegenM Lean.Name := do
 
 def getDecl! (name : Lean.Name) : CodegenM Decl := do
   if let some decl := getDeclCore? (← read).env monoExt name then
+    dbg_trace s!"=> getDecl! via monoExt {name}"
     return decl
   else if let some decl := getDeclCore? (← read).env baseExt name then
+    dbg_trace s!"=> getDecl! via baseExt {name}"
     return decl
   else
     throw s!"environment does not contain {name}"
+
+def getConstructor! (name : Lean.Name) : CodegenM Lean.ConstructorVal := do
+  match (← read).env.constants.find? name with
+  | some (.ctorInfo name) => return name
+  | _ => throw s!"{name} is not a constructor"
 
 def getInductive! (name : Lean.Name) : CodegenM Lean.InductiveVal := do
   match (← read).env.constants.find? name with
@@ -79,5 +82,9 @@ def getCtorOrIndInfo? (name : Lean.Name) : CodegenM $ Option (List Lean.Name) :=
   | _ =>
     dbg_trace s!"=> getCtorOrIndInfo? none"
     return none
+
+def CodegenM.run (env : CodegenEnv) (s : CodegenState) (m : CodegenM α) :
+    EStateM.Result String CodegenState α :=
+  m env |>.run s
 
 end HVM.Codegen

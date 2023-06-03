@@ -31,11 +31,13 @@ instance : Std.ToFormat Atom := ⟨Atom.toFormat⟩
 - Ops
 -/
 inductive Op₁
+  | not
   | log
   | print
   deriving Repr, BEq
 
 def Op₁.toFormat : Op₁ → Format
+  | not     => "!"
   | .log    => "HVM.log"
   | .print  => "HVM.print"
 
@@ -185,6 +187,20 @@ instance : ToTerm String where
 
 instance : ToTerm Term := ⟨id⟩
 
+open Lean (HashSet RBMap)
+partial def getFreeVars (bVars acc : HashSet String := default) :
+    Term → HashSet String
+  -- | .atm (.ident n) => if bVars.contains n then acc else acc.insert n
+  | .atm _          => acc
+  -- | .sym s => if bVars.contains s then acc else acc.insert s
+  | .lam s b        => b.getFreeVars (bVars.insert s) acc
+  | .op₁ _ e        => e.getFreeVars bVars acc
+  | .op₂ _ e₁ e₂    => e₂.getFreeVars bVars (e₁.getFreeVars bVars acc)
+  | .app f args     => args.foldl (fun acc e => e.getFreeVars bVars acc) (f.getFreeVars bVars acc)
+  | .ctr _ args     => args.foldl (fun acc e => e.getFreeVars bVars acc) acc
+  -- | .if a b c => c.getFreeVars bVars (b.getFreeVars bVars (a.getFreeVars bVars acc))
+  | .let    s v b   => b.getFreeVars (bVars.insert s) (v.getFreeVars bVars acc)
+
 /--
 Telescopes `(lambda (x₁ x₂ ⋯) body)` into `(#[x₁, x₂, ⋯], body)`
 -/
@@ -233,7 +249,7 @@ partial def toFormat (esc := false) (e : Term) : Format :=
   | .op₁ op e =>
     paren $ format op ++ " " ++ e.toFormat esc
   | .op₂ op e₁ e₂ =>
-    paren $ format op ++ " " ++ e₁.toFormat esc ++ line ++ e₂.toFormat esc
+    paren $ format op ++ " " ++ e₁.toFormat esc ++ " " ++ e₂.toFormat esc
   | .let name body cont =>
     -- let (bs, body) := body.telescopeLet #[(name, expr)]
     -- let bs := bs.data.map fun (n, e) => paren $ formatSym n ++ indentD (e.toFormat esc)
