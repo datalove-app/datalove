@@ -1,0 +1,9 @@
+[package]
+name = "datalove-persona"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+datalove-persona-risc0-core = { path = "./core", default-features = false, features = ["std"] }
+datalove-persona-risc0-methods = { path = "./methods" }

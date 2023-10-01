@@ -1,0 +1,54 @@
+[package]
+name = "datalove-persona-core"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# crypto, zk
+bincode = { version = "1.3", default-features = false } # not no_std compatible
+borsh = { workspace = true, default-features = false, features = [
+  "derive"
+] }
+cid = { workspace = true, default-features = false, features = [
+] }
+digest = { workspace = true, default-features = false, features = [
+  "core-api"
+] }
+ed25519-dalek = { workspace = true, default-features = false, features = [
+  "digest",
+] }
+merkle-log = { workspace = true, default-features = false, features = [
+  "borsh",
+  "digest",
+] }
+risc0-zkvm = { workspace = true, default-features = false, features = [
+] }
+sha2 = { workspace = true, default-features = false, features = [
+] }
+
+# general
+thiserror = { workspace = true, default-features = false }
+
+# optional
+serde = { workspace = true, default-features = false, optional = true, features = ["derive"] }
+
+[features]
+default = ["std"]
+std = [
+  "borsh/std",
+  "cid/std",
+  "digest/std",
+  "ed25519-dalek/std",
+  "merkle-log/std",
+  # "onlyerror/std",
+  # "pqc_kyber/std",
+  "risc0-zkvm/std",
+  "serde?/std",
+  "sha2/std",
+]
+# serde = [
+#   "dep:serde",
+#   "ed25519-dalek/serde",
+#   "merkle-log/serde",
+# ]

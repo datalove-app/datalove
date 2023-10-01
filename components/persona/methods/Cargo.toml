@@ -1,0 +1,11 @@
+[package]
+name = "datalove-persona-risc0-methods"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[build-dependencies]
+risc0-build = { workspace = true }
+
+[package.metadata.risc0]
+methods = ["guest"]

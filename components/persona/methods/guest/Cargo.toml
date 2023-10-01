@@ -1,0 +1,21 @@
+[package]
+# TODO: Rename this package to change the method name from METHOD_NAME
+name = "datalove-persona-risc0-guest"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+datalove-persona-core = { path = "../../core", default-features = false }
+risc0-zkvm = { workspace = true, default-features = false }
+
+[patch.crates-io]
+ed25519-dalek = { git = "https://github.com/risc0/curve25519-dalek", branch = "risczero" }
+sha2 = { git = "https://github.com/risc0/rustcrypto-hashes", branch = "risc0" }
+
+[features]
+default = ["std"]
+std = [
+  "datalove-persona-core/std",
+  "risc0-zkvm/std"
+]
