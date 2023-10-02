@@ -1,2 +1,5 @@
+.lean
+.zig
+
 build/
 vendor/
