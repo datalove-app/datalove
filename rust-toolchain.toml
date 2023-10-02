@@ -1,0 +1,6 @@
+[toolchain]
+channel = "1.70"
+# # TODO: set this solely for risc0 stuff
+# channel = "nightly-2023-03-06"
+# components = [ "rustfmt", "rust-src" ]
+# profile = "minimal"

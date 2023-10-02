@@ -1,0 +1,24 @@
+[submodule "wgpu-native-wasmer"]
+	path = rust/packages/wgpu-native-wasmer
+	url = https://github.com/sunny-g/wgpu-native
+[submodule "rust/patched/wgpu-native"]
+	path = rust/packages/wgpu-native
+	url = https://github.com/sunny-g/wgpu-native
+[submodule "rust/packages/wgpu"]
+	path = rust/runtime/components/wgpu/wgpu
+	url = https://github.com/sunny-g/wgpu
+[submodule "rust/packages/wasm-bindgen"]
+	path = rust/packages/wasm-bindgen
+	url = https://github.com/sunny-g/wasm-bindgen
+[submodule "rust/packages/wasmer"]
+	path = rust/packages/wasmer
+	url = https://github.com/sunny-g/wasmer
+[submodule "rust/packages/wai"]
+	path = rust/packages/wai
+	url = https://github.com/sunny-g/wai
+[submodule "rust/runtime/components/servo/servo"]
+	path = rust/runtime/components/servo/servo
+	url = https://github.com/servo/servo
+[submodule "vendor/blitz"]
+	path = vendor/blitz
+	url = https://github.com/datalove-app/blitz

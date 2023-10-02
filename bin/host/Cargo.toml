@@ -1,0 +1,11 @@
+[package]
+name = "datalove-host"
+description = "Daemon and bridge between datalove and hardware/OS"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "datalove_host"
+path = "bin/main.rs"
+
+[dependencies]

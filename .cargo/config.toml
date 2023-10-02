@@ -1,0 +1,7 @@
+[target.wasm32-wasi]
+# ar = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/llvm-ar -rs"
+# linker = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/wasm-ld"
+# rustflags = [
+#   "-C", "link-arg=-lc++_static",
+#   "-C", "link-arg=-lc++abi"
+# ]
