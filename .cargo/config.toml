@@ -5,3 +5,10 @@
 #   "-C", "link-arg=-lc++_static",
 #   "-C", "link-arg=-lc++abi"
 # ]
+
+[patch.crates-io]
+risc0-build = { path = "vendor/risc0/risc0/build" }
+# risc0-circuit-recursion = { path = "vendor/risc0/risc0/circuit/recursion" }
+# risc0-circuit-rv32im = { path = "vendor/risc0/risc0/circuit/rv32im" }
+risc0-zkp = { path = "vendor/risc0/risc0/zkp" }
+risc0-zkvm = { path = "vendor/risc0/risc0/zkvm" }

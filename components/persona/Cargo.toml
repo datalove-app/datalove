@@ -5,5 +5,29 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-datalove-persona-risc0-core = { path = "./core", default-features = false, features = ["std"] }
-datalove-persona-risc0-methods = { path = "./methods" }
+datalove-persona-core = { path = "./core", default-features = false, features = [
+] }
+datalove-persona-risc0 = { path = "./methods" }
+
+risc0-zkvm = { workspace = true, default-features = false, features = [
+  "verify",
+] }
+
+[features]
+default = ["std", "prove"]
+std = [
+  "datalove-persona-core/std",
+  "risc0-zkvm/std",
+]
+prove = [
+  "std",
+  "risc0-zkvm/prove",
+]
+# cuda = [
+#   "prove",
+#   "risc0-zkvm/cuda",
+# ]
+# metal = [
+#   "prove",
+#   "risc0-zkvm/metal",
+# ]

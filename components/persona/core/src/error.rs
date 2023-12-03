@@ -1,5 +1,5 @@
+use crate::maybestd::io;
 use crate::*;
-use borsh::io;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
@@ -10,8 +10,10 @@ pub enum Error {
     #[cfg_attr(feature = "std", error("Signature error: {0}"))]
     SignatureError(#[cfg_attr(feature = "std", from)] ed25519_dalek::SignatureError),
 
-    #[cfg_attr(feature = "std", error("MerkleLog error: {0}"))]
-    MerkleLogError(#[cfg_attr(feature = "std", from)] merkle_log::Error),
+    // #[cfg_attr(feature = "std", error("MerkleLog error: {0}"))]
+    // MerkleLogError(#[cfg_attr(feature = "std", from)] merkle_log::Error),
+    #[cfg_attr(feature = "std", error("invalid operation: {0}"))]
+    InvalidOperation(&'static str),
 
     // #[error("high threshold must be greater than low threshold")]
     // InvalidRelativeThresholds,
@@ -29,4 +31,10 @@ pub enum Error {
     // InsufficientGuardianThreshold,
     #[cfg_attr(feature = "std", error("unauthorized operation"))]
     Unauthorized,
+}
+
+impl From<Error> for io::Error {
+    fn from(e: Error) -> Self {
+        Self::new(io::ErrorKind::Other, format!("{}", e))
+    }
 }

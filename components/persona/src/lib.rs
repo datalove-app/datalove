@@ -38,10 +38,16 @@
 //!
 //! Each [`Device`] maintains an append-only commit log (maintained by a
 //! [`MerkleLog`]) of messages it might desire to persist or replicate across
-//! the network. Devices initialize a [`User`] by creating it's genesis state,
-//! committing that state to its log, and verifying the commitment within the
-//! [`risc0`] zkvm, resulting in a receipt whose digest becomes the user's
-//! [`DID`]. Subsequent user operations (to add or remove devices, change their
+//! the network. Using a [`MerkleLog`] both ensures commitment to previous
+//! messages as well as enables quick fast-sync/fast-forwarding to the head of
+//! the log.
+//!
+//! Devices initialize a [`User`] by creating it's genesis operation,
+//! committing that operation to its log, and validating the commitment and
+//! operation within the [`risc0`] zkvm, resulting in a receipt whose digest
+//! becomes the user's [`DID`].
+//!
+//! Subsequent user operations (to add or remove devices, change their
 //! thresholds, etc) are added to each participating device's logs, and are
 //! again applied to the user's state and verified within the zkvm (along with
 //! the user's previous [`risc0_zkvm::Receipt`]), thus creating the user's

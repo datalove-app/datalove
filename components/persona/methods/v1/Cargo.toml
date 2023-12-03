@@ -1,0 +1,26 @@
+[package]
+name = "datalove-persona-risc0-guest-v1"
+version = "0.0.1"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+datalove-persona-core = { path = "../../core", default-features = false }
+risc0-zkvm = { version = "0.20.0-alpha.1", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+  "datalove-persona-core/std",
+  "risc0-zkvm/std",
+]
+
+[patch.crates-io]
+crypto-bigint = { git = "https://github.com/risc0/crypto-bigint", branch = "risczero" }
+curve25519-dalek = { git = "https://github.com/risc0/curve25519-dalek", branch = "risczero" }
+sha2 = { git = "https://github.com/risc0/rustcrypto-hashes", branch = "risczero" }
+
+[profile.release]
+# TODO: play with this
+lto = "thin"

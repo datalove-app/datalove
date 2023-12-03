@@ -1,3 +1,0 @@
-[submodule "vendor/blitz"]
-	path = vendor/blitz
-	url = git@github.com:datalove-app/blitz.git

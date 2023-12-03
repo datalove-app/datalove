@@ -1,102 +1,38 @@
+mod group;
 mod ops;
-mod state;
 
-pub use ops::*;
-pub use state::*;
+pub use crate::device::Device;
+pub use group::{Group, GroupSignature, Member, MemberSignature};
+pub use ops::Operation;
 
-use crate::{util, Error};
-use borsh::{io, BorshDeserialize, BorshSerialize};
-use risc0_zkvm::Receipt;
+use crate::util::Sha256Digest;
+use borsh::{BorshDeserialize, BorshSerialize};
 
-///
-#[derive(Debug, PartialEq)]
+/// The decentralized identifier of a [`Persona`].
+pub type Did = Sha256Digest;
+
+/// Each device associated with a [`Persona`] has a configurable weight that
+/// governs its share in signing for persona state change operations.
+pub type Weight = u8;
+
+/// Publicly committed state of the persona.
+#[derive(Clone, Debug, Default, BorshDeserialize, BorshSerialize)]
 pub struct Persona {
-    // status: WalletStatus,
-    state: State,
-    prev: Option<Receipt>,
-    // did: String,
+    /// The sequence number (i.e. age by number of proofs generated).
+    seqno: u32,
+
+    /// The DID of the persona.
+    did: Did,
+
+    /// The SHA256 digest of the proof-specific message.
+    msg_digest: Sha256Digest,
+
+    /// The SHA256 digest of persona-related metadata to be committed.
+    metadata: Sha256Digest,
 }
 
-impl Persona {
-    ///
-    pub const MAX_DEVICES: usize = 32;
-
-    // /// Generates random owners.
-    // #[doc(hidden)]
-    // pub fn random_owners(size: usize, threshold: Weight) -> Owners {
-    //     assert!(size <= Self::MAX_OWNERS);
-
-    //     let mut owners: Owners = Default::default();
-    //     for i in 0..size {
-    //         owners[i] = (Pubkey::new_unique(), threshold);
-    //     }
-    //     owners
-    // }
-}
-
-impl Persona {
-    // #[inline]
-    // pub fn is_active(&self) -> bool {
-    //     self.state == WalletStatus::Active
-    // }
-
-    // #[inline]
-    // pub fn is_frozen(&self) -> bool {
-    //     self.state == WalletStatus::Frozen
-    // }
-}
-
-impl BorshSerialize for Persona {
-    fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-        self.state.serialize(writer)?;
-        match &self.prev {
-            None => u8::from(0).serialize(writer)?,
-            Some(receipt) => {
-                u8::from(1).serialize(writer)?;
-                util::risc0::serialize_receipt(receipt, writer)?
-            }
-        };
-
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for Persona {
-    fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-        let state = State::deserialize_reader(reader)?;
-        let prev = {
-            match u8::deserialize_reader(reader)? {
-                0 => None,
-                1 => Some(util::risc0::deserialize_receipt(reader)?),
-                _ => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "invalid Option<Receipt> flag",
-                    ))
-                }
-            }
-        };
-
-        Ok(Self { state, prev })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // #[test]
-    // fn invalid_wallets() {
-    //     let invalid_threshold = User::new(100, 100, Default::default(), Default::default());
-    //     assert!(
-    //         invalid_threshold.is_err(),
-    //         "wallet is invalid; this assertion should fail"
-    //     );
-
-    //     let invalid_patterns = User::new(100, 100, Default::default(), Default::default());
-    //     assert!(
-    //         invalid_patterns.is_err(),
-    //         "wallet is invalid; this assertion should fail"
-    //     );
-    // }
+#[cfg(target_os = "zkvm")]
+pub fn exec() -> crate::maybestd::io::Result<()> {
+    crate::proof::exec::<Group, Persona, Operation, GroupSignature>()?;
+    Ok(())
 }
