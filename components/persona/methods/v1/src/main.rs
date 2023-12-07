@@ -2,6 +2,9 @@
 #![no_std]
 
 risc0_zkvm::guest::entry!(main);
+
 pub fn main() {
-    datalove_persona_core::exec().expect("failed to exec guest state machine");
+    use risc0_zkvm::guest::env;
+
+    datalove_persona_core::exec(env::stdin(), env::stdout(), env::journal()).unwrap();
 }

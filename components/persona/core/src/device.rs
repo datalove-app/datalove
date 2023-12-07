@@ -1,15 +1,11 @@
-use crate::{
-    maybestd::{io, string::ToString, vec::Vec},
-    util, Error,
-};
-use borsh::{BorshDeserialize, BorshSerialize};
-use digest::Digest;
-use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey};
-use sha2::{Sha256, Sha512};
-use signature::{DigestSigner, DigestVerifier, Error as SignatureError, Verifier};
+use std::process::Output;
 
-///
-pub type DeviceKey = VerifyingKey;
+use crate::{util, Error};
+use borsh::{BorshDeserialize, BorshSerialize};
+use digest::{typenum::U64, Digest};
+use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey as Ed25519VerifyingKey};
+use sha2::Sha512;
+use signature::{DigestSigner, DigestVerifier, Error as SignatureError, Verifier};
 
 ///
 #[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
@@ -17,10 +13,10 @@ pub type DeviceKey = VerifyingKey;
 pub enum Device {
     Ed25519(
         #[borsh(
-            deserialize_with = "util::ed25519::deserialize_device_key",
-            serialize_with = "util::ed25519::serialize_device_key"
+            deserialize_with = "util::ed25519::deserialize_key",
+            serialize_with = "util::ed25519::serialize_key"
         )]
-        DeviceKey,
+        Ed25519VerifyingKey,
     ),
 }
 
@@ -39,24 +35,24 @@ impl Device {
     /// Domain separation context.
     pub const SIGNING_CONTEXT: &[u8] = b"datalove::persona";
 
-    /// Initializes a new [`Device`] and it's [`MerkleLog`].
-    pub fn init<Si>(pk: DeviceKey, signer: &Si) -> Result<Self, Error>
-    where
-        Si: DigestSigner<Sha512, DeviceSignature>,
-    {
-        let entry = {
-            let entry = Self::protocol_message_digest(pk.as_bytes());
-            // assert that the signer is the owner of the public key being initialized
-            let DeviceSignature::Ed25519(sig) = signer
-                .try_sign_digest(entry.clone())
-                .map_err(Error::SignatureError)?;
-            pk.verify_digest(entry, &sig)
-                .map_err(Error::SignatureError)?;
-            sig
-        };
+    // /// Initializes a new [`Device`] and it's [`MerkleLog`].
+    // pub fn init<Si>(pk: Ed25519VerifyingKey, signer: &Si) -> Result<Self, Error>
+    // where
+    //     Si: DigestSigner<Sha512, DeviceSignature>,
+    // {
+    //     let entry = {
+    //         let entry = Self::protocol_message_digest(pk.as_bytes());
+    //         // assert that the signer is the owner of the public key being initialized
+    //         let DeviceSignature::Ed25519(sig) = signer
+    //             .try_sign_digest(entry.clone())
+    //             .map_err(Error::SignatureError)?;
+    //         pk.verify_digest(entry, &sig)
+    //             .map_err(Error::SignatureError)?;
+    //         sig
+    //     };
 
-        Ok(Self::Ed25519(pk))
-    }
+    //     Ok(Self::Ed25519(pk))
+    // }
 
     /*
     pub fn append<T, Si, St>(
@@ -78,36 +74,61 @@ impl Device {
     }
      */
 
-    // pub fn public_key(&self) -> &DeviceKey {
-    //     &self.pk
-    // }
-
     // /// Determines if this is a "null" peer, i.e. the default peer.
     // pub fn is_null_peer(&self) -> bool {
     //     self.pk.as_bytes() == &NULL_PEER_KEY
     // }
 
-    fn protocol_message_digest(entry: impl AsRef<[u8]>) -> Sha512 {
-        Sha512::new_with_prefix(Self::SIGNING_CONTEXT).chain_update(entry)
+    pub fn sign<D, Si>(&self, message: &[u8], signer: &Si) -> Result<DeviceSignature, Error>
+    where
+        D: Digest<OutputSize = U64> + Clone,
+        Si: DigestSigner<D, DeviceSignature>,
+    {
+        let msg_digest = Self::protocol_message_digest::<D>(message);
+        let sig = signer.try_sign_digest(msg_digest.clone())?;
+        self.verify_digest::<D>(msg_digest, &sig)?;
+        Ok(sig)
+    }
+
+    /// assumes we're verifying a protocol message digest
+    pub(crate) fn verify_digest<D>(
+        &self,
+        msg_digest: D,
+        signature: &DeviceSignature,
+    ) -> Result<(), Error>
+    where
+        D: Digest<OutputSize = U64>,
+    {
+        match (self, signature) {
+            (Self::Ed25519(pk), DeviceSignature::Ed25519(sig)) => {
+                Ok(pk.verify_digest(msg_digest, sig)?)
+            }
+        }
+    }
+
+    fn protocol_message_digest<D>(entry: impl AsRef<[u8]>) -> D
+    where
+        D: Digest<OutputSize = U64>,
+    {
+        D::new_with_prefix(Self::SIGNING_CONTEXT).chain_update(entry)
     }
 }
 
-// impl AsRef<DeviceKey> for Device {
-//     fn as_ref(&self) -> &DeviceKey {
+// impl AsRef<Ed25519VerifyingKey> for Device {
+//     fn as_ref(&self) -> &Ed25519VerifyingKey {
 //         self.public_key()
 //     }
 // }
 
 // impl KeypairRef for Device {
-//     type VerifyingKey = DeviceKey;
+//     type VerifyingKey = Ed25519VerifyingKey;
 // }
 
+/// Verifies protocol messages by their computing its protocol-specific prehashed digest.
 impl Verifier<DeviceSignature> for Device {
     fn verify(&self, msg: &[u8], signature: &DeviceSignature) -> Result<(), SignatureError> {
-        let msg_digest = Self::protocol_message_digest(msg);
-        match (self, signature) {
-            (Self::Ed25519(pk), DeviceSignature::Ed25519(sig)) => pk.verify_digest(msg_digest, sig),
-        }
+        let msg_digest = Self::protocol_message_digest::<Sha512>(msg);
+        Ok(self.verify_digest(msg_digest, signature)?)
     }
 }
 

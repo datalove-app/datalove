@@ -28,7 +28,7 @@ pub(crate) mod util;
 pub(crate) mod maybestd {
     pub use borsh::__private::maybestd::*;
     pub use borsh::io;
-    pub use core::{marker, ops};
+    pub use core::{borrow, cell, cmp, marker, ops};
 }
 
 pub use borsh;

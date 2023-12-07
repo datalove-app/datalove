@@ -8,7 +8,7 @@ pub enum Error {
     Io(#[cfg_attr(feature = "std", from)] io::Error),
 
     #[cfg_attr(feature = "std", error("Signature error: {0}"))]
-    SignatureError(#[cfg_attr(feature = "std", from)] ed25519_dalek::SignatureError),
+    SignatureError(#[cfg_attr(feature = "std", from)] signature::Error),
 
     // #[cfg_attr(feature = "std", error("MerkleLog error: {0}"))]
     // MerkleLogError(#[cfg_attr(feature = "std", from)] merkle_log::Error),
@@ -36,5 +36,14 @@ pub enum Error {
 impl From<Error> for io::Error {
     fn from(e: Error) -> Self {
         Self::new(io::ErrorKind::Other, format!("{}", e))
+    }
+}
+
+impl From<Error> for signature::Error {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::SignatureError(e) => e,
+            _ => Self::new(),
+        }
     }
 }
