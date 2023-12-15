@@ -10,6 +10,9 @@ pub enum Error {
     #[cfg_attr(feature = "std", error("Signature error: {0}"))]
     SignatureError(#[cfg_attr(feature = "std", from)] signature::Error),
 
+    #[cfg_attr(feature = "std", error("Invalid signature error: {0}"))]
+    InvalidSignatureError(&'static str),
+
     // #[cfg_attr(feature = "std", error("MerkleLog error: {0}"))]
     // MerkleLogError(#[cfg_attr(feature = "std", from)] merkle_log::Error),
     #[cfg_attr(feature = "std", error("invalid operation: {0}"))]

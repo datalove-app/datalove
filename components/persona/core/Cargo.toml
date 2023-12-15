@@ -1,8 +1,8 @@
 [package]
 name = "datalove-persona-core"
-authors.workspace = true
-version.workspace = true
-edition.workspace = true
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 # general
@@ -18,12 +18,14 @@ digest = { workspace = true, default-features = false, features = [
 ] }
 ed25519-dalek = { workspace = true, default-features = false, features = [
   "digest",
+  # "fast",
 ] }
 # merkle-log = { workspace = true, default-features = false, features = [
 #   "borsh",
 #   "digest",
 # ] }
 risc0-zkvm = { workspace = true, default-features = false, features = [
+  "verify",
 ] }
 sha2 = { workspace = true, default-features = false, features = [
 ] }
@@ -32,7 +34,21 @@ signature = { workspace = true, default-features = false, features = [
 ] }
 
 [dev-dependencies]
+anyhow = { workspace = true, default-features = false, features = ["std"] }
+datalove-persona-core = { path = ".", features = ["std", "test"] }
 datalove-persona-risc0 = { path = "../methods" }
+ed25519-dalek = { workspace = true, default-features = false, features = [
+  "rand_core",
+  "std",
+] }
+rand = { workspace = true, default-features = false, features = ["std"] }
+risc0-zkvm = { workspace = true, default-features = false, features = [
+  "cuda", # remove
+  "prove",
+  "verify",
+  "std",
+] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [features]
 default = []
@@ -47,6 +63,7 @@ std = [
   "sha2/std",
   "signature/std",
 ]
+test = [] # enables test utilities
 # serde = [
 #   "dep:serde",
 #   "ed25519-dalek/serde",

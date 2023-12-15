@@ -4,27 +4,26 @@ pub use risc0::{Sha256Digest, Sha256Pipe};
 use crate::maybestd::{
     cell::{Ref, RefCell},
     io,
-    ops::Deref,
+    ops::{BitXor, BitXorAssign},
     vec::Vec,
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 
-// pub mod cid {
-//     use super::*;
-//     use ::cid::Cid;
-
-//     pub fn serialize_cid<W: io::Write>(cid: &Cid, writer: &mut W) -> io::Result<()> {
-//         let mut bytes = Vec::with_capacity(cid.encoded_len());
-//         cid.write_bytes(bytes.as_mut_slice())
-//             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{}", e)))?;
-//         bytes.serialize(writer)
-//     }
-
-//     pub fn deserialize_cid<R: io::Read>(reader: &mut R) -> io::Result<Cid> {
-//         let mut bytes = Vec::with_capacity();
-//         Cid::read_bytes(reader).map_err(|e| io::Error::new(io::ErrorKind::Other, format!("{}", e)))
-//     }
-// }
+#[derive(Debug)]
+pub struct Empty;
+impl io::Read for Empty {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        Ok(0)
+    }
+}
+impl io::Write for Empty {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 pub mod digest {
     use super::*;
@@ -155,7 +154,7 @@ pub mod risc0 {
     impl From<&Sha256> for Sha256Digest {
         #[inline]
         fn from(sha256: &Sha256) -> Self {
-            Self::from(sha256.clone())
+            sha256.clone().into()
         }
     }
 
@@ -174,9 +173,26 @@ pub mod risc0 {
         }
     }
 
+    impl BitXor<u32> for Sha256Digest {
+        type Output = Self;
+
+        #[inline]
+        fn bitxor(mut self, rhs: u32) -> Self::Output {
+            self ^= rhs;
+            self
+        }
+    }
+
+    impl BitXorAssign<u32> for Sha256Digest {
+        #[inline]
+        fn bitxor_assign(&mut self, rhs: u32) {
+            self.0.as_mut_words()[0] ^= rhs;
+        }
+    }
+
     #[inline]
     fn serialize_digest<W: io::Write>(digest: &sha::Digest, writer: &mut W) -> io::Result<()> {
-        digest.as_words().serialize(writer)
+        AsRef::<[u32; DIGEST_WORDS]>::as_ref(digest).serialize(writer)
     }
 
     #[inline]
@@ -201,14 +217,13 @@ pub mod risc0 {
     // }
 
     pub type Sha256Pipe<T> = DigestPipe<Sha256, T>;
-    // pub type EmptySha256Pipe = Sha256Pipe<io::Empty>;
 
     /// A digest-ible borsh-encoded type.
     #[derive(Clone, Debug, Default, Eq, PartialEq)]
     pub struct BlockData<T> {
         /// Digest of the borsh-encoded journal.
         pub(crate) digest: RefCell<Sha256Digest>,
-        pub(crate) inner: T,
+        pub(crate) decoded: T,
     }
 
     impl<T> BlockData<T> {
@@ -217,15 +232,37 @@ pub mod risc0 {
         }
 
         pub fn as_inner(&self) -> &T {
-            &self.inner
+            &self.decoded
         }
 
         pub fn as_inner_mut(&mut self) -> &mut T {
-            &mut self.inner
+            &mut self.decoded
         }
 
         pub fn into_inner(self) -> T {
-            self.inner
+            self.decoded
+        }
+    }
+
+    impl<T: BorshSerialize> BlockData<T> {
+        pub fn new(inner: T) -> Self {
+            Self::new_with_bytes(inner, &mut Empty)
+                .expect("should never fail to serialize and compute digest")
+        }
+
+        fn new_with_bytes<W: io::Write>(decoded: T, writer: &mut W) -> io::Result<Self> {
+            let this = Self {
+                digest: RefCell::new(Sha256Digest::ZERO),
+                decoded,
+            };
+            this.serialize(writer)?;
+            Ok(this)
+        }
+    }
+
+    impl<T: BorshSerialize> From<T> for BlockData<T> {
+        fn from(other: T) -> Self {
+            Self::new(other)
         }
     }
 
@@ -238,16 +275,16 @@ pub mod risc0 {
     impl<T: BorshSerialize> BorshSerialize for BlockData<T> {
         fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
             self.digest
-                .replace(Sha256Pipe::encode_to_writer(&self.inner, writer)?.into());
+                .replace(Sha256Pipe::encode_to_writer(&self.decoded, writer)?.into());
             Ok(())
         }
     }
 
     impl<T: BorshDeserialize> BorshDeserialize for BlockData<T> {
         fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-            let (digest, inner) = super::Sha256Pipe::decode_from_reader(reader)?;
+            let (digest, decoded) = super::Sha256Pipe::decode_from_reader(reader)?;
             let digest = RefCell::new(digest.into());
-            Ok(Self { digest, inner })
+            Ok(Self { digest, decoded })
         }
     }
 

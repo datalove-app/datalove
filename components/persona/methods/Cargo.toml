@@ -1,11 +1,32 @@
 [package]
 name = "datalove-persona-risc0"
-authors.workspace = true
-version.workspace = true
-edition.workspace = true
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+name = "datalove_persona_risc0"
+path = "lib.rs"
 
 [build-dependencies]
 risc0-build = { workspace = true }
 
+[dependencies]
+risc0-zkvm = { workspace = true }
+# risc0-zkvm-platform = { workspace = true }
+
+# [dev-dependencies]
+# anyhow = { workspace = true }
+# datalove-persona-core = { path = "../core", features = ["std", "dev"] }
+# ed25519-dalek = { workspace = true, default-features = false, features = [
+#   "rand_core",
+#   "std",
+# ] }
+# rand = { workspace = true, default-features = false, features = ["std"] }
+# risc0-zkvm = { workspace = true, default-features = false, features = [
+#   "prove",
+#   "std",
+# ] }
+
 [package.metadata.risc0]
-methods = ["v1"]
+methods = ["zksm", "v1"]

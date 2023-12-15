@@ -1,8 +1,8 @@
 [package]
 name = "datalove-persona"
-authors.workspace = true
-version.workspace = true
-edition.workspace = true
+authors = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 datalove-persona-core = { path = "./core", default-features = false, features = [

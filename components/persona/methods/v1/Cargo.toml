@@ -1,9 +1,13 @@
+[workspace]
+
 [package]
 name = "datalove-persona-risc0-guest-v1"
 version = "0.0.1"
 edition = "2021"
 
-[workspace]
+[[bin]]
+name = "datalove-persona-risc0-guest-v1"
+path = "main.rs"
 
 [dependencies]
 datalove-persona-core = { path = "../../core", default-features = false }
@@ -23,4 +27,4 @@ sha2 = { git = "https://github.com/risc0/rustcrypto-hashes", branch = "risczero"
 
 [profile.release]
 # TODO: play with this
-lto = "thin"
+# lto = "thin"

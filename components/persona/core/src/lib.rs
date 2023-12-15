@@ -23,12 +23,14 @@ mod device;
 mod error;
 mod persona;
 
-pub(crate) mod proof;
-pub(crate) mod util;
+#[doc(hidden)]
+pub mod util;
+pub mod zksm;
+
 pub(crate) mod maybestd {
     pub use borsh::__private::maybestd::*;
     pub use borsh::io;
-    pub use core::{borrow, cell, cmp, marker, ops};
+    pub use core::{borrow, cell, cmp, fmt, marker, ops};
 }
 
 pub use borsh;

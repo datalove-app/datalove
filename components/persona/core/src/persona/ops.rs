@@ -1,26 +1,75 @@
-use super::{Group, Member, Persona};
-use crate::{proof::Operation as IOperation, util::Sha256Digest, Error, GroupSignature};
+use super::{Group, Member, Persona, Threshold, Weight};
+use crate::{
+    util::{risc0::Sha256, Sha256Digest},
+    zksm::Operation as IOperation,
+    Error, GroupSignature,
+};
 use borsh::{BorshDeserialize, BorshSerialize};
+use digest::Digest;
 
 ///
 #[derive(Clone, Debug, BorshDeserialize, BorshSerialize)]
 pub struct SignedOperation {
     /// The operation payload.
-    payload: Operation,
+    op: Operation,
 
     /// The signature of the operation.
     signature: GroupSignature,
+    // #[borsh(skip)]
+    // weight: Option<Threshold>,
+}
+
+impl SignedOperation {
+    // /// Verifies a group signature against the group's state.
+    // pub fn verify_signature(
+    //     &self,
+    //     op_digest: &Sha256Digest,
+    //     sig: &GroupSignature,
+    // ) -> Result<Threshold, Error> {
+    //     // assert participant count
+    //     let num_participants = sig.len();
+    //     if !(num_participants > 0 && num_participants <= self.len()) {
+    //         return Err(signature::Error::new().into());
+    //     }
+
+    //     let mut sig_weight = 0u16;
+
+    //     // verify each member sig
+    //     // TODO: group and batch device sig verifies
+    //     for (member_idx, member_sig) in sig.idx_iter() {
+    //         let member = &self.members[member_idx];
+    //         member.verify_signature(op_digest, &member_sig)?;
+
+    //         sig_weight += member.weight() as Threshold;
+    //     }
+
+    //     Ok(sig_weight)
+    // }
 }
 
 impl IOperation<Group, Persona> for SignedOperation {
     #[inline]
     fn validate(
         &self,
-        self_digest: &Sha256Digest,
+        op_digest: &Sha256Digest,
         persona: &Persona,
         group: &Group,
     ) -> Result<(), Error> {
-        group.verify(self_digest.as_ref(), &self.signature)?;
+        let sig_group = if group.len() == 0 {
+            self.op
+                .try_as_init()
+                .ok_or_else(|| {
+                    Error::InvalidOperation("only Init can be applied to an empty group")
+                })?
+                .as_ref()
+        } else {
+            group
+        };
+
+        let sig_weight = sig_group.verify_signature(op_digest, &self.signature)?;
+        // self.operation.verify_weight(sig_weight, sig_group)?;
+        self.op.validate(op_digest, persona, group)?;
+
         Ok(())
     }
 
@@ -40,10 +89,25 @@ impl IOperation<Group, Persona> for SignedOperation {
 #[borsh(use_discriminant = true)]
 #[non_exhaustive]
 pub enum Operation {
+    /// The initialization operation, that creates a new [`Persona`] from the provided [`MemberState`].
     Init(init::Init),
-    Swap(swap::Swap),
+    // Bump(bump::Bump),
+    // Swap(swap::Swap),
     // Sign(sign::Sign),
+    // Freeze,
+    // Thaw,
 }
+
+impl Operation {
+    fn try_as_init(&self) -> Option<&init::Init> {
+        match self {
+            Self::Init(op) => Some(op),
+            _ => None,
+        }
+    }
+}
+
+impl Operation {}
 
 impl IOperation<Group, Persona> for Operation {
     #[inline]
@@ -54,9 +118,26 @@ impl IOperation<Group, Persona> for Operation {
         group: &Group,
     ) -> Result<(), Error> {
         match self {
+            // group weight must be greater than or equal to the signature weight
             Self::Init(op) => op.validate(self_digest, persona, group),
-            Self::Swap(op) => op.validate(self_digest, persona, group),
-            // Self::Sign(op) => op.validate(prev_persona),
+            // use case(s):
+            //  - bump: only updates seqno + group member clocks (no threshold change)
+            //      - can be self-signed (i.e. by only members being updated)
+            // Self::Bump(op)
+
+            // use case(s):
+            //  - addition:
+            //  - removal:
+            //  - (device) key rotation: 1:1 swap && old signs new(head), no threshold change
+            //      - self-solo-signed iff 1:1 swap && old signs new(head), no threshold change
+            //  - ???
+            // CANNOT be ONLY self-signed personas
+            // Self::Swap(op) => op.validate(self_digest, persona, group),
+
+            // use case(s):
+            //  - sign: ... ? something that requires consensus?
+            // CANNOT be ONLY self-signed personas
+            // Self::Sign(op) => op.validate(self_digest, persona, group),
         }
     }
 
@@ -69,8 +150,8 @@ impl IOperation<Group, Persona> for Operation {
     ) -> Result<(), Error> {
         match self {
             Self::Init(op) => op.apply(self_digest, persona, group),
-            Self::Swap(op) => op.apply(self_digest, persona, group),
-            // Self::Sign(op) => op.validate(prev_persona),
+            // Self::Swap(op) => op.apply(self_digest, persona, group),
+            // Self::Sign(op) => op.apply(self_digest, persona, group),
         }
     }
 }
@@ -86,6 +167,27 @@ pub struct GenericOperation<T> {
     payload: T,
 }
 
+impl<T, U> AsRef<U> for GenericOperation<T>
+where
+    T: AsRef<U>,
+{
+    fn as_ref(&self) -> &U {
+        self.payload.as_ref()
+    }
+}
+
+impl<T, U> From<(Sha256Digest, U)> for GenericOperation<T>
+where
+    T: From<U>,
+{
+    fn from((new_metadata, payload): (Sha256Digest, U)) -> Self {
+        Self {
+            new_metadata,
+            payload: payload.into(),
+        }
+    }
+}
+
 mod init {
     use super::*;
 
@@ -94,8 +196,30 @@ mod init {
 
     #[derive(Clone, Debug, BorshDeserialize, BorshSerialize)]
     pub struct InitInner {
-        members: Vec<Member>,
+        // msg: Sha256Digest,
+        group: Group,
     }
+
+    impl Init {
+        pub fn new(metadata: Sha256Digest, group: Group) -> Self {
+            Self {
+                new_metadata: metadata,
+                payload: InitInner { group },
+            }
+        }
+    }
+
+    impl AsRef<Group> for InitInner {
+        fn as_ref(&self) -> &Group {
+            &self.group
+        }
+    }
+
+    // impl From<Group> for InitInner {
+    //     fn from(group: Group) -> Self {
+    //         Self { group }
+    //     }
+    // }
 
     impl IOperation<Group, Persona> for Init {
         fn validate(
@@ -118,17 +242,31 @@ mod init {
             persona: &mut Persona,
             group: &mut Group,
         ) -> Result<(), Error> {
-            let Self { payload, .. } = self;
+            // let Self { payload, .. } = self;
 
-            // *group = payload;
+            *group = self.payload.group;
             persona.seqno = 1;
             persona.metadata = self.new_metadata;
-            persona.msg = Sha256Digest::ZERO;
-            // persona.did =
+            // persona.msg = self.payload.msg;
+            persona.did = Sha256::default()
+                .chain_update(&self_digest)
+                .chain_update(&persona.metadata)
+                // .chain_update(&persona.msg)
+                .finalize()
+                .into();
 
             Ok(())
         }
     }
+}
+
+mod bump {
+    use super::*;
+
+    /// The bump operation, which increments the [`Persona`]'s sequence number.
+    pub type Bump = GenericOperation<BumpInner>;
+
+    pub struct BumpInner {}
 }
 
 mod swap {
@@ -202,5 +340,10 @@ mod sign {
 
 #[cfg(test)]
 mod tests {
-    // #[test]
+    use super::*;
+
+    // fn random_device_member() -> Member {}
+
+    #[test]
+    fn can_init() {}
 }

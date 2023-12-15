@@ -1,16 +1,33 @@
-use std::process::Output;
-
 use crate::{util, Error};
 use borsh::{BorshDeserialize, BorshSerialize};
 use digest::{typenum::U64, Digest};
-use ed25519_dalek::{Signature as Ed25519Signature, VerifyingKey as Ed25519VerifyingKey};
+use ed25519_dalek::{
+    Signature as Ed25519Signature, SigningKey as Ed25519SigningKey,
+    VerifyingKey as Ed25519VerifyingKey,
+};
 use sha2::Sha512;
 use signature::{DigestSigner, DigestVerifier, Error as SignatureError, Verifier};
 
 ///
 #[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+pub struct Device {
+    inner: DeviceInner,
+    // log: MerkleLog<DeviceLogNode>,
+}
+
+impl Device {
+    pub fn id(&self) -> [u8; 32] {
+        match self.inner {
+            DeviceInner::Ed25519(pk) => pk.to_bytes(),
+        }
+    }
+}
+
+///
+#[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+#[borsh(use_discriminant = true)]
 #[non_exhaustive]
-pub enum Device {
+enum DeviceInner {
     Ed25519(
         #[borsh(
             deserialize_with = "util::ed25519::deserialize_key",
@@ -21,6 +38,8 @@ pub enum Device {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+#[borsh(use_discriminant = true)]
+#[non_exhaustive]
 pub enum DeviceSignature {
     Ed25519(
         #[borsh(
@@ -79,7 +98,7 @@ impl Device {
     //     self.pk.as_bytes() == &NULL_PEER_KEY
     // }
 
-    pub fn sign<D, Si>(&self, message: &[u8], signer: &Si) -> Result<DeviceSignature, Error>
+    pub fn sign_message<D, Si>(&self, message: &[u8], signer: &Si) -> Result<DeviceSignature, Error>
     where
         D: Digest<OutputSize = U64> + Clone,
         Si: DigestSigner<D, DeviceSignature>,
@@ -91,16 +110,12 @@ impl Device {
     }
 
     /// assumes we're verifying a protocol message digest
-    pub(crate) fn verify_digest<D>(
-        &self,
-        msg_digest: D,
-        signature: &DeviceSignature,
-    ) -> Result<(), Error>
+    fn verify_digest<D>(&self, msg_digest: D, signature: &DeviceSignature) -> Result<(), Error>
     where
         D: Digest<OutputSize = U64>,
     {
-        match (self, signature) {
-            (Self::Ed25519(pk), DeviceSignature::Ed25519(sig)) => {
+        match (self.inner, signature) {
+            (DeviceInner::Ed25519(pk), DeviceSignature::Ed25519(sig)) => {
                 Ok(pk.verify_digest(msg_digest, sig)?)
             }
         }
@@ -132,19 +147,16 @@ impl Verifier<DeviceSignature> for Device {
     }
 }
 
-// pub(crate) const NULL_PEER_KEY: [u8; 32] = [
-//     59, 106, 39, 188, 206, 182, 164, 45, 98, 163, 168, 208, 42, 111, 13, 115, 101, 50, 21, 119, 29,
-//     226, 67, 166, 58, 192, 72, 161, 139, 89, 218, 41,
-// ];
-
-// /// A default [`Device`] with a secret key of all zeros.
-// impl Default for Device {
-//     fn default() -> Self {
-//         let sk = ed25519_dalek::SigningKey::from_bytes(&[0u8; 32]);
-//         let pk = sk.verifying_key();
-//         Self::new(pk, &sk).expect("failed to create default peer")
-//     }
-// }
+/// A default [`Device`] with a secret key of all zeros.
+impl Default for Device {
+    fn default() -> Self {
+        let sk = Ed25519SigningKey::from_bytes(&[0u8; 32]);
+        let pk = sk.verifying_key();
+        Self {
+            inner: DeviceInner::Ed25519(pk),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
