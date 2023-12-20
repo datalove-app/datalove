@@ -153,12 +153,11 @@ impl Group {
         // add signer to group_sig at it appropriate index, erroring it already exists
         signers
             .insert(idx, (idx, member, member_sig))
-            .map(|_| {
+            .map_or(Ok(()), |_| {
                 Err(Error::InvalidSignatureError(
                     "signature member index already signed",
                 ))
-            })
-            .transpose()?;
+            })?;
 
         // aggregate indices and signatures
         let indices = signers.values().fold(0u32, |i, (idx, _, _)| i | (1 << idx));

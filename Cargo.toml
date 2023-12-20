@@ -7,6 +7,7 @@ members = [
   # "apps/datalove/src-ui",
 
   # core components
+  "components/bloom",
   "components/persona",
   "components/persona/core",
   "components/persona/methods",
@@ -27,10 +28,12 @@ rust-version = "1.70"
 
 [workspace.dependencies]
 anyhow = { version = "1.0", default-features = false }
+bytemuck = { version = "1.14", default-features = false }
 coerce = { version = "0.8", default-features = false}
 futures = { version = "0.3", default-features = false }
 # futures-channel = { version = "0.3", default-features = false }
 # futures-util = { version = "0.3", default-features = false }
+hex = { version = "0.4", default-features = false }
 serde = { version = "1.0", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 tokio = { version = "1.28", default-features = false }

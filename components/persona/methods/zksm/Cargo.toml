@@ -1,12 +1,13 @@
 [workspace]
 
 [package]
-name = "datalove-persona-risc0-guest-v1"
+name = "zksm"
 version = "0.0.1"
 edition = "2021"
+publish = false
 
 [[bin]]
-name = "datalove-persona-risc0-guest-v1"
+name = "zksm"
 path = "main.rs"
 
 [dependencies]
@@ -26,6 +27,9 @@ curve25519-dalek = { git = "https://github.com/risc0/curve25519-dalek", branch =
 sha2 = { git = "https://github.com/risc0/rustcrypto-hashes", branch = "risczero" }
 
 [profile.release]
-# lto = true
-# opt-level = 3
-# debug = 1
+# TODO: play with this
+debug = 1
+
+[profile.release.package.risc0-zkvm-methods-guest]
+# Include debug symbols so we can test the profiler.
+debug = 1

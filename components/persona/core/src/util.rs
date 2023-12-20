@@ -1,10 +1,12 @@
 pub use self::digest::DigestPipe;
-pub use risc0::{Sha256Digest, Sha256Pipe};
+pub use risc0::{ImageId, Sha256Digest, Sha256Pipe};
 
 use crate::maybestd::{
-    cell::{Ref, RefCell},
-    io,
+    cell::{self, Ref, RefCell},
+    collections::VecDeque,
+    fmt, io,
     ops::{BitXor, BitXorAssign},
+    str::FromStr,
     vec::Vec,
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -28,7 +30,6 @@ impl io::Write for Empty {
 pub mod digest {
     use super::*;
     use ::digest::Digest;
-
     pub struct DigestPipe<D, T>(D, T);
 
     impl<D: Digest, R: io::Read> DigestPipe<D, R> {
@@ -122,9 +123,43 @@ pub mod ed25519 {
 pub mod risc0 {
     use super::*;
     use ::digest::Digest;
-    use risc0_zkvm::sha::{self, DIGEST_BYTES, DIGEST_WORDS};
+    use hex::FromHex;
+    use risc0_zkvm::{
+        sha::{self, DIGEST_BYTES, DIGEST_WORDS},
+        ReceiptClaim,
+    };
 
     pub use sha::rust_crypto::Sha256;
+
+    pub type ImageId = Sha256Digest;
+
+    pub fn trace(fmt: fmt::Arguments, prev: Option<usize>) -> usize {
+        #[cfg(target_os = "zkvm")]
+        {
+            let cc = risc0_zkvm::guest::env::get_cycle_count();
+            eprintln!("<guest> [{}] {}", cc - prev.unwrap_or_default(), fmt);
+            cc
+        }
+        #[cfg(not(target_os = "zkvm"))]
+        {
+            eprintln!("{}", fmt);
+            0
+        }
+    }
+
+    #[cfg(target_os = "zkvm")]
+    pub fn self_image_id() -> ImageId {
+        // static mut IMAGE_ID: cell::OnceCell<Sha256Digest> = cell::OnceCell::new();
+
+        // IMAGE_ID.get_or_init(|| {
+        let mut hex_words = [0u32; 16];
+        let len = risc0_zkvm::guest::env::env_var("SELF_IMAGE_ID", &mut hex_words);
+        let image_id = hex::FromHex::from_hex(bytemuck::cast_slice(&hex_words))
+            .expect("invalid image_id hex words");
+        // })
+        eprintln!("self_image_id: {:?}", &image_id);
+        image_id
+    }
 
     ///
     #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
@@ -148,6 +183,20 @@ pub mod risc0 {
         #[inline]
         fn as_ref(&self) -> &T {
             self.0.as_ref()
+        }
+    }
+
+    impl From<[u8; DIGEST_BYTES]> for Sha256Digest {
+        #[inline]
+        fn from(digest: [u8; DIGEST_BYTES]) -> Self {
+            Self(sha::Digest::from(digest))
+        }
+    }
+
+    impl From<[u32; DIGEST_WORDS]> for Sha256Digest {
+        #[inline]
+        fn from(digest: [u32; DIGEST_WORDS]) -> Self {
+            Self(sha::Digest::from(digest))
         }
     }
 
@@ -190,6 +239,15 @@ pub mod risc0 {
         }
     }
 
+    impl FromHex for Sha256Digest {
+        type Error = crate::Error;
+        fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+            Ok(Self(sha::Digest::from_hex(hex).map_err(|e| {
+                io::Error::new(io::ErrorKind::InvalidData, e)
+            })?))
+        }
+    }
+
     #[inline]
     fn serialize_digest<W: io::Write>(digest: &sha::Digest, writer: &mut W) -> io::Result<()> {
         AsRef::<[u32; DIGEST_WORDS]>::as_ref(digest).serialize(writer)
@@ -200,30 +258,32 @@ pub mod risc0 {
         <[u32; DIGEST_WORDS]>::deserialize_reader(reader).map(sha::Digest::new)
     }
 
-    // pub fn serialize_receipt_meta<W: io::Write>(
-    //     receipt_meta: &ReceiptMeta,
-    //     writer: &mut W,
-    // ) -> io::Result<()> {
-    //     let mut words = Vec<u32>::new();
-    //     receipt_meta.encode(&mut words).map_err(|_| io::ErrorKind::InvalidData.into())?;
-    //     words.serialize(writer)
-    // }
+    #[inline]
+    fn serialize_receipt_meta<W: io::Write>(
+        receipt_claim: &ReceiptClaim,
+        writer: &mut W,
+    ) -> io::Result<()> {
+        let mut words = Vec::<u32>::new();
+        receipt_claim
+            .encode(&mut words)
+            .map_err(|_| io::ErrorKind::InvalidData)?;
+        words.serialize(writer)
+    }
 
-    // pub fn deserialize_receipt_meta<R: io::Read>(
-    //     reader: &mut R,
-    // ) -> io::Result<ReceiptMetadata> {
-    //     let mut words = <VecDeque<u32>>::deserialize_reader(reader)?;
-    //     ReceiptMetadata::decode(&mut words).map_err(|_| io::ErrorKind::InvalidData.into())
-    // }
+    #[inline]
+    fn deserialize_receipt_meta<R: io::Read>(reader: &mut R) -> io::Result<ReceiptClaim> {
+        let mut words = <VecDeque<u32>>::deserialize_reader(reader)?;
+        ReceiptClaim::decode(&mut words).map_err(|_| io::ErrorKind::InvalidData.into())
+    }
 
     pub type Sha256Pipe<T> = DigestPipe<Sha256, T>;
 
     /// A digest-ible borsh-encoded type.
-    #[derive(Clone, Debug, Default, Eq, PartialEq)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
     pub struct BlockData<T> {
         /// Digest of the borsh-encoded journal.
         pub(crate) digest: RefCell<Sha256Digest>,
-        pub(crate) decoded: T,
+        pub(crate) t: T,
     }
 
     impl<T> BlockData<T> {
@@ -232,15 +292,15 @@ pub mod risc0 {
         }
 
         pub fn as_inner(&self) -> &T {
-            &self.decoded
+            &self.t
         }
 
         pub fn as_inner_mut(&mut self) -> &mut T {
-            &mut self.decoded
+            &mut self.t
         }
 
         pub fn into_inner(self) -> T {
-            self.decoded
+            self.t
         }
     }
 
@@ -250,13 +310,20 @@ pub mod risc0 {
                 .expect("should never fail to serialize and compute digest")
         }
 
-        fn new_with_bytes<W: io::Write>(decoded: T, writer: &mut W) -> io::Result<Self> {
+        fn new_with_bytes<W: io::Write>(t: T, writer: &mut W) -> io::Result<Self> {
             let this = Self {
                 digest: RefCell::new(Sha256Digest::ZERO),
-                decoded,
+                t,
             };
             this.serialize(writer)?;
             Ok(this)
+        }
+    }
+
+    /// Initializes a default `T`, then computes its digest.
+    impl<T: BorshSerialize + Default> Default for BlockData<T> {
+        fn default() -> Self {
+            Self::new(Default::default())
         }
     }
 
@@ -274,8 +341,8 @@ pub mod risc0 {
 
     impl<T: BorshSerialize> BorshSerialize for BlockData<T> {
         fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
-            self.digest
-                .replace(Sha256Pipe::encode_to_writer(&self.decoded, writer)?.into());
+            let digest = Sha256Pipe::encode_to_writer(&self.t, writer)?;
+            self.digest.replace(digest.into());
             Ok(())
         }
     }
@@ -284,29 +351,53 @@ pub mod risc0 {
         fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
             let (digest, decoded) = super::Sha256Pipe::decode_from_reader(reader)?;
             let digest = RefCell::new(digest.into());
-            Ok(Self { digest, decoded })
+            Ok(Self { digest, t: decoded })
         }
     }
 
-    /// A borsh-encoded risc0 execution journal's outputs.
-    #[derive(Clone, Debug, Default, Eq, PartialEq, BorshSerialize)]
-    pub struct TypedJournal<T>(BlockData<T>);
+    /// A borsh-encoded risc0 execution journal's outputs, prefixed by their
+    /// associated [`ImageId`].
+    ///
+    #[derive(Clone, Debug, Eq, PartialEq, BorshDeserialize, BorshSerialize)]
+    pub struct TypedJournal<T>(BlockData<(ImageId, T)>);
 
     impl<T> TypedJournal<T> {
+        pub fn image_id(&self) -> &Sha256Digest {
+            &self.0.t.0
+        }
+
         pub fn digest(&self) -> Ref<Sha256Digest> {
             self.0.digest()
         }
 
         pub fn as_inner(&self) -> &T {
-            self.0.as_inner()
+            &self.0.as_inner().1
         }
 
         pub fn as_inner_mut(&mut self) -> &mut T {
-            self.0.as_inner_mut()
+            &mut self.0.as_inner_mut().1
         }
 
         pub fn into_inner(self) -> T {
-            self.0.into_inner()
+            self.0.into_inner().1
+        }
+    }
+
+    impl<T: BorshSerialize> TypedJournal<T> {
+        pub fn new(image_id: ImageId, inner: T) -> Self {
+            Self(BlockData::new((image_id, inner)))
+        }
+    }
+
+    impl<T: BorshSerialize + Default> TypedJournal<T> {
+        pub fn default(image_id: ImageId) -> Self {
+            Self(BlockData::new((image_id, Default::default())))
+        }
+    }
+
+    impl<T: BorshSerialize + Default> Default for TypedJournal<T> {
+        fn default() -> Self {
+            Self::default(ImageId::default())
         }
     }
 
@@ -316,46 +407,73 @@ pub mod risc0 {
     //     }
     // }
 
-    impl<T: BorshDeserialize> BorshDeserialize for TypedJournal<T> {
-        fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
-            #[cfg(not(target_os = "zkvm"))]
-            return Ok(Self(BlockData::deserialize_reader(reader)?));
+    #[cfg(target_os = "zkvm")]
+    impl<T: BorshDeserialize> TypedJournal<T> {
+        pub fn deserialize_verify_self<R: io::Read>(reader: &mut R) -> io::Result<Self> {
+            let this = Self::deserialize_verify(reader)?;
+            if this.image_id() != &self_image_id() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "journal is for another image_id",
+                ));
+            }
+            Ok(this)
+        }
 
-            // in the zkvm, verify the journal by default
-            #[cfg(target_os = "zkvm")]
-            return {
-                struct CopyReader<R>(R, Vec<u8>);
-                impl<R> CopyReader<R> {
-                    fn from(reader: R) -> Self {
-                        Self(reader, Vec::new())
-                    }
+        pub fn deserialize_verify<R: io::Read>(
+            // image_id: &ImageId,
+            reader: &mut R,
+        ) -> io::Result<Self> {
+            struct CopyReader<R>(R, Vec<u8>);
+            impl<R> CopyReader<R> {
+                fn from(reader: R) -> Self {
+                    Self(reader, Vec::new())
                 }
-                impl<R: io::Read> io::Read for CopyReader<R> {
-                    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-                        let read = self.0.read(buf)?;
-                        self.1.extend_from_slice(buf);
-                        Ok(read)
-                    }
+            }
+            impl<R: io::Read> io::Read for CopyReader<R> {
+                fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                    let read = self.0.read(buf)?;
+                    self.1.extend_from_slice(buf);
+                    Ok(read)
                 }
+            }
 
-                let (inner, journal_bytes) = {
-                    let mut buf = CopyReader::from(reader);
-                    let inner = BlockData::deserialize_reader(&mut buf)?;
-                    (inner, buf.1)
-                };
-
-                let image_id = [0u8; 32].into();
-                risc0_zkvm::guest::env::verify(image_id, journal_bytes.as_slice()).map_err(
-                    |e| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!("invalid journal: {}", e),
-                        )
-                    },
-                )?;
-
-                Ok(Self(inner))
+            let (this, journal_bytes) = {
+                let mut buf = CopyReader::from(reader);
+                let inner = BlockData::deserialize_reader(&mut buf)?;
+                (Self(inner), buf.1)
             };
+
+            // let mut image_id_str = [0u32; 8];
+            // risc0_zkvm::guest::env::env_var("IMAGE_ID", &mut image_id_str);
+            // let image_id_str = crate::maybestd::str::from_utf8(&image_id_str[..])
+            //     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
+            //     .parse_hex();
+
+            // if strict && this.image_id() != image_id {
+            //     return Err(io::Error::new(
+            //         io::ErrorKind::InvalidData,
+            //         "journal is for another image_id",
+            //     ));
+            // }
+            trace(
+                format_args!(
+                    "verifying image_id {:?} and journal digest {:?}",
+                    &this.image_id().0,
+                    &this.digest(),
+                ),
+                None,
+            );
+            risc0_zkvm::guest::env::verify(this.image_id().0, journal_bytes.as_slice()).map_err(
+                |e| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("invalid journal: {}", e),
+                    )
+                },
+            )?;
+
+            Ok(this)
         }
     }
 }

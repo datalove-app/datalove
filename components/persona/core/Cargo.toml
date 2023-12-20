@@ -6,6 +6,7 @@ edition = { workspace = true }
 
 [dependencies]
 # general
+bytemuck = { workspace = true, default-features = false }
 thiserror = { workspace = true, default-features = false }
 
 # crypto, zk
@@ -20,12 +21,18 @@ ed25519-dalek = { workspace = true, default-features = false, features = [
   "digest",
   # "fast",
 ] }
+hex = { workspace = true, default-features = false, features = [
+  "alloc",
+] }
 # merkle-log = { workspace = true, default-features = false, features = [
 #   "borsh",
 #   "digest",
 # ] }
+risc0-zkp = { workspace = true, default-features = false, features = [
+  # "std",
+] }
 risc0-zkvm = { workspace = true, default-features = false, features = [
-  "verify",
+  # "verify",
 ] }
 sha2 = { workspace = true, default-features = false, features = [
 ] }
@@ -43,9 +50,9 @@ ed25519-dalek = { workspace = true, default-features = false, features = [
 ] }
 rand = { workspace = true, default-features = false, features = ["std"] }
 risc0-zkvm = { workspace = true, default-features = false, features = [
-  "cuda", # remove
+  "cuda", # TODO: remove
   "prove",
-  "verify",
+  # "verify",
   "std",
 ] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
@@ -53,12 +60,15 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 [features]
 default = []
 std = [
+  "bytemuck/extern_crate_std",
   "borsh/std",
   "digest/std",
   "ed25519-dalek/std",
+  "hex/std",
   # "merkle-log/std",
   # "onlyerror/std",
   # "pqc_kyber/std",
+  "risc0-zkp/std",
   "risc0-zkvm/std",
   "sha2/std",
   "signature/std",
