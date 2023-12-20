@@ -8,21 +8,17 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 
-// pub type PublicState<V> = TypedJournal<(Sha256Digest, V)>;
-
 ///
 pub trait ProverState: Debug + Default + BorshSerialize + BorshDeserialize {
     // type Signature: BorshDeserialize;
     // fn verify(&self, msg: &[u8], signature: &Self::Signature) -> Result<(), Error>;
 }
-// impl<P: Default + BorshSerialize + BorshDeserialize> ProverState for P {}
 
 ///
 pub trait VerifierState: Debug + Default + BorshSerialize + BorshDeserialize {
     // /// Verifier's commitment to the prover state.
     // fn prover_commitment(&self) -> &Sha256Digest;
 }
-// impl<V: Default + BorshSerialize + BorshDeserialize> VerifierState for V {}
 
 ///
 pub trait Operation<P: ProverState, V: VerifierState>:
@@ -44,7 +40,6 @@ pub trait Operation<P: ProverState, V: VerifierState>:
 }
 
 ///
-/// default should create default prover, then init every other verifier val
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
 pub struct StateMachine<P, V> {
     /// Prover state; private state of the state machine.
@@ -56,8 +51,6 @@ pub struct StateMachine<P, V> {
         borsh(deserialize_with = "TypedJournal::deserialize_verify_self")
     )]
     verifier: TypedJournal<VState<V>>,
-    #[borsh(skip)]
-    self_image_id: ImageId,
 }
 
 #[derive(Clone, Debug, BorshSerialize, BorshDeserialize)]
@@ -68,20 +61,16 @@ pub struct VState<V> {
 
 impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
     /// Produces the default state machine (with appropriate commitments) given the image_id of the guest that is executing it.
-    pub fn new(image_id: Sha256Digest) -> Self {
+    pub fn new(self_image_id: Sha256Digest) -> Self {
         let prover = BlockData::default();
         let verifier = TypedJournal::new(
-            image_id,
+            self_image_id,
             VState {
                 commitment: prover.digest().clone(),
                 state: Default::default(),
             },
         );
-        Self {
-            prover,
-            verifier,
-            self_image_id: image_id,
-        }
+        Self { prover, verifier }
     }
 
     pub fn load(mut stdin: impl io::Read) -> Result<Self, Error> {
@@ -139,16 +128,16 @@ impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
         Op: Operation<P, V>,
     {
         #[cfg(not(target_os = "zkvm"))]
-        let image_id = ImageId::default();
+        let self_image_id = ImageId::default();
         #[cfg(target_os = "zkvm")]
-        let image_id: ImageId = risc0::self_image_id();
+        let self_image_id: ImageId = risc0::self_image_id();
 
-        Self::run_io_with_image_id::<Op>(image_id, stdin, stdout, journal)
+        Self::run_io_with_image_id::<Op>(self_image_id, stdin, stdout, journal)
     }
 
     ///
     pub fn run_io_with_image_id<Op>(
-        image_id: ImageId,
+        self_image_id: ImageId,
         mut stdin: impl io::Read,
         stdout: impl io::Write,
         journal: impl io::Write,
@@ -166,10 +155,9 @@ impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
         cc = risc0::trace(format_args!("read sm"), Some(cc));
 
         let _ = start
-            .unwrap_or_else(|| Self::new(image_id))
+            .unwrap_or_else(|| Self::new(self_image_id))
             .run_with_writer(transition, stdout, journal)?;
-        risc0::trace(format_args!("end sm exec"), Some(cc));
-        risc0::trace(format_args!("end run_io"), None);
+        risc0::trace(format_args!("end sm run"), Some(cc));
 
         Ok(())
     }
@@ -181,8 +169,10 @@ impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
         mut stdout: impl io::Write,
         mut journal: impl io::Write,
     ) -> Result<Self, Error> {
+        let mut cc = risc0::trace(format_args!("starting sm validate"), None);
+
         self.validate(&transition)?;
-        let mut cc = risc0::trace(
+        cc = risc0::trace(
             format_args!(
                 "validated transition:\n\top_digest {:?}\n\top_commitment {:?}\n\tprover ({:?})\n\tverifier ({:?})",
                 &transition.as_op().0,
@@ -190,7 +180,7 @@ impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
                 &self.prover_digest(),
                 &self.verifier_digest(),
             ),
-            None,
+            Some(cc),
         );
 
         self.apply(transition)?;
@@ -209,7 +199,7 @@ impl<P: ProverState, V: VerifierState> StateMachine<P, V> {
             format_args!(
                 "verifier state -> journal ({:?})\n\timage_id {:?}",
                 &self.verifier_digest(),
-                &self.self_image_id,
+                &self.verifier.image_id(),
             ),
             Some(cc),
         );
@@ -283,8 +273,6 @@ pub struct TransitionOp<Op> {
     /// Prevents replay attacks.
     commitment: Sha256Digest,
     op: Op,
-    // /// Signature of the entire operation.
-    // signature: S,
 }
 
 impl<Op> Transition<Op> {

@@ -137,7 +137,14 @@ pub mod risc0 {
         #[cfg(target_os = "zkvm")]
         {
             let cc = risc0_zkvm::guest::env::get_cycle_count();
-            eprintln!("<guest> [{}] {}", cc - prev.unwrap_or_default(), fmt);
+            match prev {
+                Some(prev) => {
+                    eprintln!("<guest> [+{}] {}", cc - prev, fmt);
+                }
+                None => {
+                    eprintln!("<guest> [{}] {}", cc, fmt);
+                }
+            }
             cc
         }
         #[cfg(not(target_os = "zkvm"))]

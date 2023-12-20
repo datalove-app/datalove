@@ -7,7 +7,7 @@ use datalove_persona_core::{
 };
 use datalove_persona_risc0::{ZKSM_ELF, ZKSM_ID};
 use risc0_zkvm::{
-    default_prover, sha::Digestible, ExecutorEnv, ProverOpts, Receipt, ReceiptClaim,
+    default_prover, sha::Digestible, ExecutorEnv, InnerReceipt, ProverOpts, Receipt, ReceiptClaim,
     VerifierContext,
 };
 use std::{io, path, time::Instant};
@@ -32,6 +32,8 @@ fn prove_transition(op: Op, prev: Option<(Mod7SM, Receipt)>) -> Result<(Mod7SM, 
         }
         Some((sm, receipt)) => {
             let transition = sm.new_transition(op);
+
+            // add the assumption from the receipt (NOT the claim)
             env_builder.add_assumption(receipt.into());
             (transition, Some(sm))
         }
@@ -53,7 +55,16 @@ fn prove_transition(op: Op, prev: Option<(Mod7SM, Receipt)>) -> Result<(Mod7SM, 
         let now = Instant::now();
         let prover = default_prover();
         let receipt = prover.prove(env, ZKSM_ELF)?;
-        println!("exec prove: {:?}", now.elapsed());
+        println!(
+            "exec prove: {:?} receipt inner {}",
+            now.elapsed(),
+            match receipt.inner {
+                InnerReceipt::Composite(_) => "<composite>",
+                InnerReceipt::Succinct(_) => "<succinct>",
+                InnerReceipt::Groth16(_) => "<groth16>",
+                InnerReceipt::Fake { .. } => unreachable!(),
+            },
+        );
 
         drop(env_builder);
         receipt
@@ -85,13 +96,15 @@ fn test_prove_transition(
 
     let now = Instant::now();
     let claim = receipt.get_claim()?;
-    println!(
-        "claim ({:?})\n\tpre {:?}\n\tinput {:?}\n\tassumptions {:#?}",
-        now.elapsed(),
-        &claim.pre.digest(),
-        &claim.input,
-        &claim.output
-    );
+    let output = claim.output.as_value()?.as_ref().unwrap();
+    // println!(
+    //     "claim ({:?})\n\tpre {:?}\n\tinput {:?}\n\tassumptions {:?}\n\tjournal {:?}",
+    //     now.elapsed(),
+    //     &claim.pre.digest(),
+    //     &claim.input,
+    //     output.assumptions.as_value()?.0.len(),
+    //     &output.journal.digest(),
+    // );
 
     Ok((sm, receipt))
 }
@@ -99,16 +112,16 @@ fn test_prove_transition(
 #[test]
 fn can_prove_sm_chain() -> Result<()> {
     let op = Op::Init(9);
-    let prev = test_prove_transition(op, None, 9, 2)?;
+    let (sm, receipt) = test_prove_transition(op, None, 9, 2)?;
 
     let op = Op::Inc(6);
-    let prev = test_prove_transition(op, Some(prev), 15, 1)?;
+    let (sm, receipt) = test_prove_transition(op, Some((sm, receipt)), 15, 1)?;
 
     let op = Op::Inc(6);
-    let prev = test_prove_transition(op, Some(prev), 21, 0)?;
+    let (sm, receipt) = test_prove_transition(op, Some((sm, receipt)), 21, 0)?;
 
     let op = Op::Inc(9);
-    let prev = test_prove_transition(op, Some(prev), 30, 2)?;
+    let (sm, receipt) = test_prove_transition(op, Some((sm, receipt)), 30, 2)?;
 
     Ok(())
 }
