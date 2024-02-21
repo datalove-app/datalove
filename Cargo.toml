@@ -3,17 +3,17 @@ version = "0.0.1"
 resolver = "2"
 members = [
   # binaries, uis
-  # "apps/datalove/src-tauri",
-  # "apps/datalove/src-ui",
+  "app/src-ui",
+  "app/src-tauri",
 
-  # core components
-  "components/bloom",
-  "components/persona",
-  "components/persona/core",
-  "components/persona/methods",
+  # libs
+  "crates/iroh-nats",
+  # "crates/runtime",
+  # "crates/persona",
+  # "crates/persona/core",
+  # "crates/persona/methods",
 ]
 exclude = [
-  "vendor/risc0",
 ]
 
 [workspace.package]
@@ -22,29 +22,45 @@ authors = ["sunny-g"]
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/datalove-app/datalove"
 repository = "https://github.com/datalove-app/datalove"
+readme = "./README.md"
 keywords = ["p2p", "webassembly"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.75"
 
 [workspace.dependencies]
+# self
+iroh-nats = { path = "crates/iroh-nats" }
+
+# general
 anyhow = { version = "1.0", default-features = false }
+# async-wormhole = { version = "0.3.7", default-features = false }
 bytemuck = { version = "1.14", default-features = false }
-coerce = { version = "0.8", default-features = false}
+bytes = { version = "1.5", default-features = false }
+# coerce = { version = "0.8", default-features = false }
+dirs = { version = "5.0", default-features = false }
 futures = { version = "0.3", default-features = false }
 # futures-channel = { version = "0.3", default-features = false }
 # futures-util = { version = "0.3", default-features = false }
-hex = { version = "0.4", default-features = false }
+# hex = { version = "0.4", default-features = false }
+memchr = { version = "2.7", default-features = false }
 serde = { version = "1.0", default-features = false }
+serde_json = { version = "1.0", default-features = false }
 thiserror = { version = "1.0", default-features = false }
-tokio = { version = "1.28", default-features = false }
+tokio = { version = "1.36", default-features = false }
+tower = { version = "0.4", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-futures = { version = "0.2", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false }
+tracing-subscriber-wasm = { version = "0.1", default-features = false }
 
-# # wasm
-wasmtime = { version = "13.0", default-features = false }
-wit-bindgen = { version = "0.12", default-features = false }
-wit-bindgen-rust = { version = "0.12", default-features = false }
+# wasm
+wasm_component_layer = { version = "0.1.15", default-features = false }
+wasm_runtime_layer = { version = "0.2", default-features = false }
+wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen-futures = { version = "0.4", default-features = false }
+wit-bindgen = { version = "0.17", default-features = false }
+wit-bindgen-rust = { version = "0.17", default-features = false }
+wit-deps = { version = "0.3", default-features = false }
 
 # wasmer = { version = "4.2", default-features = false }
 # wasmer-wasix = { version = "0.14", default-features = false }
@@ -53,6 +69,11 @@ wit-bindgen-rust = { version = "0.12", default-features = false }
 # wai-bindgen-rust = { version = "0.2.3", default-features = false }
 # wai-bindgen-wasmer = { version = "0.14", default-features = false }
 # wasm-bpf-rs = { path = "vendor/wasm-bpf/runtime/wasm-bpf-rs" }
+
+# p2p
+iroh = { version = "0.12", default-features = false }
+iroh-gossip = { version = "0.12", default-features = false }
+iroh-net = { version = "0.12", default-features = false }
 
 # crypto, zk
 borsh = { version = "1.2", default-features = false }
@@ -70,10 +91,14 @@ signature = { version = "2.2", default-features = false }
 #   "enable-crypto-vld0",
 #   "rt-tokio",
 # ] }
+zeroize = { version = "1.7", default-features = false }
 
 risc0-build = { version = "0.20.0-alpha.1", default-features = false }
 risc0-zkp = { version = "0.20.0-alpha.1", default-features = false }
 risc0-zkvm = { version = "0.20.0-alpha.1", default-features = false }
+
+# util
+clap = { version = "4.5.0", default-features = false }
 
 [patch.crates-io]
 # merkle-log = { path = "vendor/merkle-log" }

@@ -1,0 +1,62 @@
+[package]
+name = "iroh-nats"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[[bin]]
+name = "iroh-nats-server"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = [
+  "derive",
+  "std",
+] }
+dirs = { workspace = true }
+rpassword = "7.3.1"
+ssh-key = { version = "0.6", features = [
+  "ed25519",
+  "encryption",
+  "std",
+] }
+
+anyhow = { workspace = true }
+async-nats = { version = "0.33", default-features = false, features = [
+  "service",
+] }
+bytes = { workspace = true, features = [
+  "serde",
+  "std",
+] }
+futures = { workspace = true }
+iroh = { workspace = true }
+iroh-gossip = { workspace = true }
+iroh-net = { workspace = true }
+memchr = { workspace = true, features = [
+  "std",
+] }
+nats = { version = "0.24", default-features = false }
+nom = { version = "7.1", default-features = false, features = [
+  "std",
+] }
+ractor = { version = "0.9.6", default-features = false, features = [
+  "tokio_runtime",
+]}
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { version = "0.7", default-features = false, features = [
+  "codec",
+] }
+tokio-tower = { version = "0.6" }
+tower = { workspace = true }
+trie-rs = { version = "0.2", default-features = false }
+zeroize = { workspace = true }
