@@ -11,6 +11,8 @@ RUST_LOG="nats_p2p=trace"
 
 [patch.crates-io]
 async-nats = { path = "vendor/nats.rs/async-nats" }
+ractor = { path = "vendor/ractor/ractor" }
+ractor_cluster = { path = "vendor/ractor/ractor_cluster" }
 
 # missing asm import
 # switcheroo = { git = "https://github.com/lunatic-solutions/async-wormhole" }

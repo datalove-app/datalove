@@ -1,12 +1,14 @@
 //! Core NATS wire codec, types and services.
 
 mod codec;
-mod command;
 mod pubsub;
+mod session;
+
+pub(crate) use pubsub::{Relay, SubscriberId};
 
 pub use async_nats::{ConnectInfo, Protocol, ServerInfo, Subject};
 pub use codec::Codec;
-pub use command::{ClientSession, ClientSessionArgs};
+pub use session::{Session, SessionArgs};
 
 // #[derive(Debug)]
 // pub struct Api {

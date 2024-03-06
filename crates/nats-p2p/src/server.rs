@@ -1,7 +1,7 @@
 use crate::{
     cluster::ClusterInfo,
-    core::{ClientSession, ClientSessionArgs, Protocol, ServerInfo},
-    iroh::{start_iroh, IrohNode},
+    core::{Protocol, Relay, ServerInfo, Session, SessionArgs},
+    iroh::start_iroh,
     Config, Error,
 };
 use iroh_net::NodeAddr;
@@ -12,7 +12,7 @@ use tokio::net::{TcpListener, TcpStream};
 #[derive(Debug)]
 pub struct Server {
     config: Config,
-    iroh: IrohNode,
+    // iroh: IrohNode,
     info: Info,
 }
 
@@ -33,10 +33,10 @@ impl Server {
         let sk = config.read_ssh_key().await?;
 
         // start iroh
-        let (iroh, node_info) = start_iroh(&config, sk).await?;
+        // let (_, node_info) = start_iroh(&config, sk).await?;
 
         let info = Info {
-            iroh: node_info,
+            iroh: NodeAddr::from_parts(sk.public(), None, vec![config.cluster_addr()]),
             // nat: jetstream::PeerInfo {
             //     name: config.name.clone(),
             //     current: true,
@@ -52,7 +52,7 @@ impl Server {
             },
         };
 
-        Ok(Self { config, iroh, info })
+        Ok(Self { config, info })
     }
 
     // #[tracing::instrument(skip(self))]
@@ -60,6 +60,7 @@ impl Server {
         let listener = TcpListener::bind(self.config.listen_addr()).await?;
         self.log_start_message();
 
+        let relay = Relay::default();
         let mut client_id = 0u64;
         loop {
             client_id += 1;
@@ -68,22 +69,24 @@ impl Server {
 
             let server_info = self.server_info(client_id, peer_addr, host_addr);
 
+            let relay = relay.clone();
             tokio::spawn(async move {
                 let (_client, handle) = Actor::spawn(
-                    Some(ClientSession::<TcpStream>::name(client_id)),
-                    ClientSession::default(),
-                    ClientSessionArgs {
+                    Some(Session::<TcpStream>::name(client_id)),
+                    Session::new(),
+                    SessionArgs {
                         io,
                         inbox_prefix: None,
                         server_info,
+                        relay,
                     },
                 )
                 .await
-                .map_err(|e| Error::server("ClientSession spawn error", e))?;
+                .map_err(|e| Error::server("Session spawn error", e))?;
 
                 handle
                     .await
-                    .map_err(|e| Error::server("ClientSession actor error", e))?;
+                    .map_err(|e| Error::server("Session actor error", e))?;
 
                 Ok::<(), Error>(())
             });

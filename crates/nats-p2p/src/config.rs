@@ -32,7 +32,7 @@ pub struct Config {
 
     ///
     #[serde(default)]
-    pub jetstream: JetStreamConfig,
+    pub jetstream: Option<JetStreamConfig>,
 
     ///
     #[serde(skip)]
@@ -41,7 +41,7 @@ pub struct Config {
 
 impl Config {
     const DEFAULT_SERVER_NAME: &'static str = "nats-p2p";
-    const DEFAULT_LISTEN_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+    const DEFAULT_LISTEN_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
     const DEFAULT_LISTEN_PORT: u16 = 4222;
 
     pub fn default_server_name() -> String {
@@ -191,9 +191,19 @@ impl Default for ClusterConfig {
 pub struct JetStreamConfig {
     #[serde(default = "JetStreamConfig::default_store_dir")]
     pub store_dir: PathBuf, // path
+    #[serde(default = "JetStreamConfig::default_max_mem")]
+    pub max_mem: usize,
+    #[serde(default = "JetStreamConfig::default_max_file")]
+    pub max_file: usize,
 }
 
 impl JetStreamConfig {
+    fn default_max_mem() -> usize {
+        1024 * 1024 * 1024
+    }
+    fn default_max_file() -> usize {
+        1024 * 1024 * 1024
+    }
     fn default_store_dir() -> PathBuf {
         home_dir().unwrap().join(".nats-p2p/jetstream")
     }
@@ -203,6 +213,8 @@ impl Default for JetStreamConfig {
     fn default() -> Self {
         Self {
             store_dir: Self::default_store_dir(),
+            max_mem: Self::default_max_mem(),
+            max_file: Self::default_max_file(),
         }
     }
 }

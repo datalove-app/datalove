@@ -38,6 +38,7 @@ impl Error {
     }
 
     pub fn actor(err: &str) -> Self {
+        tracing::error!("{}", err);
         Self::Server(anyhow::anyhow!(err.to_string()))
     }
 }

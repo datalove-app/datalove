@@ -1,8 +1,11 @@
-use super::command::{ClientOp, ServerOp};
+use super::{
+    session::{ClientOp, ServerOp},
+    Protocol,
+};
 use crate::{Error, Subject};
 use async_nats::{
     header::{IntoHeaderName, IntoHeaderValue},
-    HeaderMap, StatusCode,
+    ConnectInfo, HeaderMap, StatusCode,
 };
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use memchr::memmem;
@@ -15,11 +18,15 @@ use std::{
 };
 use tokio_util::codec::{AnyDelimiterCodecError, Decoder, Encoder};
 
-///
 pub const DELIMITER: &'static str = "\r\n";
 pub const VERSION: &'static str = "NATS/1.0";
 
 /// The core codec for encoding and decoding messages.
+///
+/// See [`Connection`] methods `try_read_op` and `enqueue_write_op` for
+/// original [`async_nats`] implementations.
+///
+/// [`Connection`]: async_nats::Connection
 #[derive(Clone, Debug)]
 pub struct Codec<T = ClientOp> {
     inner: chunk_codec::ChunkCodec,
@@ -45,13 +52,6 @@ impl Codec<ServerOp> {
 }
 
 impl<T> Codec<T> {
-    fn into<U>(self) -> Codec<U> {
-        Codec {
-            inner: self.inner,
-            partial_op: None,
-        }
-    }
-
     fn finish_partial_decode(
         &mut self,
         partial_op: PartialOp<T>,
@@ -63,6 +63,7 @@ impl<T> Codec<T> {
         self.partial_op = Some(partial_op);
         return Ok(None);
     }
+
     fn finish_decode(&mut self) -> PartialOp<T> {
         self.inner.reset_min_length();
         self.partial_op.take().unwrap()
@@ -144,15 +145,13 @@ impl Decoder for Codec<ClientOp> {
         }
         // next pass: parse chunk w/ headers + payload
         if self.is_pub() {
-            self.inner.reset_min_length();
-
             let PartialOp {
                 headers_len,
                 payload_len,
                 op: ClientOp::Publish {
                     subject, reply_to, ..
                 },
-            } = self.partial_op.take().unwrap()
+            } = self.finish_decode()
             else {
                 unreachable!();
             };
@@ -204,11 +203,14 @@ impl Decoder for Codec<ServerOp> {
         };
 
         if chunk.starts_with(b"CONNECT") {
-            let info = util::read_info("CONNECT", &mut chunk)?;
+            let info = util::read_info("CONNECT", &mut chunk)?.ok_or_else(|| {
+                Error::codec(anyhow::anyhow!("missing/erroneous CONNECT message"))
+            })?;
             return Ok(Some(ServerOp::Connect(info)));
         }
         if chunk.starts_with(b"INFO") {
-            let info = util::read_info("INFO", &mut chunk)?;
+            let info = util::read_info("INFO", &mut chunk)?
+                .ok_or_else(|| Error::codec(anyhow::anyhow!("missing/erroneous INFO message")))?;
             return Ok(Some(ServerOp::Info(info)));
         }
         if chunk.starts_with(b"PING") {
@@ -248,8 +250,6 @@ impl Decoder for Codec<ServerOp> {
             return self.finish_partial_decode(partial_op, buf);
         }
         if self.is_msg() {
-            self.inner.reset_min_length();
-
             let PartialOp {
                 headers_len,
                 payload_len,
@@ -261,7 +261,7 @@ impl Decoder for Codec<ServerOp> {
                         reply_to,
                         ..
                     },
-            } = self.partial_op.take().unwrap()
+            } = self.finish_decode()
             else {
                 unreachable!();
             };
@@ -518,6 +518,19 @@ mod util {
 
     // encoder helpers
 
+    pub fn encode_info<I: Serialize>(verb: &str, info: I, buf: &mut BytesMut) -> Result<(), Error> {
+        buf.reserve(256);
+        buf.put_slice(verb.as_bytes());
+        buf.put_slice(b" ");
+        {
+            let mut vec = Vec::with_capacity(256);
+            serde_json::to_writer(&mut vec, &info).map_err(Error::codec)?;
+            buf.extend_from_slice(&vec);
+        };
+        buf.put_slice(DELIMITER.as_bytes());
+        Ok(())
+    }
+
     pub fn header_map_len(
         status: Option<StatusCode>,
         description: Option<&str>,
@@ -565,20 +578,12 @@ mod util {
         Ok(())
     }
 
-    pub fn encode_info<I: Serialize>(verb: &str, info: I, buf: &mut BytesMut) -> Result<(), Error> {
-        buf.reserve(256);
-        buf.put_slice(verb.as_bytes());
-        buf.put_slice(b" ");
-        {
-            let mut vec = Vec::with_capacity(256);
-            serde_json::to_writer(&mut vec, &info).map_err(Error::codec)?;
-            buf.extend_from_slice(&vec);
-        };
-        buf.put_slice(DELIMITER.as_bytes());
-        Ok(())
-    }
-
     // decoder helplers
+
+    pub fn read_info<T: DeserializeOwned>(verb: &str, buf: &mut Bytes) -> Result<Option<T>, Error> {
+        buf.advance(verb.len() + 1);
+        Ok(serde_json::from_slice(buf.as_ref()).ok())
+    }
 
     pub fn read_header_map(
         buf: &[u8],
@@ -642,11 +647,6 @@ mod util {
         }
 
         Ok((status, description, headers))
-    }
-
-    pub fn read_info<T: DeserializeOwned>(verb: &str, buf: &mut Bytes) -> Result<T, Error> {
-        buf.advance(verb.len() + 1);
-        Ok(serde_json::from_slice(buf.as_ref()).map_err(Error::codec)?)
     }
 
     pub fn read_partial_pub(verb: &str, buf: &mut Bytes) -> Result<PartialOp<ClientOp>, Error> {
