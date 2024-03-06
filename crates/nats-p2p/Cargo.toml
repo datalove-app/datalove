@@ -1,0 +1,92 @@
+[package]
+name = "nats-p2p"
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = { workspace = true }
+keywords = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+
+[[bin]]
+name = "nats-p2p-server"
+path = "bin/main.rs"
+
+[dependencies]
+# bin
+clap = { workspace = true, features = [
+  "derive",
+  "std",
+] }
+dirs = { workspace = true }
+rpassword = "7.3.1"
+ssh-key = { version = "0.6", features = [
+  "ed25519",
+  "encryption",
+  "std",
+] }
+
+# async
+flume = { version = "0.11", default-features = false, features = [
+  "async",
+  "eventual-fairness",
+  "select",
+] }
+futures = { workspace = true }
+ractor = { version = "0.9.6", default-features = false, features = [
+  "tokio_runtime",
+]}
+# ractor_actors = { version = "0.4", default-features = false, features = [
+#   "net",
+#   "streams",
+#   "time",
+# ] }
+tokio = { workspace = true }
+tokio-util = { version = "0.7", default-features = false, features = [
+  "codec",
+] }
+tokio-tower = { version = "0.6" }
+tower = { workspace = true, features = [
+  "log",
+  "util",
+] }
+
+# general
+anyhow = { workspace = true }
+async-nats = { version = "0.34", default-features = false, features = [
+  "service",
+] }
+bytes = { workspace = true, features = [
+  "serde",
+  "std",
+] }
+dashmap = { workspace = true, features = [
+  "inline"
+]}
+iroh = { workspace = true }
+iroh-gossip = { workspace = true }
+iroh-net = { workspace = true }
+iroh-sync = { workspace = true }
+memchr = { version = "2.7", default-features = false, features = [
+  "std",
+] }
+nats = { version = "0.24", default-features = false }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true, features = [
+  "log",
+  "std",
+] }
+tracing-subscriber = { workspace = true, features = [
+  "env-filter",
+  "fmt",
+  "std",
+] }
+# trie-rs = { version = "0.2", default-features = false }
+zeroize = { workspace = true }
+
+# misc
+aquamarine = { workspace = true }

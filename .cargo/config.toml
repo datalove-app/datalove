@@ -1,3 +1,6 @@
+[env]
+RUST_LOG="nats_p2p=trace"
+
 [target.wasm32-wasi]
 # ar = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/llvm-ar -rs"
 # linker = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/wasm-ld"
@@ -8,10 +11,57 @@
 
 [patch.crates-io]
 async-nats = { path = "vendor/nats.rs/async-nats" }
+
 # missing asm import
 # switcheroo = { git = "https://github.com/lunatic-solutions/async-wormhole" }
+
+# blitz = { path = "vendor/blitz" }
+# blitz-core = { path = "vendor/blitz/blitz-core" }
+
+# dioxus = { git = "https://github.com/dioxuslabs/dioxus" }
+# dioxus-html = { git = "https://github.com/dioxuslabs/dioxus" }
+# dioxus-native-core = { git = "https://github.com/dioxuslabs/dioxus" }
+# dioxus-router = { git = "https://github.com/dioxuslabs/dioxus" }
+
+# makepad-widgets = { path = "vendor/makepad/widgets" }
+# makepad-micro-serde = { path = "vendor/makepad/libs/micro_serde" }
+# makepad-micro-serde-derive = { path = "vendor/makepad/libs/micro_serde/derive" }
+
 # risc0-build = { path = "vendor/risc0/risc0/build" }
 # risc0-circuit-recursion = { path = "vendor/risc0/risc0/circuit/recursion" }
 # risc0-circuit-rv32im = { path = "vendor/risc0/risc0/circuit/rv32im" }
 # risc0-zkp = { path = "vendor/risc0/risc0/zkp" }
 # risc0-zkvm = { path = "vendor/risc0/risc0/zkvm" }
+
+# veilid-core = { path = "vendor/veilid/veilid-core" }
+
+# # wasm
+# wasmer = { path = "rust/packages/wasmer/lib/api" }
+# wasmer-types = { path = "rust/packages/wasmer/lib/types" }
+# wasmer-wasix = { path = "rust/packages/wasmer/lib/wasix" }
+# wasmer-wasix-experimental-io-devices = { path = "rust/packages/wasmer/lib/wasi-experimental-io-devices" }
+# wasmer-wasix-types = { path = "rust/packages/wasmer/lib/wasi-types" }
+# # wai
+# wai-bindgen-rust = { path = "rust/packages/wai/crates/rust-wasm" }
+# wai-bindgen-rust-impl = { path = "rust/packages/wai/crates/rust-wasm-impl" }
+# wai-bindgen-wasmer = { path = "rust/packages/wasmer/lib/wai-bindgen-wasmer" }
+# wai-bindgen-gen-wasmer = { path = "rust/packages/wai/crates/gen-wasmer" }
+# wai-bindgen-wasmer-impl = { path = "rust/packages/wai/crates/wasmer-impl" }
+
+# wasm-bindgen = { path = "rust/packages/wasm-bindgen" }
+# wasi-crypto = { path = "vendor/wasi-crypto/implementations/hostcalls/rust" }
+
+# wgpu = { path = "rust/runtime/components/wgpu/wgpu/wgpu" }
+# wgpu-core = { path = "rust/runtime/components/wgpu/wgpu/wgpu-core" }
+# wgpu-hal = { path = "rust/runtime/components/wgpu/wgpu/wgpu-hal" }
+# wgpu-types = { path = "rust/runtime/components/wgpu/wgpu/wgpu-types" }
+# wgpu-native = { path = "rust/packages/wgpu-native" }
+
+# [patch.'https://github.com/sunny-g/wgpu']
+# wgpu = { path = "rust/runtime/components/wgpu/wgpu/wgpu" }
+# wgpu-core = { path = "rust/runtime/components/wgpu/wgpu/wgpu-core" }
+# wgpu-hal = { path = "rust/runtime/components/wgpu/wgpu/wgpu-hal" }
+# wgpu-types = { path = "rust/runtime/components/wgpu/wgpu/wgpu-types" }
+
+# [patch.'https://github.com/gfx-rs/wgpu-native']
+# wgpu-native = { path = "rust/packages/wgpu-native" }

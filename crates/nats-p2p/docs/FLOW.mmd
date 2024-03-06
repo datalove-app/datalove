@@ -1,0 +1,25 @@
+---
+title = "NATS Core - Data Flow"
+---
+sequenceDiagram
+  actor Client
+  critical Connect
+    create participant ClientService
+    Client->>ClientService: tcp connection
+    create participant ClientReader
+    ClientService-->ClientReader: init
+    create participant ClientWriter
+    ClientService-->ClientWriter: init
+    ClientWriter->>Client: `INFO server-info`
+  % todo %
+  option Ping/Pong
+    Client-)ClientService: `PING`
+    ClientService--)Client: `PONG`
+  option Publish
+    Client-)ClientReader: `PUB {subject} [reply-to] {payload}`
+    ClientReader--)Publisher: [spawn +] route message to publisher
+    activate Publisher
+    Publisher: [persist]
+    Publisher--)Subscriber: route message to any active subscribers
+    Subscriber--)ClientWriter: write to local/remote network
+  end
