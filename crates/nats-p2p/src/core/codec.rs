@@ -1,12 +1,6 @@
-use super::{
-    session::{ClientOp, ServerOp},
-    Protocol,
-};
-use crate::{Error, Subject};
-use async_nats::{
-    header::{IntoHeaderName, IntoHeaderValue},
-    ConnectInfo, HeaderMap, StatusCode,
-};
+use super::{ClientOp, HeaderMap, ServerOp, StatusCode, Subject};
+use crate::Error;
+use async_nats::header::{IntoHeaderName, IntoHeaderValue};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use memchr::memmem;
 use serde::{de::DeserializeOwned, Serialize};
@@ -52,16 +46,19 @@ impl Codec<ServerOp> {
 }
 
 impl<T> Codec<T> {
-    fn finish_partial_decode(
+    fn partial_decode(
         &mut self,
         partial_op: PartialOp<T>,
         buf: &mut BytesMut,
-    ) -> Result<Option<T>, Error> {
+    ) -> Result<Option<<Self as Decoder>::Item>, Error>
+    where
+        Self: Decoder<Error = Error>,
+    {
         let len = partial_op.total_len();
-        buf.reserve(len + DELIMITER.len());
+        buf.reserve(len);
         self.inner.set_min_length(len);
         self.partial_op = Some(partial_op);
-        return Ok(None);
+        self.decode(buf)
     }
 
     fn finish_decode(&mut self) -> PartialOp<T> {
@@ -137,11 +134,11 @@ impl Decoder for Codec<ClientOp> {
         // first pass: parse until first \r\n, setting min_length for next pass
         if chunk.starts_with(b"PUB") {
             let partial_op = util::read_partial_pub("PUB", &mut chunk)?;
-            return self.finish_partial_decode(partial_op, buf);
+            return self.partial_decode(partial_op, buf);
         }
         if chunk.starts_with(b"HPUB") {
             let partial_op = util::read_partial_pub("HPUB", &mut chunk)?;
-            return self.finish_partial_decode(partial_op, buf);
+            return self.partial_decode(partial_op, buf);
         }
         // next pass: parse chunk w/ headers + payload
         if self.is_pub() {
@@ -155,6 +152,10 @@ impl Decoder for Codec<ClientOp> {
             else {
                 unreachable!();
             };
+
+            // try parse headers
+
+            // try parse payload
 
             let (headers, payload) = if let Some(headers_len) = headers_len {
                 // hpub
@@ -239,15 +240,15 @@ impl Decoder for Codec<ServerOp> {
         // msg, hmsg, rmsg
         if chunk.starts_with(b"MSG") {
             let partial_op = util::read_partial_msg("MSG", &mut chunk)?;
-            return self.finish_partial_decode(partial_op, buf);
+            return self.partial_decode(partial_op, buf);
         }
         if chunk.starts_with(b"HMSG") {
             let partial_op = util::read_partial_msg("HMSG", &mut chunk)?;
-            return self.finish_partial_decode(partial_op, buf);
+            return self.partial_decode(partial_op, buf);
         }
         if chunk.starts_with(b"RMSG") {
             let partial_op = util::read_partial_msg("RMSG", &mut chunk)?;
-            return self.finish_partial_decode(partial_op, buf);
+            return self.partial_decode(partial_op, buf);
         }
         if self.is_msg() {
             let PartialOp {
@@ -266,6 +267,7 @@ impl Decoder for Codec<ServerOp> {
                 unreachable!();
             };
 
+            // TODO: try parse headers (potentially across packets), then payload
             let (status, description, headers, payload) = if let Some(headers_len) = headers_len {
                 // hmsg
                 let headers_bytes = chunk.split_to(headers_len + (2 * DELIMITER.len()));
@@ -289,7 +291,7 @@ impl Decoder for Codec<ServerOp> {
             }));
         }
 
-        Err(Error::codec(anyhow::anyhow!("invalid server op")))
+        Err(Error::codec(anyhow::anyhow!("unknown server op")))
     }
 }
 
@@ -992,9 +994,21 @@ mod chunk_codec {
             }
         }
 
-        // fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        //     todo!()
-        // }
+        fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+            Ok(match self.decode(buf)? {
+                Some(frame) => Some(frame),
+                None => {
+                    // return remaining data, if any
+                    if buf.is_empty() {
+                        None
+                    } else {
+                        let chunk = buf.split_to(buf.len());
+                        self.next_index = 0;
+                        Some(chunk.freeze())
+                    }
+                }
+            })
+        }
     }
 
     impl Encoder<&[u8]> for ChunkCodec {
@@ -1156,8 +1170,11 @@ mod tests {
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert_eq!(msg, ClientOp::Pong);
 
+        let mut buf = BytesMut::from(&b"CONNECT {}\r\n"[..]);
+        let msg = codec.decode(&mut buf).unwrap().unwrap();
+        assert_eq!(msg, ClientOp::Connect(None));
+
         let mut buf = BytesMut::from(&b"PUB FOO.BAR INBOX.67 11\r\nHello World\r\n"[..]);
-        codec.decode(&mut buf).unwrap();
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert_eq!(
             msg,
@@ -1172,7 +1189,6 @@ mod tests {
         let mut buf = BytesMut::from(
             &b"HPUB FOO.BAR INBOX.67 23 34\r\nNATS/1.0\r\nHeader: Y\r\n\r\nHello World\r\n"[..],
         );
-        codec.decode(&mut buf).unwrap();
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert_eq!(
             msg,

@@ -1,8 +1,7 @@
-use super::{codec::Codec, ConnectInfo, Protocol, Relay, ServerInfo, SubscriberId};
-use crate::{Error, Subject};
+use super::{codec::Codec, ClientOp, ConnectInfo, Protocol, Relay, ServerInfo, ServerOp};
+use crate::Error;
 use async_nats::{HeaderMap, Message, StatusCode};
-use bytes::Bytes;
-use futures::{future, SinkExt, StreamExt, TryStreamExt};
+use futures::{SinkExt, StreamExt, TryStreamExt};
 use ractor::{port::RpcReplyPort, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::{fmt, marker::PhantomData, sync::Arc, time::Duration};
 use tokio::{
@@ -11,276 +10,7 @@ use tokio::{
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-/// `ClientOp` represents all actions of `Client`.
-///
-/// [Original documentation](https://docs.nats.io/reference/reference-protocols/nats-protocol)
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ClientOp {
-    /// `CONNECT {["option_name":option_value],...}`
-    Connect(Option<ConnectInfo>),
-
-    /// `INFO {["option_name":option_value],...}`
-    Info(Option<ServerInfo>),
-
-    /// `PING`
-    Ping,
-
-    /// `PONG`
-    Pong,
-
-    /// `PUB <subject> [reply-to] <#bytes>\r\n[payload]`
-    /// `HPUB <subject> [reply-to] <#header bytes> <#total bytes>\r\n[headers]\r\n\r\n[payload]`
-    Publish {
-        subject: Subject,
-        reply_to: Option<Subject>,
-        headers: Option<HeaderMap>,
-        payload: Bytes,
-    },
-
-    /// `SUB <subject> [queue group] <sid>`
-    Subscribe {
-        sid: u64,
-        subject: Subject,
-        queue_group: Option<String>,
-    },
-
-    /// `UNSUB <sid> [max_msgs]`
-    Unsubscribe { sid: u64, max_msgs: Option<u64> },
-}
-
-impl ClientOp {
-    const fn control(&self) -> &'static str {
-        match self {
-            Self::Connect(_) => "CONNECT",
-            Self::Info(_) => "INFO",
-            Self::Ping => "PING",
-            Self::Pong => "PONG",
-            Self::Publish { headers: None, .. } => "PUB",
-            Self::Publish { .. } => "HPUB",
-            Self::Subscribe { .. } => "SUB",
-            Self::Unsubscribe { .. } => "UNSUB",
-        }
-    }
-}
-
-impl fmt::Display for ClientOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctrl = self.control();
-        match self {
-            ClientOp::Ping | ClientOp::Pong => f.write_str(ctrl),
-            ClientOp::Connect(info) => write!(
-                f,
-                "{ctrl} {}",
-                serde_json::to_string(info).map_err(|_| fmt::Error)?
-            ),
-            ClientOp::Info(info) => write!(
-                f,
-                "{ctrl} {}",
-                serde_json::to_string(info).map_err(|_| fmt::Error)?
-            ),
-            ClientOp::Publish {
-                subject,
-                reply_to,
-                payload,
-                ..
-            } => {
-                write!(
-                    f,
-                    "{ctrl} {}{} {}",
-                    subject,
-                    reply_to.as_ref().map_or("".into(), |r| format!(" {}", r)),
-                    payload.len(),
-                )
-            }
-            ClientOp::Subscribe {
-                sid,
-                subject,
-                queue_group,
-            } => {
-                write!(
-                    f,
-                    "{ctrl} {}{} {}",
-                    subject,
-                    queue_group
-                        .as_ref()
-                        .map_or("".into(), |q| format!(" {}", q)),
-                    sid
-                )
-            }
-            ClientOp::Unsubscribe { sid, max_msgs } => {
-                write!(
-                    f,
-                    "{ctrl} {}{}",
-                    sid,
-                    max_msgs.as_ref().map_or("".into(), |m| format!(" {}", m))
-                )
-            }
-        }
-    }
-}
-
-/// [Original core documentation](https://docs.nats.io/reference/reference-protocols/nats-protocol)
-/// [Original cluster documentation](https://docs.nats.io/reference/reference-protocols/nats-server-protocol)
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ServerOp {
-    /// `CONNECT {["option_name":option_value],...}`
-    Connect(ConnectInfo),
-
-    /// `INFO {["option_name":option_value],...}`
-    Info(ServerInfo),
-
-    /// `PING`
-    Ping,
-
-    /// `PONG`
-    Pong,
-
-    /// +OK
-    Ok,
-
-    /// `-ERR <error message>`
-    Err(String),
-
-    /// `RS+ <account> <subject> [queue-group] [weight]
-    Subscribe {
-        account: String,
-        subject: Subject,
-        queue_group: Option<(String, Option<u32>)>,
-    },
-
-    /// `RS- <account> <subject>`
-    Unsubscribe { account: String, subject: Subject },
-
-    /// `MSG <subject> <sid> [reply-to] <#bytes>\r\n[payload]`
-    /// `HMSG <subject> <sid> [reply-to] <#header-bytes> <#total-bytes>\r\n<version line>\r\n[headers]\r\n\r\n[payload]`
-    /// `RMSG <account> <subject> [reply-to] <#bytes>\r\n[payload]`
-    Message {
-        sid: u64,
-        account: Option<String>,
-        subject: Subject,
-        reply_to: Option<Subject>,
-        headers: Option<HeaderMap>,
-        status: Option<StatusCode>,
-        description: Option<String>,
-        payload: Bytes,
-        // length: usize,
-    },
-}
-
-impl ServerOp {
-    const fn control(&self) -> &'static str {
-        match self {
-            Self::Connect(_) => "CONNECT",
-            Self::Info(_) => "INFO",
-            Self::Ping => "PING",
-            Self::Pong => "PONG",
-            Self::Ok => "+OK",
-            Self::Err(_) => "-ERR",
-            Self::Subscribe { .. } => "RS+",
-            Self::Unsubscribe { .. } => "RS-",
-            Self::Message { account, .. } if account.is_some() => "RMSG",
-            Self::Message { headers: None, .. } => "MSG",
-            Self::Message { .. } => "HMSG",
-        }
-    }
-}
-
-impl fmt::Display for ServerOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctrl = self.control();
-        match self {
-            ServerOp::Ok | ServerOp::Ping | ServerOp::Pong => f.write_str(ctrl),
-            ServerOp::Connect(info) => write!(
-                f,
-                "{ctrl} {}",
-                serde_json::to_string(info).map_err(|_| fmt::Error)?
-            ),
-            ServerOp::Info(info) => write!(
-                f,
-                "{ctrl} {}",
-                serde_json::to_string(info).map_err(|_| fmt::Error)?
-            ),
-            ServerOp::Err(err) => write!(f, "{ctrl} {err}"),
-            ServerOp::Subscribe {
-                account,
-                subject,
-                queue_group,
-            } => {
-                write!(
-                    f,
-                    "{ctrl} {account} {subject} {}",
-                    queue_group
-                        .as_ref()
-                        .map_or("".into(), |(q, w)| format!(" {} {:?}", q, w))
-                )
-            }
-            ServerOp::Unsubscribe { account, subject } => {
-                write!(f, "{ctrl} {account} {subject}")
-            }
-            ServerOp::Message {
-                sid,
-                account,
-                subject,
-                reply_to,
-                // headers,
-                status,
-                description,
-                payload,
-                ..
-            } => {
-                write!(
-                    f,
-                    "{ctrl} {subject}{}{}{}{} {}",
-                    account
-                        .as_ref()
-                        .map_or(format!(" {sid}"), |a| format!(" {a}")),
-                    reply_to.as_ref().map_or("".into(), |r| format!(" {r}")),
-                    status.as_ref().map_or("".into(), |s| format!(" {s}")),
-                    description.as_ref().map_or("".into(), |d| format!(" {d}")),
-                    // headers,
-                    payload.len(),
-                )
-            }
-        }
-    }
-}
-
-impl From<(SubscriberId, Message)> for ServerOp {
-    fn from(((_, sid), msg): (SubscriberId, Message)) -> Self {
-        Self::from((sid, msg))
-    }
-}
-
-impl From<(u64, Message)> for ServerOp {
-    fn from((sid, msg): (u64, Message)) -> Self {
-        Self::Message {
-            sid,
-            account: None,
-            subject: msg.subject,
-            reply_to: msg.reply,
-            headers: msg.headers,
-            status: msg.status,
-            description: msg.description,
-            payload: msg.payload,
-        }
-    }
-}
-
-impl From<(String, Message)> for ServerOp {
-    fn from((account, msg): (String, Message)) -> Self {
-        Self::Message {
-            sid: 0,
-            account: Some(account),
-            subject: msg.subject,
-            reply_to: msg.reply,
-            headers: msg.headers,
-            status: msg.status,
-            description: msg.description,
-            payload: msg.payload,
-        }
-    }
-}
-
+/// Core API Message.
 #[derive(Debug)]
 pub enum CoreMessage {
     Incoming(ClientOp, RpcReplyPort<()>),
@@ -319,31 +49,11 @@ pub struct Session<T> {
     _io: PhantomData<T>,
 }
 
-impl<T> Session<T> {
-    pub fn new() -> Self {
-        Self { _io: PhantomData }
-    }
-    pub fn name(id: u64) -> String {
-        format!("client-session-{}", id)
-    }
-    pub fn recv_name(id: u64) -> String {
-        format!("client-session-{}-recv", id)
-    }
-    pub fn send_name(id: u64) -> String {
-        format!("client-session-{}-send", id)
-    }
-}
-
-#[derive(Debug)]
-pub struct SessionArgs<T> {
-    pub io: T,
-    pub inbox_prefix: Option<String>,
-    pub server_info: ServerInfo,
-    pub relay: Relay,
-}
+pub type SessionArgs<T> = (T, Relay, SessionData);
 
 #[derive(Debug)]
 pub struct SessionState {
+    session: ActorRef<CoreMessage>,
     requester: ActorRef<ClientOp>,
     responder: ActorRef<ServerOp>,
     server_info_timer: Option<JoinHandle<()>>,
@@ -354,11 +64,11 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    fn set_connect_info(&mut self, connect_info: ConnectInfo) {
+    fn update_connect_info(&mut self, connect_info: ConnectInfo) {
         Arc::get_mut(&mut self.data).map(|d| d.connect_info = connect_info);
     }
 
-    fn set_server_info(&mut self, server_info: ServerInfo) {
+    fn update_server_info(&mut self, server_info: ServerInfo) {
         if let Some(ref mut timer) = self.server_info_timer {
             timer.abort();
         }
@@ -374,7 +84,6 @@ impl SessionState {
 
 #[derive(Debug)]
 pub struct SessionData {
-    session: ActorRef<CoreMessage>,
     inbox_prefix: String,
     request_timeout: Option<Duration>,
     connect_info: ConnectInfo,
@@ -387,6 +96,19 @@ impl SessionData {
     }
     fn verbose(&self) -> bool {
         self.connect_info.verbose
+    }
+
+    pub fn session(&self) -> ActorRef<CoreMessage> {
+        ActorRef::where_is(self.session_name()).expect("session actor should be running")
+    }
+    pub fn session_name(&self) -> String {
+        format!("client-session-{}", self.client_id())
+    }
+    pub fn recv_name(&self) -> String {
+        format!("client-session-{}-recv", self.client_id())
+    }
+    pub fn send_name(&self) -> String {
+        format!("client-session-{}-send", self.client_id())
     }
 
     fn trace_incoming(&self, op: &ClientOp) {
@@ -420,9 +142,74 @@ impl SessionData {
     }
 }
 
+impl<T: util::Split> Session<T> {
+    pub fn new() -> Self {
+        Self { _io: PhantomData }
+    }
+
+    pub fn spawn(
+        io: T,
+        relay: Relay,
+        server_info: ServerInfo,
+    ) -> Result<JoinHandle<Result<(), Error>>, Error> {
+        let this = Self::new();
+        let data = SessionData {
+            inbox_prefix: "_INBOX".into(),
+            request_timeout: None,
+            connect_info: CoreMessage::default_connect_info(),
+            server_info,
+        };
+        let name = data.session_name();
+
+        let handle = tokio::task::Builder::new()
+            .name(&name.clone())
+            .spawn(async move {
+                let (_, handle) = Actor::spawn(Some(name), this, (io, relay, data))
+                    .await
+                    .map_err(|e| Error::server("Session spawn error", e))?;
+                handle
+                    .await
+                    .map_err(|e| Error::server("Session run error", e))?;
+
+                Ok(())
+            })?;
+        Ok(handle)
+    }
+
+    async fn spawn_children(
+        &self,
+        myself: ActorRef<CoreMessage>,
+        io: T,
+        relay: Relay,
+        data: Arc<SessionData>,
+    ) -> Result<(ActorRef<ClientOp>, ActorRef<ServerOp>), Error> {
+        let (reader, writer) = io.split();
+        let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
+        let sink = FramedWrite::new(writer, Codec::<ServerOp>::default());
+
+        let (responder, _) = Actor::spawn_linked(
+            Some(data.send_name()),
+            responder::Responder::new(),
+            (data.clone(), relay.clone(), sink),
+            myself.get_cell(),
+        )
+        .await?;
+
+        let (requester, _) = Actor::spawn_linked(
+            Some(data.recv_name()),
+            requester::Requester::new(),
+            (data.clone(), relay.clone(), stream, responder.clone()),
+            myself.get_cell(),
+        )
+        .await?;
+
+        Ok((requester, responder))
+    }
+}
+
 impl<T> Actor for Session<T>
 where
-    T: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static,
+    T: util::Split,
 {
     type Msg = CoreMessage;
     type State = SessionState;
@@ -434,52 +221,22 @@ where
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
-        SessionArgs {
-            io,
-            inbox_prefix,
-            server_info,
-            relay,
-        }: Self::Arguments,
+        (io, relay, data): Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let data = Arc::new(SessionData {
-            session: myself.clone(),
-            inbox_prefix: inbox_prefix.unwrap_or_else(|| "_INBOX".into()),
-            request_timeout: None,
-            connect_info: CoreMessage::default_connect_info(),
-            server_info: server_info.clone(),
-        });
-
-        let (requester, responder) = {
-            let (reader, writer) = tokio::io::split(io);
-            let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
-            let sink = FramedWrite::new(writer, Codec::<ServerOp>::default());
-
-            let (responder, _) = Actor::spawn_linked(
-                Some(Self::send_name(data.client_id())),
-                responder::Responder::new(),
-                (data.clone(), relay.clone(), sink),
-                myself.get_cell(),
-            )
+        let data = Arc::new(data);
+        let (requester, responder) = self
+            .spawn_children(myself.clone(), io, relay, data.clone())
             .await?;
 
-            let (requester, _) = Actor::spawn_linked(
-                Some(Self::recv_name(data.client_id())),
-                requester::Requester::new(),
-                (data.clone(), relay.clone(), stream, responder.clone()),
-                myself.get_cell(),
-            )
-            .await?;
-
-            (requester, responder)
-        };
-
+        let server_info = data.server_info.clone();
         let mut state = SessionState {
+            session: myself,
             requester,
             responder,
             server_info_timer: None,
             data,
         };
-        state.set_server_info(server_info.clone());
+        state.update_server_info(server_info);
         Ok(state)
     }
 
@@ -503,39 +260,10 @@ where
         _myself: ActorRef<Self::Msg>,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        tracing::info!(
+        tracing::warn!(
             "Client session closed for {}",
             state.data.server_info.client_ip
         );
-        Ok(())
-    }
-
-    async fn handle(
-        &self,
-        _myself: ActorRef<Self::Msg>,
-        msg: Self::Msg,
-        state: &mut Self::State,
-    ) -> Result<(), ActorProcessingErr> {
-        match msg {
-            // todo: reset shutdown timer
-            CoreMessage::Incoming(op, reply) => match &op {
-                // update client connect info
-                ClientOp::Connect(Some(connect_info)) => {
-                    state.set_connect_info(connect_info.clone());
-                    tracing::info!("updated client info");
-                    reply.send(())?;
-                }
-                _ => state.requester.cast(op)?,
-            },
-            CoreMessage::Outgoing(op) => match &op {
-                // update server info, (re)start timer
-                ServerOp::Info(server_info) => {
-                    state.set_server_info(server_info.clone());
-                }
-                _ => state.responder.cast(op)?,
-            },
-        }
-
         Ok(())
     }
 
@@ -581,6 +309,37 @@ where
 
         Ok(())
     }
+
+    async fn handle(
+        &self,
+        _myself: ActorRef<Self::Msg>,
+        msg: Self::Msg,
+        state: &mut Self::State,
+    ) -> Result<(), ActorProcessingErr> {
+        match msg {
+            // todo: reset shutdown timer
+            CoreMessage::Incoming(op, reply) => match &op {
+                // update client connect info, if provided
+                ClientOp::Connect(info) => {
+                    if let Some(connect_info) = info {
+                        state.update_connect_info(connect_info.clone());
+                        tracing::info!("updated client info");
+                    }
+                    reply.send(())?;
+                }
+                _ => state.requester.cast(op)?,
+            },
+            CoreMessage::Outgoing(op) => match &op {
+                // update server info, (re)start timer
+                ServerOp::Info(server_info) => {
+                    state.update_server_info(server_info.clone());
+                }
+                _ => state.responder.cast(op)?,
+            },
+        }
+
+        Ok(())
+    }
 }
 
 mod requester {
@@ -620,19 +379,23 @@ mod requester {
         async fn pre_start(
             &self,
             myself: ActorRef<Self::Msg>,
-            (data, relay, mut stream, responder): Self::Arguments,
+            (data, relay, stream, responder): Self::Arguments,
         ) -> Result<Self::State, ActorProcessingErr> {
             // map read stream to messages
             // send connect msgs to session to be cached
-            let framed_read = tokio::spawn(async move {
-                stream
-                    .try_for_each(|op| async {
-                        myself.cast(op)?;
-                        Ok(())
-                    })
-                    .await?;
-                Ok(())
-            });
+            let framed_read = tokio::task::Builder::new()
+                .name(&format!("{}-stream", data.recv_name()))
+                .spawn(async move {
+                    stream
+                        .try_for_each_concurrent(None, |op| async {
+                            tracing::trace!("requester received: {:?}", op);
+                            myself.cast(op)?;
+                            tracing::trace!("requester cast");
+                            Ok(())
+                        })
+                        .await?;
+                    Ok(())
+                })?;
 
             Ok(RequesterState {
                 data,
@@ -663,10 +426,10 @@ mod requester {
                 // route quick messages directly to sender
                 ClientOp::Connect(_) => {
                     // send connect to session to cache connect info
-                    let _ = ractor::call!(state.data.session, CoreMessage::Incoming, msg)?;
+                    let _ = ractor::call!(state.data.session(), CoreMessage::Incoming, msg)?;
 
                     if state.data.verbose() {
-                        state.responder.cast(ServerOp::Ok)?;
+                        let _ = state.responder.cast(ServerOp::Ok)?;
                     }
                 }
                 ClientOp::Info(_) => state
@@ -697,7 +460,7 @@ mod requester {
                     )?;
 
                     if state.data.verbose() {
-                        state.responder.cast(ServerOp::Ok)?;
+                        let _ = state.responder.cast(ServerOp::Ok)?;
                     }
                 }
                 ClientOp::Subscribe {
@@ -717,7 +480,7 @@ mod requester {
                         .await?;
 
                     if state.data.verbose() {
-                        state.responder.cast(ServerOp::Ok)?;
+                        let _ = state.responder.cast(ServerOp::Ok)?;
                     }
                 }
                 ClientOp::Unsubscribe { sid, max_msgs } => {
@@ -727,7 +490,7 @@ mod requester {
                         .unsubscribe((state.data.client_id(), sid), max_msgs, None)?;
 
                     if state.data.verbose() {
-                        state.responder.cast(ServerOp::Ok)?;
+                        let _ = state.responder.cast(ServerOp::Ok)?;
                     }
                 }
             };
@@ -796,14 +559,38 @@ mod responder {
         ) -> Result<(), ActorProcessingErr> {
             state.data.trace_outgoing(&msg);
 
-            state
+            let res = state
                 .framed_write
                 .as_mut()
                 .expect("should not handle messages after dropping framed write")
                 .send(msg)
                 .await?;
 
-            Ok(())
+            Ok(res)
+        }
+    }
+}
+
+mod util {
+    use super::*;
+    use tokio::{
+        io::{AsyncRead, AsyncWrite},
+        net::TcpStream,
+    };
+
+    pub trait Split: Send + Sync + 'static {
+        type Read: AsyncRead + Send + Sync + Unpin + 'static;
+        type Write: AsyncWrite + Send + Sync + Unpin + 'static;
+
+        fn split(self) -> (Self::Read, Self::Write);
+    }
+
+    impl Split for TcpStream {
+        type Read = tokio::net::tcp::OwnedReadHalf;
+        type Write = tokio::net::tcp::OwnedWriteHalf;
+
+        fn split(self) -> (Self::Read, Self::Write) {
+            self.into_split()
         }
     }
 }

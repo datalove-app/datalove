@@ -12,7 +12,7 @@ use std::{
 };
 
 ///
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     /// // #[arg(short, long, default_value = "Config::DEFAULT_SERVER_NAME")]
     #[serde(default = "Config::default_server_name")]
@@ -33,10 +33,6 @@ pub struct Config {
     ///
     #[serde(default)]
     pub jetstream: Option<JetStreamConfig>,
-
-    ///
-    #[serde(skip)]
-    password_prompt: Option<Box<dyn FnMut() -> Result<String, Error>>>,
 }
 
 impl Config {
@@ -52,14 +48,6 @@ impl Config {
     }
     pub const fn default_port() -> u16 {
         Self::DEFAULT_LISTEN_PORT
-    }
-
-    pub fn with_password_prompt<P>(mut self, prompt: P) -> Self
-    where
-        P: FnMut() -> Result<String, Error> + 'static,
-    {
-        self.password_prompt = Some(Box::new(prompt));
-        self
     }
 
     pub fn listen_addr(&self) -> SocketAddr {
@@ -83,33 +71,17 @@ impl Config {
         let secret_key_file = Zeroizing::new(fs::read_to_string(path).await?);
 
         let mut secret_key = private::PrivateKey::from_openssh(&*secret_key_file)?;
-        match (secret_key.is_encrypted(), &mut self.password_prompt) {
-            (true, Some(prompt)) => {
-                let password = Zeroizing::new(prompt()?);
-                secret_key = secret_key.decrypt(password.as_bytes())?;
-            }
-            (true, None) => {
-                return Err(ssh_key::Error::Encrypted.into());
-            }
-            _ => {}
+        if secret_key.is_encrypted() {
+            let password = Zeroizing::new(rpassword::prompt_password(
+                "Enter the password for the SSH key:",
+            )?);
+            secret_key = secret_key.decrypt(password.as_bytes())?;
         }
 
         match secret_key.key_data() {
             private::KeypairData::Ed25519(key) => Ok(SecretKey::from(key.private.to_bytes())),
             _ => Err(ssh_key::Error::FormatEncoding.into()),
         }
-    }
-}
-
-impl fmt::Debug for Config {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Config")
-            .field("name", &self.name)
-            .field("host", &self.host)
-            .field("port", &self.port)
-            .field("cluster", &self.cluster)
-            .field("jetstream", &self.jetstream)
-            .finish()
     }
 }
 
@@ -121,7 +93,6 @@ impl Default for Config {
             port: Self::default_port(),
             cluster: Default::default(),
             jetstream: Default::default(),
-            password_prompt: None,
         }
     }
 }
@@ -133,12 +104,11 @@ pub struct ClusterConfig {
     #[serde(default = "ClusterConfig::default_name")]
     pub name: String,
 
-    /// Ed25519 secret key to use as the node's network address.
-    #[serde(default = "ClusterConfig::default_ssh_key")]
-    pub ssh_key: Option<String>,
-
+    // /// Ed25519 secret key to use as the node's network address.
+    // #[serde(default)]
+    // pub ssh_key: Option<String>,
     /// Path to the OpenSSH-formatted Ed25519 private key. See [`ClusterConfig::ssh_key`].
-    #[serde(default)]
+    #[serde(default = "ClusterConfig::default_client_ssh_key")]
     pub ssh_key_path: Option<PathBuf>,
 
     /// Path to the OpenSSH-formatted `authorized_keys` file to use as the cluster's bootstrap peers.
@@ -173,7 +143,7 @@ impl Default for ClusterConfig {
     fn default() -> Self {
         Self {
             name: Self::default_name(),
-            ssh_key: Self::default_ssh_key(),
+            // ssh_key: Self::default_ssh_key(),
             ssh_key_path: None,
             authorized_keys_path: None,
             port: Self::default_port(),

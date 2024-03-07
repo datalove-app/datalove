@@ -4,19 +4,25 @@ use crate::{
     iroh::start_iroh,
     Config, Error,
 };
+use futures::TryStreamExt;
 use iroh_net::NodeAddr;
-use ractor::Actor;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
-use tokio::net::{TcpListener, TcpStream};
+use std::{
+    net::SocketAddr,
+    sync::{atomic::AtomicU64, Arc},
+    time::Duration,
+};
+use tokio::net::TcpListener;
+use tokio_stream::wrappers::TcpListenerStream;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Server {
     config: Config,
-    // iroh: IrohNode,
     info: Info,
+    relay: Relay,
+    // iroh: IrohNode,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Info {
     iroh: NodeAddr,
     // nat: jetstream::PeerInfo,
@@ -24,11 +30,24 @@ pub struct Info {
 }
 
 impl Server {
+    pub fn server_id(&self) -> String {
+        self.info.iroh.node_id.to_string().to_uppercase()
+    }
     pub fn client_url(&self) -> String {
         format!("nats://{}", self.config.listen_addr())
     }
+    pub fn client_port(&self) -> u16 {
+        self.config.port
+    }
 
-    pub async fn new(mut config: Config) -> Result<Self, Error> {
+    pub async fn new() -> Result<Self, Error> {
+        let config = Config::default();
+        Self::from_config(config).await
+    }
+
+    pub async fn from_config(mut config: Config) -> Result<Self, Error> {
+        let relay = Relay::default();
+
         // read ssh key
         let sk = config.read_ssh_key().await?;
 
@@ -52,45 +71,34 @@ impl Server {
             },
         };
 
-        Ok(Self { config, info })
+        Ok(Self {
+            config,
+            info,
+            relay,
+        })
     }
 
     // #[tracing::instrument(skip(self))]
-    pub async fn run(self) -> Result<(), Error> {
+    pub async fn run(&self) -> Result<(), Error> {
         let listener = TcpListener::bind(self.config.listen_addr()).await?;
+
         self.log_start_message();
 
-        let relay = Relay::default();
-        let mut client_id = 0u64;
-        loop {
-            client_id += 1;
-            let host_addr = listener.local_addr()?;
-            let (io, peer_addr) = listener.accept().await?;
+        let client_id = AtomicU64::new(0);
+        TcpListenerStream::new(listener)
+            .try_for_each_concurrent(None, |io| async {
+                let server_info = self.server_info(
+                    client_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+                    io.peer_addr()?,
+                    io.local_addr()?,
+                );
 
-            let server_info = self.server_info(client_id, peer_addr, host_addr);
+                Session::spawn(io, self.relay.clone(), server_info)?;
+                Ok(())
+            })
+            .await?;
 
-            let relay = relay.clone();
-            tokio::spawn(async move {
-                let (_client, handle) = Actor::spawn(
-                    Some(Session::<TcpStream>::name(client_id)),
-                    Session::new(),
-                    SessionArgs {
-                        io,
-                        inbox_prefix: None,
-                        server_info,
-                        relay,
-                    },
-                )
-                .await
-                .map_err(|e| Error::server("Session spawn error", e))?;
-
-                handle
-                    .await
-                    .map_err(|e| Error::server("Session actor error", e))?;
-
-                Ok::<(), Error>(())
-            });
-        }
+        Ok(())
     }
 
     fn log_start_message(&self) {
@@ -98,7 +106,7 @@ impl Server {
         tracing::info!("  Version:  0.0.1");
         tracing::info!("  Git:      [not set]");
         tracing::info!("  Name:     {}", self.config.name);
-        tracing::info!("  ID:       {}", self.info.server_id());
+        tracing::info!("  ID:       {}", self.server_id());
         tracing::info!(
             "Listening for client connections on {}",
             self.config.listen_addr()
@@ -117,7 +125,7 @@ impl Server {
         host_addr: SocketAddr,
     ) -> ServerInfo {
         ServerInfo {
-            server_id: self.info.server_id(),
+            server_id: self.server_id(),
             server_name: self.config.name.clone(),
             host: self.config.host.to_string(),
             port: self.config.port,
@@ -130,7 +138,7 @@ impl Server {
             version: "".to_string(),
             go: "".to_string(),
             nonce: "".to_string(),
-            connect_urls: vec![host_addr.to_string()],
+            connect_urls: vec![self.client_url()],
 
             client_id,
             client_ip: client_addr.to_string(),
@@ -139,12 +147,13 @@ impl Server {
     }
 }
 
-impl Info {
-    pub fn server_id(&self) -> String {
-        self.iroh.node_id.to_string().to_uppercase()
-    }
-}
-
-pub fn run_basic_server() -> Server {
-    todo!()
-}
+// pub fn run_basic_server() -> Arc<Server> {
+//     let config = Config::default();
+//     let server = futures::executor::block_on(async move { Server::new(config).await.unwrap() });
+//     let task = Arc::new(server);
+//     tokio::task::spawn(async move {
+//         // let server = server.clone();
+//         task.clone().run().await
+//     });
+//     task
+// }

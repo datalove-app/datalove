@@ -45,15 +45,12 @@ ractor = { version = "0.9.6", default-features = false, features = [
 #   "streams",
 #   "time",
 # ] }
-tokio = { workspace = true }
-tokio-util = { version = "0.7", default-features = false, features = [
-  "codec",
+tokio = { workspace = true, features = [
+  "rt-multi-thread",
+  "tracing",
 ] }
-tokio-tower = { version = "0.6" }
-tower = { workspace = true, features = [
-  "log",
-  "util",
-] }
+tokio-stream = { workspace = true, features = ["net"] }
+tokio-util = { workspace = true, features = ["codec"] }
 
 # general
 anyhow = { workspace = true }
@@ -74,7 +71,6 @@ iroh-sync = { workspace = true }
 memchr = { version = "2.7", default-features = false, features = [
   "std",
 ] }
-nats = { version = "0.24", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -85,6 +81,7 @@ tracing = { workspace = true, features = [
 tracing-subscriber = { workspace = true, features = [
   "env-filter",
   "fmt",
+  "registry",
   "std",
 ] }
 # trie-rs = { version = "0.2", default-features = false }

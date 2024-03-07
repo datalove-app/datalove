@@ -1,10 +1,8 @@
-pub use self::{
-    publisher::Publisher,
-    subscriber::{Subscriber, SubscriberId, SubscriberInfo, SubscriberMessage},
-};
+pub use self::subscriber::{Subscriber, SubscriberId, SubscriberInfo};
+pub use async_nats::Subject;
 
-use crate::{Error, Subject};
-use async_nats::{Message, StatusCode};
+use super::{Message, StatusCode};
+use crate::Error;
 use dashmap::{DashMap, DashSet};
 use futures::Stream;
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, OutputPort};
@@ -53,8 +51,9 @@ impl Relay {
 
     #[tracing::instrument(level = "trace", skip(self))]
     pub fn publish(&self, client_id: u64, message: Message) -> Result<StatusCode, Error> {
-        // find subscribers by matching their pattern against subject
         let mut status_code = StatusCode::NO_RESPONDERS;
+
+        // find subscribers by matching their pattern against subject
         for sub in self.filter_subscribers(&message.subject).into_iter() {
             match sub.subscriber.cast(message.clone().into()) {
                 Ok(_) => {
@@ -136,31 +135,22 @@ impl Relay {
     }
 
     fn subscriber(&self, id: SubscriberId) -> Option<SubscriberInfo> {
-        self.inner
-            .subscribers
-            .iter()
-            .find_map(|entry| (entry.key() == &id).then(move || entry.value().clone()))
+        self.inner.subscribers.view(&id, |_, info| info.clone())
     }
 
-    fn filter_subscribers<'a>(
-        &'a self,
-        subject: &'a Subject,
-    ) -> impl Iterator<Item = SubscriberInfo> + 'a {
+    fn filter_subscribers(&self, subject: &Subject) -> impl Iterator<Item = SubscriberInfo> + '_ {
         self.filter_subscriber_ids(subject)
+            .into_iter()
             .filter_map(|id| self.subscriber(id))
     }
 
-    fn filter_subscriber_ids<'a>(
-        &'a self,
-        subject: &'a Subject,
-    ) -> impl Iterator<Item = SubscriberId> + 'a {
+    fn filter_subscriber_ids(&self, subject: &Subject) -> HashSet<SubscriberId> {
         self.inner
             .subscriptions
             .iter()
             .filter(|e| subject.matches(e.key()))
             .flat_map(|e| e.value().iter().map(|e| *e).collect::<HashSet<_>>())
-            .collect::<HashSet<_>>()
-            .into_iter()
+            .collect()
     }
 }
 

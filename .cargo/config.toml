@@ -1,6 +1,12 @@
 [env]
 RUST_LOG="nats_p2p=trace"
 
+[build]
+rustflags = [
+  "--cfg", "tokio_unstable",
+  # "--cfg", "tokio_taskdump",
+]
+
 [target.wasm32-wasi]
 # ar = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/llvm-ar -rs"
 # linker = "/home/sunnyg/gitdev/datalove2/build/wasix-sdk/wasm-ld"

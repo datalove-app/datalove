@@ -1,28 +1,31 @@
 use nats_p2p::{Config, Server};
 
-use clap::Parser;
-use rpassword::prompt_password;
+
 use std::io;
-use tracing::Level;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::{prelude::*, EnvFilter};
 
 struct Args {}
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    tracing_subscriber::fmt()
+    let fmt = tracing_subscriber::fmt::layer()
         .event_format(tracing_subscriber::fmt::format().with_target(false))
-        .with_env_filter(EnvFilter::from_default_env())
+        // .with_env_filter(EnvFilter::from_default_env())
         // .with_thread_ids(true)
         // .with_max_level(Level::TRACE)
         // .with_file(true)
-        // .with_line_number(true)
+        // .with_line_number(true);
+        // .finish();
+        ;
+
+    tracing_subscriber::registry()
+        .with(fmt)
+        .with(EnvFilter::from_default_env())
         .init();
 
-    let config = Config::default()
-        .with_password_prompt(|| Ok(prompt_password("Enter the password for the SSH key:")?));
-    let server = Server::new(config).await?;
-    server.run().await?;
+    // TODO: load from file or args to know which SSH key to load
+    let config = Config::default();
+    Server::from_config(config).await?.run().await?;
 
     Ok(())
 }
