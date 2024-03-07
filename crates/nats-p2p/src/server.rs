@@ -79,7 +79,7 @@ impl Server {
     }
 
     // #[tracing::instrument(skip(self))]
-    pub async fn run(&self) -> Result<(), Error> {
+    pub async fn run(self) -> Result<(), Error> {
         let listener = TcpListener::bind(self.config.listen_addr()).await?;
 
         self.log_start_message();
@@ -93,7 +93,7 @@ impl Server {
                     io.local_addr()?,
                 );
 
-                Session::spawn(io, self.relay.clone(), server_info)?;
+                Session::run(io, self.relay.clone(), server_info).await?;
                 Ok(())
             })
             .await?;
@@ -147,13 +147,48 @@ impl Server {
     }
 }
 
-// pub fn run_basic_server() -> Arc<Server> {
-//     let config = Config::default();
-//     let server = futures::executor::block_on(async move { Server::new(config).await.unwrap() });
-//     let task = Arc::new(server);
-//     tokio::task::spawn(async move {
-//         // let server = server.clone();
-//         task.clone().run().await
-//     });
-//     task
-// }
+#[doc(hidden)]
+pub fn run_basic_server() -> Server {
+    let server = futures::executor::block_on(async move { Server::new().await.unwrap() });
+    tokio::task::spawn(server.clone().run());
+    server
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::{io, process::Command};
+
+    fn setup_command(client_url: String) -> Command {
+        let mut cmd = Command::new("nats");
+        cmd.arg("--trace")
+            .arg("server")
+            .arg("check")
+            .arg("-s")
+            .arg(client_url);
+        cmd
+    }
+
+    async fn run(args: &[&str]) -> io::Result<()> {
+        let server = run_basic_server();
+        let mut cmd = setup_command(server.client_url());
+        for arg in args {
+            cmd.arg(arg);
+        }
+
+        let exit = cmd.spawn()?.wait().await?;
+        assert!(exit.success());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn check_connection() -> io::Result<()> {
+        return run(&["connection"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_server() -> io::Result<()> {
+        return run(&["server", "--name", "nats-p2p-test"]).await;
+    }
+}

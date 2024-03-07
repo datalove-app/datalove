@@ -3,7 +3,7 @@ RUST_LOG="nats_p2p=trace"
 
 [build]
 rustflags = [
-  "--cfg", "tokio_unstable",
+  # "--cfg", "tokio_unstable",
   # "--cfg", "tokio_taskdump",
 ]
 

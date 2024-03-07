@@ -596,8 +596,6 @@ mod util {
             .lines()
             .peekable();
 
-        println!("lines: {:?}", lines);
-
         let (status, description) = {
             let version_line = lines
                 .next()

@@ -9,6 +9,7 @@ use tokio::{
     task::JoinHandle,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing::Instrument;
 
 /// Core API Message.
 #[derive(Debug)]
@@ -49,21 +50,22 @@ pub struct Session<T> {
     _io: PhantomData<T>,
 }
 
-pub type SessionArgs<T> = (T, Relay, SessionData);
+pub type SessionArgs<T> = (T, Relay, ContextData);
 
+/// Runtime state of the session.
 #[derive(Debug)]
-pub struct SessionState {
+pub struct Context {
     session: ActorRef<CoreMessage>,
     requester: ActorRef<ClientOp>,
     responder: ActorRef<ServerOp>,
     server_info_timer: Option<JoinHandle<()>>,
     // shutdown: Option<JoinHandle<()>>,
-    data: Arc<SessionData>,
+    data: Arc<ContextData>,
     // peer_addr: SocketAddr,
     // host_addr: SocketAddr,
 }
 
-impl SessionState {
+impl Context {
     fn update_connect_info(&mut self, connect_info: ConnectInfo) {
         Arc::get_mut(&mut self.data).map(|d| d.connect_info = connect_info);
     }
@@ -82,15 +84,15 @@ impl SessionState {
     }
 }
 
+/// Mutable configuration state for the session.
 #[derive(Debug)]
-pub struct SessionData {
-    inbox_prefix: String,
+pub struct ContextData {
     request_timeout: Option<Duration>,
     connect_info: ConnectInfo,
     server_info: ServerInfo,
 }
 
-impl SessionData {
+impl ContextData {
     fn client_id(&self) -> u64 {
         self.server_info.client_id
     }
@@ -147,33 +149,22 @@ impl<T: util::Split> Session<T> {
         Self { _io: PhantomData }
     }
 
-    pub fn spawn(
-        io: T,
-        relay: Relay,
-        server_info: ServerInfo,
-    ) -> Result<JoinHandle<Result<(), Error>>, Error> {
+    pub async fn run(io: T, relay: Relay, server_info: ServerInfo) -> Result<(), Error> {
         let this = Self::new();
-        let data = SessionData {
-            inbox_prefix: "_INBOX".into(),
+        let data = ContextData {
             request_timeout: None,
             connect_info: CoreMessage::default_connect_info(),
             server_info,
         };
-        let name = data.session_name();
 
-        let handle = tokio::task::Builder::new()
-            .name(&name.clone())
-            .spawn(async move {
-                let (_, handle) = Actor::spawn(Some(name), this, (io, relay, data))
-                    .await
-                    .map_err(|e| Error::server("Session spawn error", e))?;
-                handle
-                    .await
-                    .map_err(|e| Error::server("Session run error", e))?;
+        let (_, handle) = Actor::spawn(Some(data.session_name()), this, (io, relay, data))
+            .await
+            .map_err(|e| Error::server("Session spawn error", e))?;
+        handle
+            .await
+            .map_err(|e| Error::server("Session run error", e))?;
 
-                Ok(())
-            })?;
-        Ok(handle)
+        Ok(())
     }
 
     async fn spawn_children(
@@ -181,7 +172,7 @@ impl<T: util::Split> Session<T> {
         myself: ActorRef<CoreMessage>,
         io: T,
         relay: Relay,
-        data: Arc<SessionData>,
+        data: Arc<ContextData>,
     ) -> Result<(ActorRef<ClientOp>, ActorRef<ServerOp>), Error> {
         let (reader, writer) = io.split();
         let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
@@ -212,7 +203,7 @@ where
     T: util::Split,
 {
     type Msg = CoreMessage;
-    type State = SessionState;
+    type State = Context;
     type Arguments = SessionArgs<T>;
 
     /// Spawns sender and receiver actors from [`Framed`] IO parts.
@@ -229,7 +220,7 @@ where
             .await?;
 
         let server_info = data.server_info.clone();
-        let mut state = SessionState {
+        let mut state = Context {
             session: myself,
             requester,
             responder,
@@ -355,7 +346,7 @@ mod requester {
     }
 
     type RequesterArgs<S> = (
-        Arc<SessionData>,
+        Arc<ContextData>,
         Relay,
         FramedRead<S, Codec<ClientOp>>,
         ActorRef<ServerOp>,
@@ -364,7 +355,7 @@ mod requester {
     pub struct RequesterState {
         responder: ActorRef<ServerOp>,
         framed_read: Option<JoinHandle<Result<(), Error>>>,
-        data: Arc<SessionData>,
+        data: Arc<ContextData>,
         relay: Relay,
     }
 
@@ -383,19 +374,15 @@ mod requester {
         ) -> Result<Self::State, ActorProcessingErr> {
             // map read stream to messages
             // send connect msgs to session to be cached
-            let framed_read = tokio::task::Builder::new()
-                .name(&format!("{}-stream", data.recv_name()))
-                .spawn(async move {
-                    stream
-                        .try_for_each_concurrent(None, |op| async {
-                            tracing::trace!("requester received: {:?}", op);
-                            myself.cast(op)?;
-                            tracing::trace!("requester cast");
-                            Ok(())
-                        })
-                        .await?;
-                    Ok(())
-                })?;
+            let framed_read = tokio::task::spawn(async move {
+                stream
+                    .try_for_each_concurrent(None, |op| async {
+                        myself.cast(op)?;
+                        Ok(())
+                    })
+                    .await?;
+                Ok(())
+            });
 
             Ok(RequesterState {
                 data,
@@ -514,11 +501,11 @@ mod responder {
         }
     }
 
-    type ResponderArgs<S> = (Arc<SessionData>, Relay, FramedWrite<S, Codec<ServerOp>>);
+    type ResponderArgs<S> = (Arc<ContextData>, Relay, FramedWrite<S, Codec<ServerOp>>);
 
     pub struct ResponderState<S> {
         framed_write: Option<FramedWrite<S, Codec<ServerOp>>>,
-        data: Arc<SessionData>,
+        data: Arc<ContextData>,
         relay: Relay,
     }
 
@@ -572,12 +559,14 @@ mod responder {
 }
 
 mod util {
-    use super::*;
     use tokio::{
         io::{AsyncRead, AsyncWrite},
-        net::TcpStream,
+        net::{tcp, TcpStream},
     };
 
+    /// Defines a specific [`split`] for a [`AsyncRead`]+[`AsyncWrite`] stream.
+    ///
+    /// [`split`]:
     pub trait Split: Send + Sync + 'static {
         type Read: AsyncRead + Send + Sync + Unpin + 'static;
         type Write: AsyncWrite + Send + Sync + Unpin + 'static;
@@ -586,8 +575,8 @@ mod util {
     }
 
     impl Split for TcpStream {
-        type Read = tokio::net::tcp::OwnedReadHalf;
-        type Write = tokio::net::tcp::OwnedWriteHalf;
+        type Read = tcp::OwnedReadHalf;
+        type Write = tcp::OwnedWriteHalf;
 
         fn split(self) -> (Self::Read, Self::Write) {
             self.into_split()
