@@ -35,8 +35,10 @@ nats-p2p = { path = "crates/nats-p2p" }
 aquamarine = { version = "0.5" }
 
 # binary, runtime deps
+anstyle = { version = "1.0", default-features = false }
 dirs = { version = "5.0", default-features = false }
 clap = { version = "4.5.0", default-features = false }
+rpassword = { version = "7.3.1", default-features = false }
 
 # general
 anyhow = { version = "1.0", default-features = false }

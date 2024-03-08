@@ -78,7 +78,6 @@ impl Server {
         })
     }
 
-    // #[tracing::instrument(skip(self))]
     pub async fn run(self) -> Result<(), Error> {
         let listener = TcpListener::bind(self.config.listen_addr()).await?;
 
@@ -188,7 +187,43 @@ mod tests {
 
     #[tokio::test]
     #[ignore]
+    async fn check_stream() -> io::Result<()> {
+        return run(&["stream", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_message() -> io::Result<()> {
+        return run(&["message", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_meta() -> io::Result<()> {
+        return run(&["meta", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_jetstream() -> io::Result<()> {
+        return run(&["jetstream", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
     async fn check_server() -> io::Result<()> {
         return run(&["server", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_kv() -> io::Result<()> {
+        return run(&["kv", "--name", "nats-p2p-test"]).await;
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn check_credential() -> io::Result<()> {
+        return run(&["credential", "--name", "nats-p2p-test"]).await;
     }
 }

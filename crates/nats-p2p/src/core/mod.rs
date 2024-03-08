@@ -11,5 +11,5 @@ pub(crate) use message::{
 pub(crate) use pubsub::{Relay, SubscriberId};
 
 pub use message::Message;
-pub use pubsub::Subject;
+pub use pubsub::{QueueGroup, Subject, WeightedQueueGroup};
 pub use session::{CoreMessage, Session, SessionArgs};

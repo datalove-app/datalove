@@ -4123,6 +4123,7 @@ dependencies = [
 name = "nats-p2p"
 version = "0.0.1"
 dependencies = [
+ "anstyle",
  "anyhow",
  "aquamarine",
  "async-nats",
@@ -4137,6 +4138,7 @@ dependencies = [
  "iroh-sync",
  "memchr",
  "ractor",
+ "rand 0.8.5",
  "rpassword",
  "serde",
  "serde_json",

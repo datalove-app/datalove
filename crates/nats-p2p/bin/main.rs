@@ -1,6 +1,5 @@
 use nats_p2p::{Config, Server};
 
-
 use std::io;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -10,6 +9,7 @@ struct Args {}
 async fn main() -> io::Result<()> {
     let fmt = tracing_subscriber::fmt::layer()
         .event_format(tracing_subscriber::fmt::format().with_target(false))
+        .with_ansi(true)
         // .with_env_filter(EnvFilter::from_default_env())
         // .with_thread_ids(true)
         // .with_max_level(Level::TRACE)

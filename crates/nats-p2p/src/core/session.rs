@@ -50,7 +50,7 @@ pub struct Session<T> {
     _io: PhantomData<T>,
 }
 
-pub type SessionArgs<T> = (T, Relay, ContextData);
+pub type SessionArgs<T> = (T, Relay, Arc<ContextData>);
 
 /// Runtime state of the session.
 #[derive(Debug)]
@@ -113,20 +113,31 @@ impl ContextData {
         format!("client-session-{}-send", self.client_id())
     }
 
-    fn trace_incoming(&self, op: &ClientOp) {
-        tracing::trace!(
-            "{} - cid:{} - <<- [{}]",
+    const BOLD: anstyle::Style = anstyle::Style::new().bold();
+    const IP: anstyle::Style =
+        anstyle::Style::new().fg_color(Some(anstyle::Color::Ansi(anstyle::AnsiColor::Cyan)));
+    const ID: anstyle::Style =
+        anstyle::Style::new().fg_color(Some(anstyle::Color::Ansi(anstyle::AnsiColor::Cyan)));
+
+    fn trace_header(&self) -> String {
+        format_args!(
+            "{ip_style}{}{ip_style:#} - {id_style}cid:{}{id_style:#}",
             self.server_info.client_ip,
             self.server_info.client_id,
-            op
-        );
+            ip_style = Self::IP,
+            id_style = Self::ID
+        )
+        .to_string()
+    }
+
+    fn trace_incoming(&self, op: &ClientOp) {
+        let header = self.trace_header();
+        tracing::trace!("{header} - <<- [{op}]",);
 
         match &op {
             ClientOp::Publish { payload, .. } => {
                 tracing::trace!(
-                    "{} - cid:{} - <<- MSG_PAYLOAD: [...]",
-                    self.server_info.client_ip,
-                    self.server_info.client_id,
+                    "{header} - <<- MSG_PAYLOAD: [...]",
                     // payload
                 )
             }
@@ -135,12 +146,8 @@ impl ContextData {
     }
 
     fn trace_outgoing(&self, op: &ServerOp) {
-        tracing::trace!(
-            "{} - cid:{} - ->> [{}]",
-            self.server_info.client_ip,
-            self.server_info.client_id,
-            op
-        );
+        let header = self.trace_header();
+        tracing::trace!("{header} - ->> [{op}]",);
     }
 }
 
@@ -151,11 +158,11 @@ impl<T: util::Split> Session<T> {
 
     pub async fn run(io: T, relay: Relay, server_info: ServerInfo) -> Result<(), Error> {
         let this = Self::new();
-        let data = ContextData {
+        let data = Arc::new(ContextData {
             request_timeout: None,
             connect_info: CoreMessage::default_connect_info(),
             server_info,
-        };
+        });
 
         let (_, handle) = Actor::spawn(Some(data.session_name()), this, (io, relay, data))
             .await
@@ -214,7 +221,6 @@ where
         myself: ActorRef<Self::Msg>,
         (io, relay, data): Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let data = Arc::new(data);
         let (requester, responder) = self
             .spawn_children(myself.clone(), io, relay, data.clone())
             .await?;
@@ -314,7 +320,6 @@ where
                 ClientOp::Connect(info) => {
                     if let Some(connect_info) = info {
                         state.update_connect_info(connect_info.clone());
-                        tracing::info!("updated client info");
                     }
                     reply.send(())?;
                 }

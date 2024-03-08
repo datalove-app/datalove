@@ -1,6 +1,6 @@
 pub use async_nats::{ConnectInfo, HeaderMap, Message, Protocol, ServerInfo, StatusCode};
 
-use super::{Subject, SubscriberId};
+use super::{QueueGroup, Subject, SubscriberId, WeightedQueueGroup};
 use bytes::Bytes;
 use std::fmt;
 
@@ -34,7 +34,7 @@ pub enum ClientOp {
     Subscribe {
         sid: u64,
         subject: Subject,
-        queue_group: Option<String>,
+        queue_group: QueueGroup,
     },
 
     /// `UNSUB <sid> [max_msgs]`
@@ -79,8 +79,7 @@ impl fmt::Display for ClientOp {
             } => {
                 write!(
                     f,
-                    "{ctrl} {}{} {}",
-                    subject,
+                    "{ctrl} {subject}{} {}",
                     reply_to.as_ref().map_or("".into(), |r| format!(" {}", r)),
                     payload.len(),
                 )
@@ -92,8 +91,7 @@ impl fmt::Display for ClientOp {
             } => {
                 write!(
                     f,
-                    "{ctrl} {}{} {}",
-                    subject,
+                    "{ctrl} {subject}{} {}",
                     queue_group
                         .as_ref()
                         .map_or("".into(), |q| format!(" {}", q)),
@@ -103,8 +101,7 @@ impl fmt::Display for ClientOp {
             ClientOp::Unsubscribe { sid, max_msgs } => {
                 write!(
                     f,
-                    "{ctrl} {}{}",
-                    sid,
+                    "{ctrl} {sid}{}",
                     max_msgs.as_ref().map_or("".into(), |m| format!(" {}", m))
                 )
             }
@@ -138,7 +135,7 @@ pub enum ServerOp {
     Subscribe {
         account: String,
         subject: Subject,
-        queue_group: Option<(String, Option<u32>)>,
+        queue_group: WeightedQueueGroup,
     },
 
     /// `RS- <account> <subject>`

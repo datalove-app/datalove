@@ -1,13 +1,20 @@
-pub use self::subscriber::{Subscriber, SubscriberId, SubscriberInfo};
+pub use self::subscriber::{Subscriber, SubscriberHandle, SubscriberId};
 pub use async_nats::Subject;
 
 use super::{Message, StatusCode};
 use crate::Error;
-use dashmap::{DashMap, DashSet};
+use dashmap::{mapref::multiple::RefMulti, DashMap, DashSet};
 use ractor::{pg, Actor, ActorProcessingErr, ActorRef, OutputPort};
+use rand::{thread_rng, RngCore};
 use std::{collections::HashSet, sync::Arc};
 
 type Pattern = Subject;
+type SubscriptionId = (Pattern, QueueGroup);
+
+// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// pub struct QueueGroup(Option<String>);
+pub type QueueGroup = Option<String>;
+pub type WeightedQueueGroup = Option<(String, Option<u32>)>;
 
 /// Shared state of all active pubsub channels (client + cluster pubs and subs).
 #[derive(Debug, Clone, Default)]
@@ -19,16 +26,17 @@ pub struct Relay {
 struct RelayState {
     // /// A map of subject patterns to their topic ID.
     // patterns: DashMap<Pattern, u64>,
+    // queue_groups: DashMap<String, DashSet<SubscriberId>>,
 
     // ///
     // publishers: DashMap<u64, Publisher>,
     /// A map of [`SubscriberId`]s to their topics and sender.
-    subscribers: DashMap<SubscriberId, SubscriberInfo>,
+    subscribers: DashMap<SubscriberId, SubscriberHandle>,
 
-    /// A map of subject patterns to sets of [`SubscriberId`]s.
-    subscriptions: DashMap<Pattern, DashSet<SubscriberId>>,
-    // /// The last topic ID used.
-    // last_topic_id: AtomicU64,
+    /// A map of subject patterns to sets of [`SubscriberId`]s and their queue group (if any).
+    subscriptions: DashMap<SubscriptionId, DashSet<SubscriberId>>,
+    // /// The last subscription ID used.
+    // last_subscription_id: AtomicU64,
 }
 
 impl Relay {
@@ -43,7 +51,10 @@ impl Relay {
         let mut status_code = StatusCode::NO_RESPONDERS;
 
         // find subscribers by matching their pattern against subject
-        for sub in self.filter_subscribers(&message.subject).into_iter() {
+        for sub in self
+            .pick_subscribers(&message.subject)
+            .filter_map(|id| self.subscriber(id))
+        {
             match sub.subscriber.cast(message.clone().into()) {
                 Ok(_) => {
                     status_code = StatusCode::OK;
@@ -64,43 +75,20 @@ impl Relay {
         &self,
         id: SubscriberId,
         pattern: Pattern,
-        queue_group: Option<String>,
+        queue_group: QueueGroup,
         receiver: ActorRef<T>,
-    ) -> Result<SubscriberInfo, Error> {
-        // spawn subscriber that casts to receiver
-        // store subscriber in relay by its pattern
-
+    ) -> Result<SubscriberHandle, Error> {
+        // get or spawn subscriber that casts to receiver
         if let Some(subscriber) = self.subscriber(id) {
-            return Ok(subscriber);
+            return Ok(subscriber.clone());
         }
 
-        let info = {
-            let (subscriber, _) = Actor::spawn(
-                Some(format!("subscriber-{}-{}", id.0, id.1)),
-                Subscriber {
-                    id,
-                    relay: self.clone(),
-                    receiver,
-                },
-                (),
-            )
-            .await?;
+        let handle = Subscriber::spawn(id, receiver, self.clone()).await?;
 
-            if let Some(queue_group) = queue_group {
-                // pg::join_scoped(pattern.to_string(), queue_group, vec![subscriber.clone()]);
-            }
+        // store subscriber in relay by its pattern
+        self.add_subscriber(id, handle.clone(), pattern, queue_group);
 
-            SubscriberInfo { id, subscriber }
-        };
-
-        self.inner.subscribers.insert(id, info.clone());
-        self.inner
-            .subscriptions
-            .entry(pattern)
-            .or_default()
-            .insert(id);
-
-        Ok(info)
+        Ok(handle)
     }
 
     #[tracing::instrument(level = "trace", skip(self))]
@@ -123,24 +111,119 @@ impl Relay {
         Ok(StatusCode::OK)
     }
 
-    fn subscriber(&self, id: SubscriberId) -> Option<SubscriberInfo> {
-        self.inner.subscribers.view(&id, |_, info| info.clone())
+    fn add_subscriber(
+        &self,
+        id: SubscriberId,
+        handle: SubscriberHandle,
+        pattern: Pattern,
+        queue_group: QueueGroup,
+    ) {
+        self.inner.subscribers.insert(id, handle);
+        self.inner
+            .subscriptions
+            .entry((pattern, queue_group))
+            .or_insert_with(|| {
+                let dash_set = DashSet::with_capacity(3);
+                dash_set.insert(id);
+                dash_set
+            });
     }
 
-    fn filter_subscribers(&self, subject: &Subject) -> impl Iterator<Item = SubscriberInfo> + '_ {
-        self.filter_subscriber_ids(subject)
-            .into_iter()
-            .filter_map(|id| self.subscriber(id))
+    fn remove_subscriber(&self, id: &SubscriberId) {
+        self.inner.subscribers.remove(id);
+        self.inner.subscriptions.iter().for_each(|e| {
+            e.value().remove(id);
+        });
+        tracing::trace!(
+            "{} - cid:{} - <-> [DELSUB {}]",
+            "xxx.xxx.xxx.xxx:yyyy",
+            id.0,
+            id.1
+        );
     }
 
-    fn filter_subscriber_ids(&self, subject: &Subject) -> HashSet<SubscriberId> {
+    fn subscriber(&self, id: SubscriberId) -> Option<SubscriberHandle> {
+        self.inner.subscribers.get(&id).map(|v| v.clone())
+    }
+
+    fn pick_queue_group_subscriber(&self, set: &DashSet<SubscriberId>) -> Option<SubscriberHandle> {
+        let len = set.len();
+        if len == 0 {
+            return None;
+        }
+
+        let set = set.iter().map(|id| *id).collect::<Vec<_>>();
+        tracing::info!("set: {:?}", set);
+
+        let roll = || {
+            let id = set[rand::thread_rng().next_u32() as usize % len];
+            self.subscriber(id)
+        };
+
+        for _ in 0..len {
+            if let Some(subscriber) = roll() {
+                return Some(subscriber);
+            }
+        }
+
+        None
+    }
+
+    fn pick_subscribers<'a>(
+        &'a self,
+        subject: &'a Subject,
+    ) -> impl Iterator<Item = SubscriberId> + 'a {
+        enum Iter<I> {
+            Single(Option<SubscriberId>),
+            Multi(I),
+        }
+
+        impl<I: Iterator<Item = SubscriberId>> Iterator for Iter<I> {
+            type Item = SubscriberId;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                match self {
+                    Self::Single(subscriber) => subscriber.take(),
+                    Self::Multi(iter) => iter.next(),
+                }
+            }
+        }
+
+        self.filter_subscriptions(subject)
+            .flat_map(move |e| match e.key().1 {
+                Some(_) => {
+                    let set = e.value().iter().map(|id| *id).collect::<Vec<_>>();
+                    let idx = thread_rng().next_u32() as usize % set.len();
+                    Iter::Single(set.get(idx).copied())
+                }
+                None => Iter::Multi(
+                    e.value()
+                        .iter()
+                        .map(|id| *id)
+                        .collect::<Vec<_>>()
+                        .into_iter(),
+                ),
+            })
+    }
+
+    fn filter_subscriptions<'a>(
+        &'a self,
+        subject: &'a Subject,
+    ) -> impl Iterator<Item = RefMulti<'a, SubscriptionId, DashSet<SubscriberId>>> + 'a {
         self.inner
             .subscriptions
             .iter()
-            .filter(|e| subject.matches(e.key()))
-            .flat_map(|e| e.value().iter().map(|e| *e).collect::<HashSet<_>>())
-            .collect()
+            .filter(move |e| subject.matches(&e.key().0) && !e.value().is_empty())
     }
+
+    // fn filter_subscriber_ids(&self, subject: &Subject) -> HashSet<SubscriberId> {
+    //     self.inner
+    //         .subscriptions
+    //         .iter()
+    //         .filter(|e| subject.matches(e.key()))
+    //         .flat_map(|e| e.value().iter().map(|e| *e).collect::<HashSet<_>>())
+    //         .collect()
+    // }
 }
 
 mod publisher {
@@ -181,17 +264,40 @@ mod subscriber {
     }
 
     #[derive(Debug, Clone)]
-    pub struct SubscriberInfo {
+    pub struct SubscriberHandle {
         pub id: SubscriberId,
         pub subscriber: ActorRef<SubscriberMessage>,
     }
 
     /// A subscriber for [`Message`]s published to subscribed topics.
+    ///
+    /// (Subclasses?) can be used to implement persistence, ...
     #[derive(Debug, Clone)]
     pub struct Subscriber<T> {
         pub id: SubscriberId,
         pub relay: Relay,
         pub receiver: ActorRef<T>,
+    }
+
+    impl<T: ractor::Message + From<(SubscriberId, Message)>> Subscriber<T> {
+        pub fn name(&self) -> String {
+            format!("subscriber-{}-{}", self.id.0, self.id.1)
+        }
+
+        pub async fn spawn(
+            id: SubscriberId,
+            receiver: ActorRef<T>,
+            relay: Relay,
+        ) -> Result<SubscriberHandle, Error> {
+            let this = Self {
+                id,
+                relay,
+                receiver,
+            };
+            let (subscriber, _) = Actor::spawn(Some(this.name()), this, ()).await?;
+
+            Ok(SubscriberHandle { id, subscriber })
+        }
     }
 
     impl<T: ractor::Message + From<(SubscriberId, Message)>> Actor for Subscriber<T> {
@@ -212,17 +318,7 @@ mod subscriber {
             _myself: ActorRef<Self::Msg>,
             _state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            tracing::trace!(
-                "{} - cid:{} - <-> [DELSUB {}]",
-                "todo",
-                self.id.0,
-                self.id.1
-            );
-
-            self.relay.inner.subscribers.remove(&self.id);
-            self.relay.inner.subscriptions.iter().for_each(|e| {
-                e.value().remove(&self.id);
-            });
+            self.relay.remove_subscriber(&self.id);
             Ok(())
         }
 
