@@ -8,7 +8,8 @@ struct Args {}
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let fmt = tracing_subscriber::fmt::layer()
-        .event_format(tracing_subscriber::fmt::format().with_target(false))
+        // .event_format(tracing_subscriber::fmt::format())
+        .with_target(false)
         .with_ansi(true)
         // .with_env_filter(EnvFilter::from_default_env())
         // .with_thread_ids(true)

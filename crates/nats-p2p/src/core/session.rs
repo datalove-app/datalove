@@ -1,6 +1,7 @@
-use super::{codec::Codec, ClientOp, ConnectInfo, Protocol, Relay, ServerInfo, ServerOp};
+use super::{
+    codec::Codec, ClientOp, ConnectInfo, CoreMessage, Message, Relay, ServerInfo, ServerOp,
+};
 use crate::Error;
-use async_nats::{HeaderMap, Message, StatusCode};
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use ractor::{port::RpcReplyPort, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::{fmt, marker::PhantomData, sync::Arc, time::Duration};
@@ -9,37 +10,6 @@ use tokio::{
     task::JoinHandle,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::Instrument;
-
-/// Core API Message.
-#[derive(Debug)]
-pub enum CoreMessage {
-    Incoming(ClientOp, RpcReplyPort<()>),
-    Outgoing(ServerOp),
-}
-
-impl CoreMessage {
-    pub fn default_connect_info() -> ConnectInfo {
-        ConnectInfo {
-            verbose: false,
-            pedantic: true,
-            user_jwt: None,
-            nkey: None,
-            signature: None,
-            name: None,
-            echo: true,
-            lang: "".to_string(),
-            version: "".to_string(),
-            protocol: Protocol::Dynamic,
-            tls_required: false,
-            user: None,
-            pass: None,
-            auth_token: None,
-            headers: true,
-            no_responders: false,
-        }
-    }
-}
 
 /*
  * Actors
@@ -58,7 +28,7 @@ pub struct Context {
     session: ActorRef<CoreMessage>,
     requester: ActorRef<ClientOp>,
     responder: ActorRef<ServerOp>,
-    server_info_timer: Option<JoinHandle<()>>,
+    server_info_sender: Option<JoinHandle<()>>,
     // shutdown: Option<JoinHandle<()>>,
     data: Arc<ContextData>,
     // peer_addr: SocketAddr,
@@ -71,11 +41,13 @@ impl Context {
     }
 
     fn update_server_info(&mut self, server_info: ServerInfo) {
-        if let Some(ref mut timer) = self.server_info_timer {
+        Arc::get_mut(&mut self.data).map(|d| d.server_info = server_info.clone());
+
+        // reset server_info timer
+        if let Some(ref mut timer) = self.server_info_sender {
             timer.abort();
         }
-        Arc::get_mut(&mut self.data).map(|d| d.server_info = server_info.clone());
-        self.server_info_timer = Some(
+        self.server_info_sender = Some(
             self.responder
                 .send_interval(Duration::from_secs(60), move || {
                     ServerOp::Info(server_info.clone())
@@ -93,11 +65,11 @@ pub struct ContextData {
 }
 
 impl ContextData {
-    fn client_id(&self) -> u64 {
-        self.server_info.client_id
-    }
     fn verbose(&self) -> bool {
         self.connect_info.verbose
+    }
+    fn client_id(&self) -> u64 {
+        self.server_info.client_id
     }
 
     pub fn session(&self) -> ActorRef<CoreMessage> {
@@ -111,43 +83,6 @@ impl ContextData {
     }
     pub fn send_name(&self) -> String {
         format!("client-session-{}-send", self.client_id())
-    }
-
-    const BOLD: anstyle::Style = anstyle::Style::new().bold();
-    const IP: anstyle::Style =
-        anstyle::Style::new().fg_color(Some(anstyle::Color::Ansi(anstyle::AnsiColor::Cyan)));
-    const ID: anstyle::Style =
-        anstyle::Style::new().fg_color(Some(anstyle::Color::Ansi(anstyle::AnsiColor::Cyan)));
-
-    fn trace_header(&self) -> String {
-        format_args!(
-            "{ip_style}{}{ip_style:#} - {id_style}cid:{}{id_style:#}",
-            self.server_info.client_ip,
-            self.server_info.client_id,
-            ip_style = Self::IP,
-            id_style = Self::ID
-        )
-        .to_string()
-    }
-
-    fn trace_incoming(&self, op: &ClientOp) {
-        let header = self.trace_header();
-        tracing::trace!("{header} - <<- [{op}]",);
-
-        match &op {
-            ClientOp::Publish { payload, .. } => {
-                tracing::trace!(
-                    "{header} - <<- MSG_PAYLOAD: [...]",
-                    // payload
-                )
-            }
-            _ => {}
-        }
-    }
-
-    fn trace_outgoing(&self, op: &ServerOp) {
-        let header = self.trace_header();
-        tracing::trace!("{header} - ->> [{op}]",);
     }
 }
 
@@ -225,15 +160,14 @@ where
             .spawn_children(myself.clone(), io, relay, data.clone())
             .await?;
 
-        let server_info = data.server_info.clone();
         let mut state = Context {
             session: myself,
             requester,
             responder,
-            server_info_timer: None,
+            server_info_sender: None,
             data,
         };
-        state.update_server_info(server_info);
+        state.update_server_info(state.data.server_info.clone());
         Ok(state)
     }
 
@@ -412,7 +346,10 @@ mod requester {
             msg: Self::Msg,
             state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            state.data.trace_incoming(&msg);
+            msg.trace(
+                &state.data.server_info.client_ip,
+                state.data.server_info.client_id,
+            );
 
             match msg {
                 // route quick messages directly to sender
@@ -549,7 +486,10 @@ mod responder {
             msg: Self::Msg,
             state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            state.data.trace_outgoing(&msg);
+            msg.trace(
+                &state.data.server_info.client_ip,
+                state.data.server_info.client_id,
+            );
 
             let res = state
                 .framed_write

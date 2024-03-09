@@ -2,7 +2,38 @@ pub use async_nats::{ConnectInfo, HeaderMap, Message, Protocol, ServerInfo, Stat
 
 use super::{QueueGroup, Subject, SubscriberId, WeightedQueueGroup};
 use bytes::Bytes;
+use ractor::RpcReplyPort;
 use std::fmt;
+
+/// Core API Message.
+#[derive(Debug)]
+pub enum CoreMessage {
+    Incoming(ClientOp, RpcReplyPort<()>),
+    Outgoing(ServerOp),
+}
+
+impl CoreMessage {
+    pub fn default_connect_info() -> ConnectInfo {
+        ConnectInfo {
+            verbose: false,
+            pedantic: true,
+            user_jwt: None,
+            nkey: None,
+            signature: None,
+            name: None,
+            echo: true,
+            lang: "".to_string(),
+            version: "".to_string(),
+            protocol: Protocol::Dynamic,
+            tls_required: false,
+            user: None,
+            pass: None,
+            auth_token: None,
+            headers: true,
+            no_responders: false,
+        }
+    }
+}
 
 /// `ClientOp` represents all actions of `Client`.
 ///
@@ -32,9 +63,9 @@ pub enum ClientOp {
 
     /// `SUB <subject> [queue group] <sid>`
     Subscribe {
-        sid: u64,
         subject: Subject,
         queue_group: QueueGroup,
+        sid: u64,
     },
 
     /// `UNSUB <sid> [max_msgs]`
@@ -54,13 +85,21 @@ impl ClientOp {
             Self::Unsubscribe { .. } => "UNSUB",
         }
     }
+
+    pub(crate) fn trace(&self, client_ip: &str, cid: u64) {
+        tracing::trace!(
+            "{prefix} - {arrow} [{self}]",
+            prefix = debug::trace_prefix(client_ip, cid),
+            arrow = debug::arrow("<<-"),
+        );
+    }
 }
 
 impl fmt::Display for ClientOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctrl = self.control();
+        let ctrl = debug::ctrl(self.control());
         match self {
-            ClientOp::Ping | ClientOp::Pong => f.write_str(ctrl),
+            ClientOp::Ping | ClientOp::Pong => write!(f, "{ctrl}"),
             ClientOp::Connect(info) => write!(
                 f,
                 "{ctrl} {}",
@@ -173,13 +212,21 @@ impl ServerOp {
             Self::Message { .. } => "HMSG",
         }
     }
+
+    pub(crate) fn trace(&self, client_ip: &str, cid: u64) {
+        tracing::trace!(
+            "{prefix} - {arrow} [{self}]",
+            prefix = debug::trace_prefix(client_ip, cid),
+            arrow = debug::arrow("->>"),
+        );
+    }
 }
 
 impl fmt::Display for ServerOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctrl = self.control();
+        let ctrl = debug::ctrl(self.control());
         match self {
-            ServerOp::Ok | ServerOp::Ping | ServerOp::Pong => f.write_str(ctrl),
+            ServerOp::Ok | ServerOp::Ping | ServerOp::Pong => write!(f, "{ctrl}"),
             ServerOp::Err(err) => write!(f, "{ctrl} {err}"),
             ServerOp::Connect(info) => write!(
                 f,
@@ -268,5 +315,34 @@ impl From<(String, Message)> for ServerOp {
             description: msg.description,
             payload: msg.payload,
         }
+    }
+}
+
+pub mod debug {
+    use anstyle::{AnsiColor, Color, Style};
+    use std::fmt;
+
+    pub const CLIENT: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
+    pub const CTRL: Style = Style::new()
+        .fg_color(Some(Color::Ansi(AnsiColor::Green)))
+        .bold();
+    pub const ARROW: Style = Style::new()
+        .fg_color(Some(Color::Ansi(AnsiColor::BrightBlue)))
+        .bold();
+
+    pub fn trace_prefix<T: fmt::Display>(ip: T, id: u64) -> String {
+        format!("{CLIENT}{ip}{CLIENT:#} - {CLIENT}cid:{id}{CLIENT:#}")
+    }
+
+    pub fn ctrl(ctrl: &'static str) -> String {
+        render(ctrl, CTRL)
+    }
+
+    pub fn arrow(arrow: &'static str) -> String {
+        render(arrow, ARROW)
+    }
+
+    pub fn render<T: fmt::Display>(t: T, style: Style) -> String {
+        format!("{style}{t}{style:#}")
     }
 }

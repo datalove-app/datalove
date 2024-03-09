@@ -116,12 +116,12 @@ impl Decoder for Codec<ClientOp> {
 
         // sub, unsub
         if chunk.starts_with(b"SUB") {
-            let (subject, sid, queue_group) = util::read_sub_header("SUB", true, &mut chunk)?;
+            let (subject, queue_group, sid) = util::read_sub_header("SUB", &mut chunk)?;
 
             return Ok(Some(ClientOp::Subscribe {
-                subject,
                 sid,
-                queue_group: queue_group.map(|(q, _)| q),
+                subject,
+                queue_group,
             }));
         }
         if chunk.starts_with(b"UNSUB") {
@@ -223,7 +223,7 @@ impl Decoder for Codec<ServerOp> {
 
         // rs+, rs-
         if chunk.starts_with(b"RS+") {
-            let (account, subject, queue_group) = util::read_sub_header("RS+", true, &mut chunk)?;
+            let (account, subject, queue_group) = util::read_rsub_header("RS+", true, &mut chunk)?;
 
             return Ok(Some(ServerOp::Subscribe {
                 account,
@@ -232,7 +232,7 @@ impl Decoder for Codec<ServerOp> {
             }));
         }
         if chunk.starts_with(b"RS-") {
-            let (account, subject, _) = util::read_sub_header("RS-", false, &mut chunk)?;
+            let (account, subject, _) = util::read_rsub_header("RS-", false, &mut chunk)?;
 
             return Ok(Some(ServerOp::Unsubscribe { account, subject }));
         }
@@ -717,7 +717,47 @@ mod util {
         res
     }
 
-    pub fn read_sub_header<T, U>(
+    pub fn read_sub_header(
+        verb: &str,
+        buf: &mut Bytes,
+    ) -> Result<(Subject, Option<String>, u64), Error> {
+        buf.advance(verb.len());
+
+        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+
+        let num_parts = chunk_str
+            .split_whitespace()
+            .filter(|s| !s.is_empty())
+            .count();
+        let mut parts = chunk_str.split_whitespace().filter(|s| !s.is_empty());
+
+        let subject = parts.next().map(Subject::from).ok_or_else(|| {
+            Error::codec(anyhow::anyhow!("{} missing/invalid account/subject", verb))
+        })?;
+
+        fn get_sid(part: Option<&str>) -> Result<u64, Error> {
+            part.and_then(|t| u64::from_str(t).ok())
+                .ok_or_else(|| Error::codec(anyhow::anyhow!("invalid sid")))
+        }
+
+        let res = match num_parts {
+            2 => {
+                let sid = get_sid(parts.next())?;
+                (subject, None, sid)
+            }
+            3 => {
+                let queue_group = parts.next().map(|s| s.to_string());
+                let sid = get_sid(parts.next())?;
+                (subject, queue_group, sid)
+            }
+            _ => return Err(Error::codec(anyhow::anyhow!("invalid {} message", verb))),
+        };
+
+        buf.advance(chunk_str.len());
+        Ok(res)
+    }
+
+    pub fn read_rsub_header<T, U>(
         verb: &str,
         try_queue_group: bool,
         buf: &mut Bytes,
@@ -731,6 +771,7 @@ mod util {
         let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
 
         let mut parts = chunk_str.split_whitespace().filter(|s| !s.is_empty());
+
         let t = parts
             .next()
             .map(|t| T::from_str(t).ok())
@@ -744,14 +785,17 @@ mod util {
             .flatten()
             .ok_or_else(|| Error::codec(anyhow::anyhow!("{} missing/invalid subject/sid", verb)))?;
 
-        match try_queue_group.then(|| parts.next()).flatten() {
-            None => Ok((t, u, None)),
+        let res = match try_queue_group.then(|| parts.next()).flatten() {
+            None => (t, u, None),
             Some(queue_group) => {
                 let queue_group = queue_group.to_string();
                 let weight = parts.next().map(|s| s.parse().ok()).flatten();
-                Ok((t, u, Some((queue_group, weight))))
+                (t, u, Some((queue_group, weight)))
             }
-        }
+        };
+
+        buf.advance(chunk_str.len());
+        Ok(res)
     }
 
     pub fn read_unsub_header(verb: &str, buf: &mut Bytes) -> Result<(u64, Option<u64>), Error> {
@@ -1199,6 +1243,27 @@ mod tests {
                     headers
                 }),
                 payload: Bytes::from_static(b"Hello World"),
+            }
+        );
+
+        let mut buf = BytesMut::from(&b"SUB hello.world 42\r\n"[..]);
+        let msg = codec.decode(&mut buf).unwrap().unwrap();
+        assert_eq!(
+            msg,
+            ClientOp::Subscribe {
+                subject: Subject::from_static("hello.world"),
+                sid: 42,
+                queue_group: None,
+            }
+        );
+        let mut buf = BytesMut::from(&b"SUB hello.world greeter 42\r\n"[..]);
+        let msg = codec.decode(&mut buf).unwrap().unwrap();
+        assert_eq!(
+            msg,
+            ClientOp::Subscribe {
+                subject: Subject::from_static("hello.world"),
+                sid: 42,
+                queue_group: Some("greeter".to_string()),
             }
         );
     }

@@ -101,7 +101,7 @@ impl Server {
     }
 
     fn log_start_message(&self) {
-        tracing::info!("Starting iroh-nats-server");
+        tracing::info!("Starting nats-p2p-server");
         tracing::info!("  Version:  0.0.1");
         tracing::info!("  Git:      [not set]");
         tracing::info!("  Name:     {}", self.config.name);

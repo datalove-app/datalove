@@ -23,6 +23,13 @@ clap = { workspace = true, features = [
 ] }
 dirs = { workspace = true }
 rpassword = { workspace = true }
+tracing-subscriber = { workspace = true, features = [
+  "ansi",
+  "env-filter",
+  "fmt",
+  "registry",
+  "std",
+] }
 ssh-key = { version = "0.6", features = [
   "ed25519",
   "encryption",
@@ -80,15 +87,12 @@ tracing = { workspace = true, features = [
   "log",
   "std",
 ] }
-tracing-subscriber = { workspace = true, features = [
-  "ansi",
-  "env-filter",
-  "fmt",
-  "registry",
-  "std",
-] }
 # trie-rs = { version = "0.2", default-features = false }
 zeroize = { workspace = true }
 
 # misc
 aquamarine = { workspace = true }
+
+[features]
+default = []
+debug = ["tracing/log-always"]
