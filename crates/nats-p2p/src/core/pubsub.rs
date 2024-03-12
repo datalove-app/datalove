@@ -19,14 +19,16 @@ pub enum SubscriberId {
     Temp(u64, u64),
 }
 impl SubscriberId {
-    pub fn temp(cid: u64, sid: u64) -> Self {
-        Self::Temp(cid, sid)
-    }
     pub fn to_parts(&self) -> (u64, u64) {
         match self {
             Self::Client(cid, sid) => (*cid, *sid),
             Self::Temp(cid, sid) => (*cid, *sid),
         }
+    }
+}
+impl AsRef<SubscriberId> for SubscriberId {
+    fn as_ref(&self) -> &SubscriberId {
+        self
     }
 }
 impl From<(u64, u64)> for SubscriberId {
@@ -55,7 +57,7 @@ pub struct Relay {
     inner: Arc<RelayState>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct RelayState {
     prefix: String,
 
@@ -67,6 +69,17 @@ struct RelayState {
 
     ///
     last_subscriber_id: atomic::AtomicU64,
+}
+
+impl Default for RelayState {
+    fn default() -> Self {
+        Self {
+            prefix: Default::default(),
+            subscribers: Default::default(),
+            subscriptions: Default::default(),
+            last_subscriber_id: atomic::AtomicU64::new(1),
+        }
+    }
 }
 
 impl Relay {
@@ -87,40 +100,37 @@ impl Relay {
     ) -> Result<StatusCode, Error> {
         // if reply_to, spawn subscriber
         if let Some(ref reply) = message.reply {
-            let sid = self
-                .inner
-                .last_subscriber_id
-                .fetch_add(1, atomic::Ordering::Relaxed);
-
+            let sub_id = self.next_temp_id(cid);
             let reply = reply.clone();
             let this = self.clone();
             tokio::task::spawn(async move {
-                let _ = this
-                    .subscribe(SubscriberId::temp(cid, sid), reply, None, receiver)
-                    .await?;
+                let _ = this.subscribe(sub_id, reply, None, receiver).await?;
                 Ok::<(), Error>(())
             });
         }
 
         // find subscribers by matching their pattern against subject
-        let sub_ids = self.pick_subscribers(&message.subject);
-        let subs = sub_ids.filter_map(|id| self.subscriber(id));
+        let subs = self
+            .filter_subscribers(&message.subject)
+            .filter_map(|id| self.subscriber(id))
+            .collect::<Vec<_>>();
+
+        tracing::trace!("found {} subscribers", subs.len());
 
         // collect failures and stop them
-        let mut status_code = StatusCode::NO_RESPONDERS;
+        let mut status = StatusCode::NO_RESPONDERS;
         for handle in subs {
             match handle.cast(message.clone().into()) {
                 Ok(_) => {
-                    status_code = StatusCode::OK;
+                    status = StatusCode::OK;
                 }
                 Err(_) => {
-                    // remove subscriber
-                    // self.inner.subscribers.remove(&sub.pattern);
+                    self.remove_subscriber(handle.as_ref());
                 }
             };
         }
 
-        Ok(status_code)
+        Ok(status)
     }
 
     /// Gets or creates a [`Subscriber`] that routes published messages to the `receiver` actor.
@@ -130,7 +140,7 @@ impl Relay {
         pattern: Pattern,
         queue_group: QueueGroup,
         receiver: ActorRef<T>,
-    ) -> Result<SubscriberHandle, Error> {
+    ) -> Result<StatusCode, Error> {
         // spawn (or get?) subscriber that casts to receiver
         let id = id.into();
         let sub = Subscriber {
@@ -138,9 +148,9 @@ impl Relay {
             relay: self.clone(),
             receiver,
         };
-        let (subscriber, _) = Actor::spawn(Some(sub.name()), sub, (pattern, queue_group)).await?;
+        let _ = Actor::spawn(Some(sub.name()), sub, (pattern, queue_group)).await?;
 
-        Ok(SubscriberHandle::from((id, subscriber)))
+        Ok(StatusCode::OK)
     }
 
     pub fn unsubscribe(
@@ -165,7 +175,16 @@ impl Relay {
 }
 
 impl Relay {
-    fn pick_subscribers<'a>(
+    fn next_temp_id(&self, cid: u64) -> SubscriberId {
+        let sid = self
+            .inner
+            .last_subscriber_id
+            .fetch_add(1, atomic::Ordering::Relaxed);
+        SubscriberId::Temp(cid, sid)
+    }
+
+    /// Filters subscriptions by subject, then candidate subscribers by queue group.
+    fn filter_subscribers<'a>(
         &'a self,
         subject: &'a Subject,
     ) -> impl Iterator<Item = SubscriberId> + 'a {
@@ -234,13 +253,14 @@ impl Relay {
             .insert(id);
     }
 
-    fn remove_subscriber(&self, id: &SubscriberId) {
-        let (cid, sid) = id.to_parts();
+    fn remove_subscriber(&self, id: impl AsRef<SubscriberId>) {
+        let id = id.as_ref();
         let (_, _handle) = self.inner.subscribers.remove(id).unwrap();
         self.inner.subscriptions.iter().for_each(|e| {
             e.value().remove(id);
         });
 
+        let (cid, sid) = id.to_parts();
         tracing::trace!(
             "{prefix} - {arrow} [{ctrl} {sid}]",
             prefix = debug::trace_prefix("xxx.xxx.xxx.xxx:yyyy", cid),
@@ -320,8 +340,11 @@ mod subscriber {
 
     impl<T: ractor::Message + From<(SubscriberId, Message)>> Subscriber<T> {
         pub fn name(&self) -> String {
-            let (cid, sid) = self.id.to_parts();
-            format!("{}-subscriber-{cid}-{sid}", &self.relay.inner.prefix)
+            format!(
+                "{prefix}-subscriber-{id}",
+                prefix = &self.relay.inner.prefix,
+                id = self.id
+            )
         }
     }
 

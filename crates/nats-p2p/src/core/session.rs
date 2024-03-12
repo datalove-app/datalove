@@ -1,8 +1,9 @@
 use super::{
     codec::Codec, ClientOp, ConnectInfo, CoreMessage, Message, Protocol, Relay, ServerInfo,
-    ServerOp, SubscriberId,
+    ServerOp, StatusCode, SubscriberId,
 };
 use crate::Error;
+use bytes::Bytes;
 use futures::{Future, SinkExt, Stream, StreamExt, TryStream, TryStreamExt};
 use ractor::{port::RpcReplyPort, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::{
@@ -14,11 +15,12 @@ use std::{
 };
 use tokio::{
     io::{self, AsyncRead, AsyncWrite},
+    sync::RwLock,
     task::JoinHandle,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SessionManager {
     // sessions: Vec<SessionInfo>,
     last_client_id: AtomicU64,
@@ -68,6 +70,14 @@ impl SessionManager {
     }
 }
 
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self {
+            last_client_id: AtomicU64::new(1),
+        }
+    }
+}
+
 /// Ongoing tasks and actors underpinning a [`Session`].
 #[derive(Debug)]
 pub struct Context {
@@ -76,29 +86,31 @@ pub struct Context {
     responder: ActorRef<ServerOp>,
     server_info_sender: Option<JoinHandle<()>>,
     // shutdown: Option<JoinHandle<()>>,
-    data: Arc<SessionInfo>,
+    data: Arc<RwLock<SessionInfo>>,
     // peer_addr: SocketAddr,
     // host_addr: SocketAddr,
 }
 
 impl Context {
-    fn update_connect_info(&mut self, connect_info: ConnectInfo) {
-        Arc::get_mut(&mut self.data).map(|d| d.connect_info = connect_info);
+    async fn update_connect_info(&mut self, connect_info: ConnectInfo) {
+        self.data.write().await.connect_info = connect_info;
     }
 
-    fn update_server_info(&mut self, server_info: ServerInfo) {
-        Arc::get_mut(&mut self.data).map(|d| d.server_info = server_info.clone());
-
-        // reset server_info timer
-        if let Some(ref mut timer) = self.server_info_sender {
-            timer.abort();
+    async fn update_server_info(&mut self, server_info: Option<ServerInfo>) {
+        if let Some(server_info) = server_info {
+            self.data.write().await.server_info = server_info.clone();
         }
-        self.server_info_sender = Some(
-            self.responder
-                .send_interval(Duration::from_secs(60), move || {
-                    ServerOp::Info(server_info.clone())
-                }),
-        );
+
+        // // reset server_info timer
+        // if let Some(ref mut timer) = self.server_info_sender {
+        //     timer.abort();
+        // }
+        // self.server_info_sender = Some(
+        //     self.responder
+        //         .send_interval(Duration::from_secs(60), move || {
+        //             ServerOp::Info(server_info.clone())
+        //         }),
+        // );
     }
 }
 
@@ -135,21 +147,21 @@ impl SessionInfo {
     pub fn session_name(&self) -> String {
         format!(
             "{}-client-session-{}",
-            &self.server_info.server_id[..6],
+            self.server_id_prefix(),
             self.client_id()
         )
     }
     pub fn recv_name(&self) -> String {
         format!(
             "{}-client-session-{}-recv",
-            &self.server_info.server_id[..6],
+            self.server_id_prefix(),
             self.client_id()
         )
     }
     pub fn send_name(&self) -> String {
         format!(
             "{}-client-session-{}-send",
-            &self.server_info.server_id[..6],
+            self.server_id_prefix(),
             self.client_id()
         )
     }
@@ -158,11 +170,20 @@ impl SessionInfo {
         !connect_info.tls_required
     }
 
+    fn echo(&self) -> bool {
+        self.connect_info.echo
+    }
+    fn no_responders(&self) -> bool {
+        self.connect_info.no_responders
+    }
     fn verbose(&self) -> bool {
         self.connect_info.verbose
     }
     fn client_id(&self) -> u64 {
         self.server_info.client_id
+    }
+    fn server_id_prefix(&self) -> &str {
+        &self.server_info.server_id[..6]
     }
 
     fn default_connect_info() -> ConnectInfo {
@@ -192,7 +213,7 @@ pub struct Session<T> {
     _io: PhantomData<T>,
 }
 
-pub type SessionArgs<T> = (T, Relay, Arc<SessionInfo>);
+pub type SessionArgs<T> = (T, Relay, SessionInfo);
 
 impl<T: util::Split> Session<T> {
     pub fn new() -> Self {
@@ -202,7 +223,6 @@ impl<T: util::Split> Session<T> {
     pub async fn run(io: T, relay: Relay, session_info: SessionInfo) -> Result<(), Error> {
         let this = Self::new();
 
-        let session_info = Arc::new(session_info);
         let (_, handle) = Actor::spawn(
             Some(session_info.session_name()),
             this,
@@ -215,36 +235,6 @@ impl<T: util::Split> Session<T> {
             .map_err(|e| Error::server("Session run error", e))?;
 
         Ok(())
-    }
-
-    async fn spawn_children(
-        &self,
-        myself: ActorRef<CoreMessage>,
-        io: T,
-        relay: Relay,
-        data: Arc<SessionInfo>,
-    ) -> Result<(ActorRef<ClientOp>, ActorRef<ServerOp>), Error> {
-        let (reader, writer) = io.split();
-        let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
-        let sink = FramedWrite::new(writer, Codec::<ServerOp>::default());
-
-        let (responder, _) = Actor::spawn_linked(
-            Some(data.send_name()),
-            responder::Responder::new(),
-            (data.clone(), relay.clone(), sink),
-            myself.get_cell(),
-        )
-        .await?;
-
-        let (requester, _) = Actor::spawn_linked(
-            Some(data.recv_name()),
-            requester::Requester::new(),
-            (data.clone(), relay.clone(), stream, responder.clone()),
-            myself.get_cell(),
-        )
-        .await?;
-
-        Ok((requester, responder))
     }
 }
 
@@ -264,9 +254,37 @@ where
         myself: ActorRef<Self::Msg>,
         (io, relay, data): Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let (requester, responder) = self
-            .spawn_children(myself.clone(), io, relay, data.clone())
+        let (recv_name, send_name) = (data.recv_name(), data.send_name());
+        let data = Arc::new(RwLock::new(data));
+
+        let (requester, responder) = {
+            let (reader, writer) = io.split();
+            let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
+            let sink = FramedWrite::new(writer, Codec::<ServerOp>::default());
+
+            let (responder, _) = Actor::spawn_linked(
+                Some(send_name),
+                responder::Responder::new(),
+                (data.clone(), relay.clone(), sink),
+                myself.get_cell(),
+            )
             .await?;
+
+            let (requester, _) = Actor::spawn_linked(
+                Some(recv_name),
+                requester::Requester::new(),
+                (
+                    stream,
+                    data.clone(),
+                    relay.clone(),
+                    myself.clone(),
+                    responder.clone(),
+                ),
+                myself.get_cell(),
+            )
+            .await?;
+            (requester, responder)
+        };
 
         let mut state = Context {
             session: myself,
@@ -275,7 +293,8 @@ where
             server_info_sender: None,
             data,
         };
-        state.update_server_info(state.data.server_info.clone());
+
+        state.update_server_info(None).await;
         Ok(state)
     }
 
@@ -287,7 +306,7 @@ where
     ) -> Result<(), ActorProcessingErr> {
         state
             .responder
-            .cast(ServerOp::Info(state.data.server_info.clone()))?;
+            .cast(ServerOp::Info(state.data.read().await.server_info.clone()))?;
 
         // todo: shutdown timer
 
@@ -301,7 +320,7 @@ where
     ) -> Result<(), ActorProcessingErr> {
         tracing::warn!(
             "Client session closed for {}",
-            state.data.server_info.client_ip
+            state.data.read().await.server_info.client_ip
         );
         Ok(())
     }
@@ -358,7 +377,7 @@ where
                 // TODO: validate connect info
                 ClientOp::Connect(info) => {
                     if let Some(connect_info) = info {
-                        state.update_connect_info(connect_info.clone());
+                        state.update_connect_info(connect_info.clone()).await;
                     }
                     reply.send(())?;
                 }
@@ -367,7 +386,7 @@ where
             CoreMessage::Outgoing(op) => match &op {
                 // update server info, (re)start timer
                 ServerOp::Info(server_info) => {
-                    state.update_server_info(server_info.clone());
+                    state.update_server_info(Some(server_info.clone())).await;
                 }
                 _ => state.responder.cast(op)?,
             },
@@ -390,17 +409,19 @@ mod requester {
     }
 
     type RequesterArgs<S> = (
-        Arc<SessionInfo>,
-        Relay,
         FramedRead<S, Codec<ClientOp>>,
+        Arc<RwLock<SessionInfo>>,
+        Relay,
+        ActorRef<CoreMessage>,
         ActorRef<ServerOp>,
     );
 
     pub struct RequesterState {
-        responder: ActorRef<ServerOp>,
         framed_read: Option<JoinHandle<Result<(), Error>>>,
-        data: Arc<SessionInfo>,
+        data: Arc<RwLock<SessionInfo>>,
         relay: Relay,
+        session: ActorRef<CoreMessage>,
+        responder: ActorRef<ServerOp>,
     }
 
     impl<S> Actor for Requester<S>
@@ -415,7 +436,7 @@ mod requester {
         async fn pre_start(
             &self,
             myself: ActorRef<Self::Msg>,
-            (data, relay, stream, responder): Self::Arguments,
+            (stream, data, relay, session, responder): Self::Arguments,
         ) -> Result<Self::State, ActorProcessingErr> {
             let framed_read = tokio::task::spawn(async move {
                 stream
@@ -427,10 +448,11 @@ mod requester {
                 Ok(())
             });
 
-            Ok(RequesterState {
+            Ok(Self::State {
                 data,
                 relay,
                 framed_read: Some(framed_read),
+                session,
                 responder,
             })
         }
@@ -451,24 +473,31 @@ mod requester {
             msg: Self::Msg,
             state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            msg.trace(
-                &state.data.server_info.client_ip,
-                state.data.server_info.client_id,
-            );
+            let (client_id, verbose, no_responders, echo) = {
+                let data = &state.data.read().await;
+                msg.trace(&data.server_info.client_ip, data.server_info.client_id);
+                (
+                    data.client_id(),
+                    data.verbose(),
+                    data.no_responders(),
+                    data.echo(),
+                )
+            };
 
             match msg {
                 // route quick messages directly to sender
                 ClientOp::Connect(_) => {
                     // send connect to session to cache connect info
-                    let _ = ractor::call!(state.data.session(), CoreMessage::Incoming, msg)?;
+                    let _ = ractor::call!(state.session, CoreMessage::Incoming, msg)?;
 
-                    if state.data.verbose() {
+                    if state.data.read().await.verbose() {
                         let _ = state.responder.cast(ServerOp::Ok)?;
                     }
                 }
-                ClientOp::Info(_) => state
-                    .responder
-                    .cast(ServerOp::Info(state.data.server_info.clone()))?,
+                ClientOp::Info(_) => {
+                    let server_info = &state.data.read().await.server_info;
+                    state.responder.cast(ServerOp::Info(server_info.clone()))?
+                }
                 ClientOp::Ping => state.responder.cast(ServerOp::Pong)?,
                 ClientOp::Pong => state.responder.cast(ServerOp::Ping)?,
 
@@ -480,11 +509,11 @@ mod requester {
                     payload,
                 } => {
                     // publish message to relay
-                    let _ = state.relay.publish(
-                        state.data.client_id(),
+                    let status = state.relay.publish(
+                        client_id,
                         Message {
-                            subject,
-                            reply: reply_to,
+                            subject: subject.clone(),
+                            reply: reply_to.clone(),
                             headers,
                             status: None,
                             description: None,
@@ -494,8 +523,24 @@ mod requester {
                         state.responder.clone(),
                     )?;
 
-                    if state.data.verbose() {
-                        let _ = state.responder.cast(ServerOp::Ok)?;
+                    match (status, reply_to) {
+                        (StatusCode::OK, _) if verbose => {
+                            let _ = state.responder.cast(ServerOp::Ok)?;
+                        }
+                        (StatusCode::NO_RESPONDERS, Some(reply)) if no_responders => {
+                            let _ = state.responder.cast(ServerOp::Message {
+                                status: Some(status),
+                                subject: reply,
+                                reply_to: None,
+                                sid: 0,
+                                account: None,
+                                // headers: None,
+                                headers: Some(Default::default()),
+                                description: None,
+                                payload: Bytes::new(),
+                            })?;
+                        }
+                        _ => {}
                     }
                 }
                 ClientOp::Subscribe {
@@ -504,28 +549,32 @@ mod requester {
                     sid,
                 } => {
                     //
-                    let _ = state
+                    let status = state
                         .relay
                         .subscribe(
-                            (state.data.client_id(), sid),
+                            (client_id, sid),
                             subject,
                             queue_group,
                             state.responder.clone(),
                         )
                         .await?;
 
-                    if state.data.verbose() {
-                        let _ = state.responder.cast(ServerOp::Ok)?;
+                    match status {
+                        StatusCode::OK if verbose => {
+                            let _ = state.responder.cast(ServerOp::Ok)?;
+                        }
+                        _ => {}
                     }
                 }
                 ClientOp::Unsubscribe { sid, max_msgs } => {
                     //
-                    state
-                        .relay
-                        .unsubscribe((state.data.client_id(), sid), max_msgs, None)?;
+                    let status = state.relay.unsubscribe((client_id, sid), max_msgs, None)?;
 
-                    if state.data.verbose() {
-                        let _ = state.responder.cast(ServerOp::Ok)?;
+                    match status {
+                        StatusCode::OK if verbose => {
+                            let _ = state.responder.cast(ServerOp::Ok)?;
+                        }
+                        _ => {}
                     }
                 }
             };
@@ -549,11 +598,15 @@ mod responder {
         }
     }
 
-    type ResponderArgs<S> = (Arc<SessionInfo>, Relay, FramedWrite<S, Codec<ServerOp>>);
+    type ResponderArgs<S> = (
+        Arc<RwLock<SessionInfo>>,
+        Relay,
+        FramedWrite<S, Codec<ServerOp>>,
+    );
 
     pub struct ResponderState<S> {
         framed_write: Option<FramedWrite<S, Codec<ServerOp>>>,
-        data: Arc<SessionInfo>,
+        data: Arc<RwLock<SessionInfo>>,
         relay: Relay,
     }
 
@@ -571,9 +624,9 @@ mod responder {
             (data, relay, framed_write): Self::Arguments,
         ) -> Result<Self::State, ActorProcessingErr> {
             Ok(ResponderState {
+                framed_write: Some(framed_write),
                 data,
                 relay,
-                framed_write: Some(framed_write),
             })
         }
 
@@ -594,10 +647,10 @@ mod responder {
             msg: Self::Msg,
             state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            msg.trace(
-                &state.data.server_info.client_ip,
-                state.data.server_info.client_id,
-            );
+            {
+                let server_info = &state.data.read().await.server_info;
+                msg.trace(&server_info.client_ip, server_info.client_id);
+            }
 
             let res = state
                 .framed_write

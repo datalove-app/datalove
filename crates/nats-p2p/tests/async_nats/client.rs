@@ -209,13 +209,12 @@ async fn request_timeout() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn request_no_responders() {
     let server = nats_p2p::run_basic_server();
     let client = async_nats::connect(server.client_url()).await.unwrap();
 
     let err = tokio::time::timeout(
-        tokio::time::Duration::from_millis(300),
+        tokio::time::Duration::from_millis(3000),
         client.request("test", "request".into()),
     )
     .await

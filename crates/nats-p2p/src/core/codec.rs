@@ -542,9 +542,9 @@ mod util {
         description: Option<&str>,
         header_map: &HeaderMap,
     ) -> usize {
-        let mut len = (VERSION.len() + (status.is_some() & description.is_some()) as usize)
-            + status.map_or(0, |_| 3)
-            + description.map_or(0, |s| s.len())
+        let mut len = VERSION.len()
+            + status.map_or(0, |_| 4)
+            + description.map_or(0, |s| 1 + s.len())
             + DELIMITER.len();
         for (name, value) in header_map.iter() {
             for val in value.iter() {
@@ -1168,6 +1168,7 @@ mod tests {
         codec.encode(ServerOp::Pong, &mut buf).unwrap();
         assert_eq!(buf, "PONG\r\n");
 
+        // pub
         let mut buf = BytesMut::new();
         codec
             .encode(
@@ -1182,6 +1183,7 @@ mod tests {
             .unwrap();
         assert_eq!(buf, "PUB FOO.BAR 11\r\nHello World\r\n");
 
+        // hpub
         let mut buf = BytesMut::new();
         codec
             .encode(
@@ -1202,6 +1204,75 @@ mod tests {
             buf,
             "HPUB FOO.BAR INBOX.67 23 34\r\nNATS/1.0\r\nHeader: Y\r\n\r\nHello World\r\n"
         );
+
+        // msg
+        let mut buf = BytesMut::new();
+        codec
+            .encode(
+                ServerOp::Message {
+                    sid: 42,
+                    subject: Subject::from_static("FOO.BAR"),
+                    payload: Bytes::from_static(b"Hello World"),
+                    reply_to: None,
+                    headers: None,
+                    status: None,
+                    description: None,
+                    account: None,
+                },
+                &mut buf,
+            )
+            .unwrap();
+        assert_eq!(buf, "MSG FOO.BAR 42 11\r\nHello World\r\n");
+
+        // hmsg with just status code
+        let mut buf = BytesMut::new();
+        codec
+            .encode(
+                ServerOp::Message {
+                    sid: 42,
+                    subject: Subject::from_static("FOO.BAR"),
+                    payload: Bytes::from_static(b"Hello World"),
+                    reply_to: None,
+                    headers: Some(HeaderMap::new()),
+                    status: Some(StatusCode::NO_RESPONDERS),
+                    description: None,
+                    account: None,
+                },
+                &mut buf,
+            )
+            .unwrap();
+        assert_eq!(
+            buf,
+            "HMSG FOO.BAR 42 16 27\r\nNATS/1.0 503\r\n\r\nHello World\r\n"
+        );
+
+        // hmsg status, description and headers
+        let mut buf = BytesMut::new();
+        codec
+            .encode(
+                ServerOp::Message {
+                    sid: 42,
+                    subject: Subject::from_static("FOO.BAR"),
+                    payload: Bytes::from_static(b"Hello World"),
+                    reply_to: None,
+                    headers: Some({
+                        let mut headers = HeaderMap::new();
+                        headers.insert("Header", "Y");
+                        headers
+                    }),
+                    status: Some(StatusCode::NO_RESPONDERS),
+                    description: Some("no_responders".to_string()),
+                    account: None,
+                },
+                &mut buf,
+            )
+            .unwrap();
+        assert_eq!(
+            buf,
+            "HMSG FOO.BAR 42 41 52\r\nNATS/1.0 503 no_responders\r\nHeader: Y\r\n\r\nHello World\r\n"
+        );
+
+        // hmsg
     }
 
     #[test]
@@ -1220,6 +1291,7 @@ mod tests {
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert_eq!(msg, ClientOp::Connect(None));
 
+        // pub
         let mut buf = BytesMut::from(&b"PUB FOO.BAR INBOX.67 11\r\nHello World\r\n"[..]);
         let msg = codec.decode(&mut buf).unwrap().unwrap();
         assert_eq!(
@@ -1232,6 +1304,7 @@ mod tests {
             }
         );
 
+        // hpub
         let mut buf = BytesMut::from(
             &b"HPUB FOO.BAR INBOX.67 23 34\r\nNATS/1.0\r\nHeader: Y\r\n\r\nHello World\r\n"[..],
         );

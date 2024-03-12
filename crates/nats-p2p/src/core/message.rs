@@ -159,7 +159,7 @@ pub enum ServerOp {
     Unsubscribe { account: String, subject: Subject },
 
     /// `MSG <subject> <sid> [reply-to] <#bytes>\r\n[payload]`
-    /// `HMSG <subject> <sid> [reply-to] <#header-bytes> <#total-bytes>\r\n<version line>\r\n[headers]\r\n\r\n[payload]`
+    /// `HMSG <subject> <sid> [reply-to] <#header-bytes> <#total-bytes>\r\n<version line> [status] [description]\r\n[headers]\r\n\r\n[payload]`
     /// `RMSG <account> <subject> [reply-to] <#bytes>\r\n[payload]`
     Message {
         sid: u64,
@@ -260,6 +260,21 @@ impl fmt::Display for ServerOp {
     }
 }
 
+impl From<(StatusCode, Message)> for ServerOp {
+    fn from((status, msg): (StatusCode, Message)) -> Self {
+        Self::Message {
+            sid: 0,
+            account: None,
+            subject: msg.subject,
+            reply_to: msg.reply,
+            headers: msg.headers,
+            status: Some(status),
+            description: msg.description,
+            payload: msg.payload,
+        }
+    }
+}
+
 impl From<(SubscriberId, Message)> for ServerOp {
     fn from((sub_id, msg): (SubscriberId, Message)) -> Self {
         let (_, sid) = sub_id.to_parts();
@@ -298,7 +313,6 @@ impl From<(String, Message)> for ServerOp {
 }
 
 pub mod debug {
-    use super::*;
     use anstyle::{AnsiColor, Color, Style};
     use std::fmt;
 

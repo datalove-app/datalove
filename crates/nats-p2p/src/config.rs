@@ -168,22 +168,29 @@ impl Default for ClusterConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JetStreamConfig {
     #[serde(default = "JetStreamConfig::default_store_dir")]
-    pub store_dir: PathBuf, // path
+    pub store_dir: PathBuf,
+
     #[serde(default = "JetStreamConfig::default_max_mem")]
     pub max_mem: usize,
+
     #[serde(default = "JetStreamConfig::default_max_file")]
     pub max_file: usize,
+    // pub max_streams: usize,
+    // pub max_consumers: usize,
 }
 
 impl JetStreamConfig {
-    fn default_max_mem() -> usize {
-        1024 * 1024 * 1024
-    }
-    fn default_max_file() -> usize {
-        1024 * 1024 * 1024
-    }
+    const DEFAULT_MAX_MEMORY: usize = 1024 * 1024 * 1024;
+    const DEFAULT_MAX_FILE: usize = 1024 * 1024 * 1024;
+
     fn default_store_dir() -> PathBuf {
         home_dir().unwrap().join(".nats-p2p/jetstream")
+    }
+    fn default_max_mem() -> usize {
+        Self::DEFAULT_MAX_MEMORY
+    }
+    fn default_max_file() -> usize {
+        Self::DEFAULT_MAX_FILE
     }
 }
 
