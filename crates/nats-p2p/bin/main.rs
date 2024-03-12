@@ -26,7 +26,8 @@ async fn main() -> io::Result<()> {
 
     // TODO: load from file or args to know which SSH key to load
     let config = Config::default();
-    Server::from_config(config).await?.run().await?;
+    let server = Server::run_config(config).await?;
+    server.await?;
 
     Ok(())
 }

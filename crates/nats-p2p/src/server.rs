@@ -1,229 +1,189 @@
 use crate::{
     cluster::ClusterInfo,
-    core::{Protocol, Relay, ServerInfo, Session, SessionArgs},
+    core::{Protocol, Relay, ServerInfo, SessionManager},
     iroh::start_iroh,
     Config, Error,
 };
-use futures::TryStreamExt;
-use iroh_net::NodeAddr;
+use futures::{Future, TryStreamExt};
+use iroh_net::{key::PublicKey, NodeAddr, NodeId};
 use std::{
     net::SocketAddr,
+    pin::Pin,
     sync::{atomic::AtomicU64, Arc},
+    task::{Context, Poll},
     time::Duration,
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, task::JoinHandle};
 use tokio_stream::wrappers::TcpListenerStream;
 
 #[derive(Debug, Clone)]
-pub struct Server {
+pub struct ServerData {
+    pk: PublicKey,
     config: Config,
-    info: Info,
-    relay: Relay,
-    // iroh: IrohNode,
-}
-
-#[derive(Debug, Clone)]
-pub struct Info {
     iroh: NodeAddr,
     // nat: jetstream::PeerInfo,
+    server: ServerInfo,
     cluster: ClusterInfo,
 }
 
+impl ServerData {
+    fn new(pk: PublicKey, config: Config) -> Self {
+        let iroh = NodeAddr::from_parts(pk, None, vec![config.cluster_addr()]);
+
+        let server = ServerInfo {
+            server_name: config.name.clone(),
+            host: config.host.to_string(),
+            port: config.port,
+            max_payload: config.max_payload as usize,
+            server_id: iroh.node_id.to_string().to_uppercase(),
+
+            connect_urls: vec![],
+            client_id: 0,
+            client_ip: "".to_string(),
+
+            proto: Protocol::Dynamic as i8,
+            version: "".to_string(),
+            go: "".to_string(),
+            nonce: "".to_string(),
+
+            auth_required: false,
+            tls_required: false,
+            headers: true,
+            lame_duck_mode: false,
+        };
+
+        let cluster = ClusterInfo {
+            name: Some(config.cluster.name.clone()),
+            leader: None,
+            replicas: vec![],
+        };
+        Self {
+            pk,
+            config,
+            iroh,
+            server,
+            cluster,
+        }
+    }
+
+    fn with_host_addr(mut self, addr: SocketAddr) -> Self {
+        self.config.host = addr.ip();
+        self.config.port = addr.port();
+        self.server.connect_urls = vec![format!("nats://{}", self.config.listen_addr())];
+        // self.iroh.endpoints = vec![addr];
+        self
+    }
+
+    fn client_url(&self) -> String {
+        self.server.connect_urls[0].clone()
+    }
+    fn server_id(&self) -> String {
+        self.iroh.node_id.to_string().to_uppercase()
+    }
+
+    fn log_start_message(&self) {
+        let listen_addr = self.config.listen_addr();
+        tracing::info!("Starting nats-p2p-server");
+        tracing::info!("  Version:  0.0.1");
+        tracing::info!("  Git:      [not set]");
+        tracing::info!("  Name:     {}", self.config.name);
+        tracing::info!("  ID:       {}", self.server_id());
+        tracing::info!("Listening for client connections on {listen_addr}");
+        tracing::info!("Server is ready");
+    }
+}
+
+#[derive(Debug)]
+pub struct Server {
+    data: Arc<ServerData>,
+    // iroh: IrohNode,
+    listener_handle: Option<JoinHandle<()>>,
+}
+
 impl Server {
-    pub fn server_id(&self) -> String {
-        self.info.iroh.node_id.to_string().to_uppercase()
-    }
-    pub fn client_url(&self) -> String {
-        format!("nats://{}", self.config.listen_addr())
-    }
-    pub fn client_port(&self) -> u16 {
-        self.config.port
-    }
-
-    pub async fn new() -> Result<Self, Error> {
+    pub async fn run() -> Result<Self, Error> {
         let config = Config::default();
-        Self::from_config(config).await
+        Self::run_config(config).await
     }
 
-    pub async fn from_config(mut config: Config) -> Result<Self, Error> {
-        let relay = Relay::default();
-
+    pub async fn run_config(mut config: Config) -> Result<Self, Error> {
         // read ssh key
         let sk = config.read_ssh_key().await?;
 
         // start iroh
         // let (_, node_info) = start_iroh(&config, sk).await?;
 
-        let info = Info {
-            iroh: NodeAddr::from_parts(sk.public(), None, vec![config.cluster_addr()]),
-            // nat: jetstream::PeerInfo {
-            //     name: config.name.clone(),
-            //     current: true,
-            //     active: Duration::from_secs(0),
-            //     offline: true,
-            //     lag: None,
-            // },
-            cluster: ClusterInfo {
-                name: Some(config.cluster.name.clone()),
-                leader: None,
-                // TODO: config.cluster.authorized_keys,
-                replicas: vec![],
-            },
-        };
+        let listener = TcpListener::bind(config.listen_addr()).await?;
+        let data =
+            Arc::new(ServerData::new(sk.public(), config).with_host_addr(listener.local_addr()?));
+        let relay = Relay::with_prefix(data.server_id()[0..6].to_string());
 
         Ok(Self {
-            config,
-            info,
-            relay,
+            data: data.clone(),
+            listener_handle: Some(tokio::spawn(async move {
+                let data = data.clone();
+                data.log_start_message();
+
+                let _ = SessionManager::run(
+                    relay,
+                    data.server.clone(),
+                    TcpListenerStream::new(listener),
+                )
+                .await;
+            })),
         })
     }
+}
 
-    pub async fn run(self) -> Result<(), Error> {
-        let listener = TcpListener::bind(self.config.listen_addr()).await?;
-
-        self.log_start_message();
-
-        let client_id = AtomicU64::new(0);
-        TcpListenerStream::new(listener)
-            .try_for_each_concurrent(None, |io| async {
-                let server_info = self.server_info(
-                    client_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
-                    io.peer_addr()?,
-                    io.local_addr()?,
-                );
-
-                Session::run(io, self.relay.clone(), server_info).await?;
-                Ok(())
-            })
-            .await?;
-
-        Ok(())
+impl Drop for Server {
+    fn drop(&mut self) {
+        if let Some(handle) = self.listener_handle.take() {
+            tracing::warn!("server dropped, shutting down");
+            handle.abort();
+        }
     }
+}
 
-    fn log_start_message(&self) {
-        tracing::info!("Starting nats-p2p-server");
-        tracing::info!("  Version:  0.0.1");
-        tracing::info!("  Git:      [not set]");
-        tracing::info!("  Name:     {}", self.config.name);
-        tracing::info!("  ID:       {}", self.server_id());
-        tracing::info!(
-            "Listening for client connections on {}",
-            self.config.listen_addr()
-        );
-        tracing::info!("Server is ready");
-    }
+impl Future for Server {
+    type Output = Result<(), Error>;
 
-    // fn cluster_info(&self) -> &core::ClusterInfo {
-    //     self.info.cluster
-    // }
-
-    fn server_info(
-        &self,
-        client_id: u64,
-        client_addr: SocketAddr,
-        host_addr: SocketAddr,
-    ) -> ServerInfo {
-        ServerInfo {
-            server_id: self.server_id(),
-            server_name: self.config.name.clone(),
-            host: self.config.host.to_string(),
-            port: self.config.port,
-            max_payload: 65535,
-            auth_required: false,
-            tls_required: false,
-            headers: true,
-
-            proto: Protocol::Dynamic as i8,
-            version: "".to_string(),
-            go: "".to_string(),
-            nonce: "".to_string(),
-            connect_urls: vec![self.client_url()],
-
-            client_id,
-            client_ip: client_addr.to_string(),
-            lame_duck_mode: false,
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Some(handle) = self.listener_handle.as_mut() {
+            match Pin::new(handle).poll(cx) {
+                Poll::Pending => Poll::Pending,
+                Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
+                Poll::Ready(Err(e)) => Poll::Ready(Err(Error::server("listener error: {}", e))),
+            }
+        } else {
+            Poll::Ready(Ok(()))
         }
     }
 }
 
 #[doc(hidden)]
-pub fn run_basic_server() -> Server {
-    let server = futures::executor::block_on(async move { Server::new().await.unwrap() });
-    tokio::task::spawn(server.clone().run());
-    server
-}
-
-#[cfg(test)]
-mod tests {
+pub mod server {
     use super::*;
-    use tokio::{io, process::Command};
 
-    fn setup_command(client_url: String) -> Command {
-        let mut cmd = Command::new("nats");
-        cmd.arg("--trace")
-            .arg("server")
-            .arg("check")
-            .arg("-s")
-            .arg(client_url);
-        cmd
-    }
-
-    async fn run(args: &[&str]) -> io::Result<()> {
-        let server = run_basic_server();
-        let mut cmd = setup_command(server.client_url());
-        for arg in args {
-            cmd.arg(arg);
+    impl Server {
+        pub fn client_url(&self) -> String {
+            self.data.client_url()
         }
-
-        let exit = cmd.spawn()?.wait().await?;
-        assert!(exit.success());
-        Ok(())
+        pub fn client_port(&self) -> u16 {
+            self.data.config.port
+        }
     }
 
-    #[tokio::test]
-    async fn check_connection() -> io::Result<()> {
-        return run(&["connection"]).await;
+    pub fn run_basic_server() -> Server {
+        run_server_with_port("", Some("0"))
     }
 
-    #[tokio::test]
-    #[ignore]
-    async fn check_stream() -> io::Result<()> {
-        return run(&["stream", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_message() -> io::Result<()> {
-        return run(&["message", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_meta() -> io::Result<()> {
-        return run(&["meta", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_jetstream() -> io::Result<()> {
-        return run(&["jetstream", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_server() -> io::Result<()> {
-        return run(&["server", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_kv() -> io::Result<()> {
-        return run(&["kv", "--name", "nats-p2p-test"]).await;
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn check_credential() -> io::Result<()> {
-        return run(&["credential", "--name", "nats-p2p-test"]).await;
+    pub fn run_server_with_port(_cfg: &str, port: Option<&str>) -> Server {
+        let config = Config {
+            name: "nats-p2p-test".to_string(),
+            port: port.and_then(|p| p.parse().ok()).unwrap_or(0),
+            ..Default::default()
+        };
+        futures::executor::block_on(Server::run_config(config))
+            .expect("should not fail to start server")
     }
 }

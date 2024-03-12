@@ -12,29 +12,6 @@ pub enum CoreMessage {
     Outgoing(ServerOp),
 }
 
-impl CoreMessage {
-    pub fn default_connect_info() -> ConnectInfo {
-        ConnectInfo {
-            verbose: false,
-            pedantic: true,
-            user_jwt: None,
-            nkey: None,
-            signature: None,
-            name: None,
-            echo: true,
-            lang: "".to_string(),
-            version: "".to_string(),
-            protocol: Protocol::Dynamic,
-            tls_required: false,
-            user: None,
-            pass: None,
-            auth_token: None,
-            headers: true,
-            no_responders: false,
-        }
-    }
-}
-
 /// `ClientOp` represents all actions of `Client`.
 ///
 /// [Original documentation](https://docs.nats.io/reference/reference-protocols/nats-protocol)
@@ -66,6 +43,7 @@ pub enum ClientOp {
         subject: Subject,
         queue_group: QueueGroup,
         sid: u64,
+        // sid: Subject,
     },
 
     /// `UNSUB <sid> [max_msgs]`
@@ -213,10 +191,10 @@ impl ServerOp {
         }
     }
 
-    pub(crate) fn trace(&self, client_ip: &str, cid: u64) {
+    pub(crate) fn trace(&self, client_ip: &str, id: impl Into<u64>) {
         tracing::trace!(
             "{prefix} - {arrow} [{self}]",
-            prefix = debug::trace_prefix(client_ip, cid),
+            prefix = debug::trace_prefix(client_ip, id.into()),
             arrow = debug::arrow("->>"),
         );
     }
@@ -283,7 +261,8 @@ impl fmt::Display for ServerOp {
 }
 
 impl From<(SubscriberId, Message)> for ServerOp {
-    fn from(((_, sid), msg): (SubscriberId, Message)) -> Self {
+    fn from((sub_id, msg): (SubscriberId, Message)) -> Self {
+        let (_, sid) = sub_id.to_parts();
         Self::from((sid, msg))
     }
 }
@@ -319,14 +298,15 @@ impl From<(String, Message)> for ServerOp {
 }
 
 pub mod debug {
+    use super::*;
     use anstyle::{AnsiColor, Color, Style};
     use std::fmt;
 
-    pub const CLIENT: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-    pub const CTRL: Style = Style::new()
+    const CLIENT: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
+    const CTRL: Style = Style::new()
         .fg_color(Some(Color::Ansi(AnsiColor::Green)))
         .bold();
-    pub const ARROW: Style = Style::new()
+    const ARROW: Style = Style::new()
         .fg_color(Some(Color::Ansi(AnsiColor::BrightBlue)))
         .bold();
 

@@ -1,4 +1,4 @@
-pub use self::subscriber::{Subscriber, SubscriberHandle, SubscriberId};
+pub use self::subscriber::{Subscriber, SubscriberHandle};
 pub use async_nats::Subject;
 
 use super::{debug, Message, StatusCode};
@@ -6,13 +6,46 @@ use crate::Error;
 use dashmap::{mapref::multiple::RefMulti, DashMap, DashSet};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use rand::{thread_rng, RngCore};
-use std::sync::Arc;
+use std::{
+    fmt,
+    sync::{atomic, Arc},
+};
 
 type Pattern = Subject;
-type SubscriptionId = (Pattern, QueueGroup);
+/// (`server_sid`, `client_sid`,`)
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SubscriberId {
+    Client(u64, u64),
+    Temp(u64, u64),
+}
+impl SubscriberId {
+    pub fn temp(cid: u64, sid: u64) -> Self {
+        Self::Temp(cid, sid)
+    }
+    pub fn to_parts(&self) -> (u64, u64) {
+        match self {
+            Self::Client(cid, sid) => (*cid, *sid),
+            Self::Temp(cid, sid) => (*cid, *sid),
+        }
+    }
+}
+impl From<(u64, u64)> for SubscriberId {
+    fn from((cid, sid): (u64, u64)) -> Self {
+        Self::Client(cid, sid)
+    }
+}
+impl fmt::Display for SubscriberId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Client(cid, sid) => write!(f, "{cid}-s{sid}"),
+            Self::Temp(cid, sid) => write!(f, "{cid}-S{sid}"),
+        }
+    }
+}
 
-// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// pub struct QueueGroup(Option<String>);
+///
+pub type SubscriptionId = (Pattern, QueueGroup);
+
 pub type QueueGroup = Option<String>;
 pub type WeightedQueueGroup = Option<(String, Option<u32>)>;
 
@@ -24,21 +57,59 @@ pub struct Relay {
 
 #[derive(Debug, Default)]
 struct RelayState {
-    /// A map of [`SubscriberId`]s to their topics and sender.
+    prefix: String,
+
+    /// A map of [`SubscriberId`]s to their sender handles.
     subscribers: DashMap<SubscriberId, SubscriberHandle>,
 
     /// A map of subject patterns to sets of [`SubscriberId`]s and their queue group (if any).
     subscriptions: DashMap<SubscriptionId, DashSet<SubscriberId>>,
+
+    ///
+    last_subscriber_id: atomic::AtomicU64,
 }
 
 impl Relay {
-    pub fn publish(&self, cid: u64, message: Message) -> Result<StatusCode, Error> {
-        let mut status_code = StatusCode::NO_RESPONDERS;
+    pub fn with_prefix(prefix: String) -> Self {
+        Self {
+            inner: Arc::new(RelayState {
+                prefix,
+                ..Default::default()
+            }),
+        }
+    }
+
+    pub fn publish<T: ractor::Message + From<(SubscriberId, Message)>>(
+        &self,
+        cid: u64,
+        message: Message,
+        receiver: ActorRef<T>,
+    ) -> Result<StatusCode, Error> {
+        // if reply_to, spawn subscriber
+        if let Some(ref reply) = message.reply {
+            let sid = self
+                .inner
+                .last_subscriber_id
+                .fetch_add(1, atomic::Ordering::Relaxed);
+
+            let reply = reply.clone();
+            let this = self.clone();
+            tokio::task::spawn(async move {
+                let _ = this
+                    .subscribe(SubscriberId::temp(cid, sid), reply, None, receiver)
+                    .await?;
+                Ok::<(), Error>(())
+            });
+        }
+
         // find subscribers by matching their pattern against subject
         let sub_ids = self.pick_subscribers(&message.subject);
+        let subs = sub_ids.filter_map(|id| self.subscriber(id));
 
-        for sub in sub_ids.filter_map(|id| self.subscriber(id)) {
-            match sub.subscriber.cast(message.clone().into()) {
+        // collect failures and stop them
+        let mut status_code = StatusCode::NO_RESPONDERS;
+        for handle in subs {
+            match handle.cast(message.clone().into()) {
                 Ok(_) => {
                     status_code = StatusCode::OK;
                 }
@@ -55,30 +126,37 @@ impl Relay {
     /// Gets or creates a [`Subscriber`] that routes published messages to the `receiver` actor.
     pub async fn subscribe<T: ractor::Message + From<(SubscriberId, Message)>>(
         &self,
-        id: SubscriberId,
+        id: impl Into<SubscriberId>,
         pattern: Pattern,
         queue_group: QueueGroup,
         receiver: ActorRef<T>,
-    ) -> Result<(), Error> {
+    ) -> Result<SubscriberHandle, Error> {
         // spawn (or get?) subscriber that casts to receiver
-        let _handle = Subscriber::run(id, pattern, queue_group, receiver, self.clone()).await?;
+        let id = id.into();
+        let sub = Subscriber {
+            id,
+            relay: self.clone(),
+            receiver,
+        };
+        let (subscriber, _) = Actor::spawn(Some(sub.name()), sub, (pattern, queue_group)).await?;
 
-        Ok(())
+        Ok(SubscriberHandle::from((id, subscriber)))
     }
 
     pub fn unsubscribe(
         &self,
-        id: SubscriberId,
+        id: impl Into<SubscriberId>,
         max_msgs: Option<u64>,
         reason: Option<String>,
     ) -> Result<StatusCode, Error> {
+        let id = id.into();
         match (self.subscriber(id), max_msgs) {
             (None, _) => {}
             (Some(handle), Some(max_msgs)) => {
-                handle.subscriber.cast(max_msgs.into())?;
+                handle.cast(max_msgs.into())?;
             }
             (Some(handle), None) => {
-                handle.subscriber.stop(reason);
+                handle.stop(reason);
             }
         };
 
@@ -148,16 +226,16 @@ impl Relay {
         queue_group: QueueGroup,
     ) {
         self.inner.subscribers.insert(id, handle);
-        let mut sub = self
-            .inner
+        self.inner
             .subscriptions
             .entry((pattern, queue_group))
-            .or_insert_with(|| DashSet::with_capacity(3));
-        sub.value_mut().insert(id);
+            .or_insert_with(|| DashSet::with_capacity(3))
+            .value_mut()
+            .insert(id);
     }
 
     fn remove_subscriber(&self, id: &SubscriberId) {
-        let (cid, sid) = id;
+        let (cid, sid) = id.to_parts();
         let (_, _handle) = self.inner.subscribers.remove(id).unwrap();
         self.inner.subscriptions.iter().for_each(|e| {
             e.value().remove(id);
@@ -165,7 +243,7 @@ impl Relay {
 
         tracing::trace!(
             "{prefix} - {arrow} [{ctrl} {sid}]",
-            prefix = debug::trace_prefix("xxx.xxx.xxx.xxx:yyyy", *cid),
+            prefix = debug::trace_prefix("xxx.xxx.xxx.xxx:yyyy", cid),
             arrow = debug::arrow("<->"),
             ctrl = debug::ctrl("DELSUB"),
         );
@@ -183,9 +261,7 @@ mod publisher {
 
 mod subscriber {
     use super::*;
-
-    /// (`client_id`, `sid`)
-    pub type SubscriberId = (u64, u64);
+    use core::ops::Deref;
 
     #[derive(Debug, Clone)]
     pub enum SubscriberMessage {
@@ -211,8 +287,25 @@ mod subscriber {
 
     #[derive(Debug, Clone)]
     pub struct SubscriberHandle {
-        pub id: SubscriberId,
-        pub subscriber: ActorRef<SubscriberMessage>,
+        id: SubscriberId,
+        subscriber: ActorRef<SubscriberMessage>,
+    }
+
+    impl AsRef<SubscriberId> for SubscriberHandle {
+        fn as_ref(&self) -> &SubscriberId {
+            &self.id
+        }
+    }
+    impl Deref for SubscriberHandle {
+        type Target = ActorRef<SubscriberMessage>;
+        fn deref(&self) -> &Self::Target {
+            &self.subscriber
+        }
+    }
+    impl From<(SubscriberId, ActorRef<SubscriberMessage>)> for SubscriberHandle {
+        fn from((id, subscriber): (SubscriberId, ActorRef<SubscriberMessage>)) -> Self {
+            Self { id, subscriber }
+        }
     }
 
     /// A subscriber for [`Message`]s published to subscribed topics.
@@ -227,25 +320,8 @@ mod subscriber {
 
     impl<T: ractor::Message + From<(SubscriberId, Message)>> Subscriber<T> {
         pub fn name(&self) -> String {
-            format!("subscriber-{}-{}", self.id.0, self.id.1)
-        }
-
-        pub async fn run(
-            id: SubscriberId,
-            pattern: Pattern,
-            queue_group: QueueGroup,
-            receiver: ActorRef<T>,
-            relay: Relay,
-        ) -> Result<SubscriberHandle, Error> {
-            let this = Self {
-                id,
-                relay: relay.clone(),
-                receiver,
-            };
-            let (subscriber, _) =
-                Actor::spawn(Some(this.name()), this, (pattern, queue_group)).await?;
-
-            Ok(SubscriberHandle { id, subscriber })
+            let (cid, sid) = self.id.to_parts();
+            format!("{}-subscriber-{cid}-{sid}", &self.relay.inner.prefix)
         }
     }
 
@@ -283,18 +359,18 @@ mod subscriber {
             msg: Self::Msg,
             state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            match msg {
-                SubscriberMessage::Unsubscribe(max_msgs) => {
+            match (msg, state.as_mut()) {
+                (SubscriberMessage::Unsubscribe(max_msgs), _) => {
                     *state = max_msgs;
                 }
-                SubscriberMessage::Message(msg) => match state.as_mut() {
-                    None => self.receiver.cast((self.id, msg).into())?,
-                    Some(0) => myself.stop(None),
-                    Some(max_msgs) => {
-                        *max_msgs -= 1;
-                        self.receiver.cast((self.id, msg).into())?;
-                    }
-                },
+                (SubscriberMessage::Message(msg), None) => {
+                    self.receiver.cast((self.id, msg).into())?
+                }
+                (SubscriberMessage::Message(_), Some(0)) => myself.stop(None),
+                (SubscriberMessage::Message(msg), Some(max_msgs)) => {
+                    *max_msgs -= 1;
+                    self.receiver.cast((self.id, msg).into())?;
+                }
             }
 
             Ok(())

@@ -1,5 +1,5 @@
 use super::{ClientOp, HeaderMap, ServerOp, StatusCode, Subject};
-use crate::Error;
+use crate::{Config, Error};
 use async_nats::header::{IntoHeaderName, IntoHeaderValue};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use memchr::memmem;
@@ -23,6 +23,7 @@ pub const VERSION: &'static str = "NATS/1.0";
 /// [`Connection`]: async_nats::Connection
 #[derive(Clone, Debug)]
 pub struct Codec<T = ClientOp> {
+    max_payload_len: usize,
     inner: chunk_codec::ChunkCodec,
     partial_op: Option<PartialOp<T>>,
 }
@@ -46,6 +47,8 @@ impl Codec<ServerOp> {
 }
 
 impl<T> Codec<T> {
+    pub const DEFAULT_MAX_PAYLOAD: usize = 65535;
+
     fn partial_decode(
         &mut self,
         partial_op: PartialOp<T>,
@@ -70,6 +73,7 @@ impl<T> Codec<T> {
 impl<T> Default for Codec<T> {
     fn default() -> Self {
         Self {
+            max_payload_len: Config::default_max_payload(),
             inner: chunk_codec::ChunkCodec::default(),
             partial_op: None,
         }

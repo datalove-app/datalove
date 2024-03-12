@@ -1,4 +1,8 @@
-use crate::Error;
+use crate::{
+    cluster::ClusterInfo,
+    core::{Protocol, ServerInfo},
+    Error,
+};
 use core::fmt;
 use dirs::home_dir;
 use iroh_net::{
@@ -26,6 +30,9 @@ pub struct Config {
     #[serde(default = "Config::default_port")]
     pub port: u16,
 
+    #[serde(default = "Config::default_max_payload")]
+    pub max_payload: usize,
+
     ///
     #[serde(default)]
     pub cluster: ClusterConfig,
@@ -39,6 +46,7 @@ impl Config {
     const DEFAULT_SERVER_NAME: &'static str = "nats-p2p";
     const DEFAULT_LISTEN_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
     const DEFAULT_LISTEN_PORT: u16 = 4222;
+    const DEFAULT_MAX_PAYLOAD: usize = 65535;
 
     pub fn default_server_name() -> String {
         Self::DEFAULT_SERVER_NAME.to_string()
@@ -48,6 +56,9 @@ impl Config {
     }
     pub const fn default_port() -> u16 {
         Self::DEFAULT_LISTEN_PORT
+    }
+    pub const fn default_max_payload() -> usize {
+        Self::DEFAULT_MAX_PAYLOAD
     }
 
     pub fn listen_addr(&self) -> SocketAddr {
@@ -91,6 +102,7 @@ impl Default for Config {
             name: Self::default_server_name(),
             host: Self::default_host(),
             port: Self::default_port(),
+            max_payload: Self::default_max_payload(),
             cluster: Default::default(),
             jetstream: Default::default(),
         }
@@ -125,9 +137,6 @@ impl ClusterConfig {
     pub fn default_name() -> String {
         "default".to_string()
     }
-    pub fn default_ssh_key() -> Option<String> {
-        Some(SecretKey::generate().to_string())
-    }
     pub fn default_client_ssh_key() -> Option<PathBuf> {
         Some(home_dir().unwrap().join(".ssh/id_ed25519"))
     }
@@ -143,7 +152,6 @@ impl Default for ClusterConfig {
     fn default() -> Self {
         Self {
             name: Self::default_name(),
-            // ssh_key: Self::default_ssh_key(),
             ssh_key_path: None,
             authorized_keys_path: None,
             port: Self::default_port(),
