@@ -521,6 +521,7 @@ mod requester {
                             payload,
                         },
                         state.responder.clone(),
+                        echo,
                     )?;
 
                     match (status, reply_to) {

@@ -19,6 +19,12 @@ pub enum SubscriberId {
     Temp(u64, u64),
 }
 impl SubscriberId {
+    pub const fn cid(&self) -> u64 {
+        match self {
+            Self::Client(cid, _) => *cid,
+            Self::Temp(cid, _) => *cid,
+        }
+    }
     pub fn to_parts(&self) -> (u64, u64) {
         match self {
             Self::Client(cid, sid) => (*cid, *sid),
@@ -97,6 +103,7 @@ impl Relay {
         cid: u64,
         message: Message,
         receiver: ActorRef<T>,
+        echo: bool,
     ) -> Result<StatusCode, Error> {
         // if reply_to, spawn subscriber
         if let Some(ref reply) = message.reply {
@@ -112,6 +119,7 @@ impl Relay {
         // find subscribers by matching their pattern against subject
         let subs = self
             .filter_subscribers(&message.subject)
+            .filter(|id| echo || id.cid() != cid)
             .filter_map(|id| self.subscriber(id))
             .collect::<Vec<_>>();
 

@@ -294,6 +294,7 @@ async fn unsubscribe_after() {
     }
     assert!(sub.next().await.is_none());
 }
+
 #[tokio::test]
 async fn unsubscribe_after_immediate() {
     let server = nats_p2p::run_basic_server();
@@ -527,7 +528,6 @@ async fn slow_consumers() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn no_echo() {
     // no_echo disabled.
     let server = nats_p2p::run_basic_server();
