@@ -735,7 +735,7 @@ async fn retry_on_initial_connect() {
     let mut sub = client.subscribe("DATA").await.unwrap();
     client.publish("DATA", "payload".into()).await.unwrap();
     tokio::time::sleep(Duration::from_secs(2)).await;
-    let _server = nats_p2p::run_server_with_port("", Some("7777"));
+    let _server = nats_p2p::run_server_with_port("{}", Some("7777"));
     sub.next().await.unwrap();
 }
 
@@ -851,10 +851,11 @@ async fn max_reconnects() {
     );
 }
 
-/*
 #[tokio::test]
+#[ignore]
 async fn publish_payload_size() {
-    let server = nats_server::run_server("tests/configs/max_payload.conf");
+    let max_payload: usize = 128 * 1024;
+    let server = nats_p2p::run_server(&format!(r#"{{"max_payload":{max_payload}}}"#));
 
     let client = async_nats::connect(server.client_url()).await.unwrap();
 
@@ -867,5 +868,8 @@ async fn publish_payload_size() {
         .publish("just_ok", vec![0u8; 1024 * 128].into())
         .await
         .unwrap();
+    client
+        .publish("just_too_big", vec![0u8; 1024 * 129].into())
+        .await
+        .unwrap_err();
 }
- */

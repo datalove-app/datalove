@@ -47,8 +47,6 @@ impl Codec<ServerOp> {
 }
 
 impl<T> Codec<T> {
-    pub const DEFAULT_MAX_PAYLOAD: usize = 65535;
-
     fn partial_decode(
         &mut self,
         partial_op: PartialOp<T>,
@@ -956,6 +954,13 @@ mod chunk_codec {
         pub fn reset_min_length(&mut self) {
             self.min_length = 0;
         }
+        pub fn set_max_length(&mut self, max_length: usize) {
+            self.max_length = max_length;
+        }
+        pub fn reset_max_length(&mut self) {
+            self.max_length = usize::MAX;
+        }
+
         pub fn with_max_length(mut self, max_length: usize) -> Self {
             self.max_length = max_length;
             self

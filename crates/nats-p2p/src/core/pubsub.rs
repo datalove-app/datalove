@@ -1,4 +1,4 @@
-pub use self::subscriber::{Subscriber, SubscriberHandle};
+pub use self::subscriber::{Subscriber, SubscriberHandle, SubscriberId, SubscriptionId};
 pub use async_nats::Subject;
 
 use super::{debug, Message, StatusCode};
@@ -12,47 +12,6 @@ use std::{
 };
 
 type Pattern = Subject;
-/// (`server_sid`, `client_sid`,`)
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum SubscriberId {
-    Client(u64, u64),
-    Temp(u64, u64),
-}
-impl SubscriberId {
-    pub const fn cid(&self) -> u64 {
-        match self {
-            Self::Client(cid, _) => *cid,
-            Self::Temp(cid, _) => *cid,
-        }
-    }
-    pub fn to_parts(&self) -> (u64, u64) {
-        match self {
-            Self::Client(cid, sid) => (*cid, *sid),
-            Self::Temp(cid, sid) => (*cid, *sid),
-        }
-    }
-}
-impl AsRef<SubscriberId> for SubscriberId {
-    fn as_ref(&self) -> &SubscriberId {
-        self
-    }
-}
-impl From<(u64, u64)> for SubscriberId {
-    fn from((cid, sid): (u64, u64)) -> Self {
-        Self::Client(cid, sid)
-    }
-}
-impl fmt::Display for SubscriberId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Client(cid, sid) => write!(f, "{cid}-s{sid}"),
-            Self::Temp(cid, sid) => write!(f, "{cid}-S{sid}"),
-        }
-    }
-}
-
-///
-pub type SubscriptionId = (Pattern, QueueGroup);
 
 pub type QueueGroup = Option<String>;
 pub type WeightedQueueGroup = Option<(String, Option<u32>)>;
@@ -102,16 +61,16 @@ impl Relay {
         &self,
         cid: u64,
         message: Message,
-        receiver: ActorRef<T>,
         echo: bool,
+        reply_receiver: Option<ActorRef<T>>,
     ) -> Result<StatusCode, Error> {
         // if reply_to, spawn subscriber
-        if let Some(ref reply) = message.reply {
+        if let Some((reply, reply_receiver)) = message.reply.as_ref().zip(reply_receiver) {
             let sub_id = self.next_temp_id(cid);
             let reply = reply.clone();
             let this = self.clone();
             tokio::task::spawn(async move {
-                let _ = this.subscribe(sub_id, reply, None, receiver).await?;
+                let _ = this.subscribe(sub_id, reply, None, reply_receiver);
                 Ok::<(), Error>(())
             });
         }
@@ -312,6 +271,48 @@ mod subscriber {
             Self::Unsubscribe(max_msgs)
         }
     }
+
+    /// (`server_sid`, `client_sid`,`)
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum SubscriberId {
+        Client(u64, u64),
+        Temp(u64, u64),
+    }
+    impl SubscriberId {
+        pub const fn cid(&self) -> u64 {
+            match self {
+                Self::Client(cid, _) => *cid,
+                Self::Temp(cid, _) => *cid,
+            }
+        }
+        pub fn to_parts(&self) -> (u64, u64) {
+            match self {
+                Self::Client(cid, sid) => (*cid, *sid),
+                Self::Temp(cid, sid) => (*cid, *sid),
+            }
+        }
+    }
+    impl AsRef<SubscriberId> for SubscriberId {
+        fn as_ref(&self) -> &SubscriberId {
+            self
+        }
+    }
+    impl From<(u64, u64)> for SubscriberId {
+        fn from((cid, sid): (u64, u64)) -> Self {
+            Self::Client(cid, sid)
+        }
+    }
+    impl fmt::Display for SubscriberId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                Self::Client(cid, sid) => write!(f, "{cid}-s{sid}"),
+                Self::Temp(cid, sid) => write!(f, "{cid}-S{sid}"),
+            }
+        }
+    }
+
+    ///
+    pub type SubscriptionId = (Pattern, QueueGroup);
 
     #[derive(Debug, Clone)]
     pub struct SubscriberHandle {

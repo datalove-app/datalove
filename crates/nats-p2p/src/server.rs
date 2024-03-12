@@ -1,6 +1,6 @@
 use crate::{
     cluster::ClusterInfo,
-    core::{Protocol, Relay, ServerInfo, SessionManager},
+    core::{Protocol, Relay, ServerInfo, Session, SessionManager},
     iroh::start_iroh,
     Config, Error,
 };
@@ -42,7 +42,7 @@ impl ServerData {
             client_ip: "".to_string(),
 
             proto: Protocol::Dynamic as i8,
-            version: "".to_string(),
+            version: "".to_string(), // TODO: should reflect NATS feature support version
             go: "".to_string(),
             nonce: "".to_string(),
 
@@ -124,7 +124,7 @@ impl Server {
                 let data = data.clone();
                 data.log_start_message();
 
-                let _ = SessionManager::run(
+                let _ = SessionManager::<Session<_>>::run(
                     relay,
                     data.server.clone(),
                     TcpListenerStream::new(listener),
@@ -174,15 +174,18 @@ pub mod server {
     }
 
     pub fn run_basic_server() -> Server {
-        run_server_with_port("", Some("0"))
+        run_server_with_port("{}", None)
     }
 
-    pub fn run_server_with_port(_cfg: &str, port: Option<&str>) -> Server {
-        let config = Config {
-            name: "nats-p2p-test".to_string(),
-            port: port.and_then(|p| p.parse().ok()).unwrap_or(0),
-            ..Default::default()
-        };
+    pub fn run_server(cfg: &str) -> Server {
+        run_server_with_port(cfg, None)
+    }
+
+    pub fn run_server_with_port(cfg: &str, port: Option<&str>) -> Server {
+        let mut config: Config = serde_json::from_str(cfg).expect("should parse config");
+        if let Some(port) = port {
+            config.port = port.parse().expect("should parse port");
+        }
         futures::executor::block_on(Server::run_config(config))
             .expect("should not fail to start server")
     }

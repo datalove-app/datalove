@@ -27,7 +27,7 @@ pub struct Config {
     pub host: IpAddr,
 
     /// // #[arg(short, long, default_value = "Config::DEFAULT_LISTEN_PORT")]
-    #[serde(default = "Config::default_port")]
+    #[serde(default)]
     pub port: u16,
 
     #[serde(default = "Config::default_max_payload")]

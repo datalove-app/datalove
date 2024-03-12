@@ -1,3 +1,9 @@
+pub use self::{
+    receiver::{Receiver, ReceiverArgs, ReceiverState},
+    sender::Sender,
+    util::*,
+};
+
 use super::{
     codec::Codec, ClientOp, ConnectInfo, CoreMessage, Message, Protocol, Relay, ServerInfo,
     ServerOp, StatusCode, SubscriberId,
@@ -21,21 +27,24 @@ use tokio::{
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 #[derive(Debug)]
-pub struct SessionManager {
+pub struct SessionManager<S> {
     // sessions: Vec<SessionInfo>,
     last_client_id: AtomicU64,
+    _session: PhantomData<S>,
 }
 
-impl SessionManager {
-    pub async fn run<T: util::NetworkSplit>(
-        // server_data: Arc<ServerData>,
+impl<S> SessionManager<S> {
+    pub async fn run<T>(
         relay: Relay,
         server_info: ServerInfo,
         listener: impl Stream<Item = io::Result<T>> + TryStream<Ok = T, Error = io::Error>,
         // shutdown: impl Future,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        S: Actor<Arguments = (T, Relay, SessionInfo)> + Default,
+        T: util::NetworkSplit,
+    {
         let this = Self::default();
-        // self.log_start_message();
 
         // TODO: shutdown listener
         // TODO: handle errors with sleep and retry
@@ -56,11 +65,30 @@ impl SessionManager {
                             .with_local_addr(local_addr)
                             .with_client(client_id, peer_addr);
 
-                        Session::run(io, relay.clone(), info).await.unwrap();
+                        Self::run_session(io, relay.clone(), info).await.unwrap();
                     }
                 }
             })
             .await;
+        Ok(())
+    }
+
+    async fn run_session<T>(io: T, relay: Relay, session_info: SessionInfo) -> Result<(), Error>
+    where
+        S: Actor<Arguments = (T, Relay, SessionInfo)> + Default,
+        T: util::NetworkSplit,
+    {
+        let (_, handle) = Actor::spawn(
+            Some(session_info.session_name()),
+            S::default(),
+            (io, relay, session_info),
+        )
+        .await
+        .map_err(|e| Error::server("Session spawn error", e))?;
+        handle
+            .await
+            .map_err(|e| Error::server("Session run error", e))?;
+
         Ok(())
     }
 
@@ -70,35 +98,36 @@ impl SessionManager {
     }
 }
 
-impl Default for SessionManager {
+impl<S> Default for SessionManager<S> {
     fn default() -> Self {
         Self {
             last_client_id: AtomicU64::new(1),
+            _session: PhantomData,
         }
     }
 }
 
 /// Ongoing tasks and actors underpinning a [`Session`].
 #[derive(Debug)]
-pub struct Context {
+pub struct SessionContext {
     session: ActorRef<CoreMessage>,
-    requester: ActorRef<ClientOp>,
-    responder: ActorRef<ServerOp>,
+    receiver: ActorRef<ClientOp>,
+    sender: ActorRef<ServerOp>,
     server_info_sender: Option<JoinHandle<()>>,
     // shutdown: Option<JoinHandle<()>>,
-    data: Arc<RwLock<SessionInfo>>,
+    info: Arc<RwLock<SessionInfo>>,
     // peer_addr: SocketAddr,
     // host_addr: SocketAddr,
 }
 
-impl Context {
+impl SessionContext {
     async fn update_connect_info(&mut self, connect_info: ConnectInfo) {
-        self.data.write().await.connect_info = connect_info;
+        self.info.write().await.connect_info = connect_info;
     }
 
     async fn update_server_info(&mut self, server_info: Option<ServerInfo>) {
         if let Some(server_info) = server_info {
-            self.data.write().await.server_info = server_info.clone();
+            self.info.write().await.server_info = server_info.clone();
         }
 
         // // reset server_info timer
@@ -127,7 +156,24 @@ impl SessionInfo {
         Self {
             request_timeout: None,
             server_info,
-            connect_info: Self::default_connect_info(),
+            connect_info: ConnectInfo {
+                verbose: false,
+                pedantic: true,
+                user_jwt: None,
+                nkey: None,
+                signature: None,
+                name: None,
+                echo: false,
+                lang: "".to_string(),
+                version: "".to_string(),
+                protocol: Protocol::Dynamic,
+                tls_required: false,
+                user: None,
+                pass: None,
+                auth_token: None,
+                headers: true,
+                no_responders: false,
+            },
         }
     }
     pub fn with_local_addr(mut self, local_addr: SocketAddr) -> Self {
@@ -169,7 +215,9 @@ impl SessionInfo {
     pub fn validate_connection(&self, connect_info: &ConnectInfo) -> bool {
         !connect_info.tls_required
     }
+}
 
+impl SessionInfo {
     fn echo(&self) -> bool {
         self.connect_info.echo
     }
@@ -185,66 +233,40 @@ impl SessionInfo {
     fn server_id_prefix(&self) -> &str {
         &self.server_info.server_id[..6]
     }
+}
 
-    fn default_connect_info() -> ConnectInfo {
-        ConnectInfo {
-            verbose: false,
-            pedantic: true,
-            user_jwt: None,
-            nkey: None,
-            signature: None,
-            name: None,
-            echo: false,
-            lang: "".to_string(),
-            version: "".to_string(),
-            protocol: Protocol::Dynamic,
-            tls_required: false,
-            user: None,
-            pass: None,
-            auth_token: None,
-            headers: true,
-            no_responders: false,
+pub struct Session<T: util::Split, R = Receiver<<T as util::Split>::Read>> {
+    _io: PhantomData<T>,
+    _recv: PhantomData<R>,
+}
+
+impl<T: util::Split, R> fmt::Debug for Session<T, R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Session<{}, {}>",
+            core::any::type_name::<T>(),
+            core::any::type_name::<R>()
+        )
+    }
+}
+impl<T: util::Split, R: Default> Default for Session<T, R> {
+    fn default() -> Self {
+        Self {
+            _io: PhantomData,
+            _recv: PhantomData,
         }
     }
 }
 
-#[derive(Debug)]
-pub struct Session<T> {
-    _io: PhantomData<T>,
-}
-
-pub type SessionArgs<T> = (T, Relay, SessionInfo);
-
-impl<T: util::Split> Session<T> {
-    pub fn new() -> Self {
-        Self { _io: PhantomData }
-    }
-
-    pub async fn run(io: T, relay: Relay, session_info: SessionInfo) -> Result<(), Error> {
-        let this = Self::new();
-
-        let (_, handle) = Actor::spawn(
-            Some(session_info.session_name()),
-            this,
-            (io, relay, session_info),
-        )
-        .await
-        .map_err(|e| Error::server("Session spawn error", e))?;
-        handle
-            .await
-            .map_err(|e| Error::server("Session run error", e))?;
-
-        Ok(())
-    }
-}
-
-impl<T> Actor for Session<T>
+impl<T, R> Actor for Session<T, R>
 where
     T: util::Split,
+    R: Actor<Msg = ClientOp, Arguments = ReceiverArgs<T::Read>> + Default,
 {
     type Msg = CoreMessage;
-    type State = Context;
-    type Arguments = SessionArgs<T>;
+    type State = SessionContext;
+    type Arguments = (T, Relay, SessionInfo);
 
     /// Spawns sender and receiver actors from [`Framed`] IO parts.
     ///
@@ -252,46 +274,46 @@ where
     async fn pre_start(
         &self,
         myself: ActorRef<Self::Msg>,
-        (io, relay, data): Self::Arguments,
+        (io, relay, info): Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let (recv_name, send_name) = (data.recv_name(), data.send_name());
-        let data = Arc::new(RwLock::new(data));
+        let (recv_name, send_name) = (info.recv_name(), info.send_name());
+        let info = Arc::new(RwLock::new(info));
 
-        let (requester, responder) = {
+        let (receiver, sender) = {
             let (reader, writer) = io.split();
             let stream = FramedRead::new(reader, Codec::<ClientOp>::default());
             let sink = FramedWrite::new(writer, Codec::<ServerOp>::default());
 
-            let (responder, _) = Actor::spawn_linked(
+            let (sender, _) = Actor::spawn_linked(
                 Some(send_name),
-                responder::Responder::new(),
-                (data.clone(), relay.clone(), sink),
+                sender::Sender::new(),
+                (info.clone(), relay.clone(), sink),
                 myself.get_cell(),
             )
             .await?;
 
-            let (requester, _) = Actor::spawn_linked(
+            let (receiver, _) = Actor::spawn_linked(
                 Some(recv_name),
-                requester::Requester::new(),
+                R::default(),
                 (
                     stream,
-                    data.clone(),
+                    info.clone(),
                     relay.clone(),
                     myself.clone(),
-                    responder.clone(),
+                    sender.clone(),
                 ),
                 myself.get_cell(),
             )
             .await?;
-            (requester, responder)
+            (receiver, sender)
         };
 
-        let mut state = Context {
+        let mut state = SessionContext {
             session: myself,
-            requester,
-            responder,
+            receiver,
+            sender,
             server_info_sender: None,
-            data,
+            info,
         };
 
         state.update_server_info(None).await;
@@ -305,8 +327,8 @@ where
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         state
-            .responder
-            .cast(ServerOp::Info(state.data.read().await.server_info.clone()))?;
+            .sender
+            .cast(ServerOp::Info(state.info.read().await.server_info.clone()))?;
 
         // todo: shutdown timer
 
@@ -320,7 +342,7 @@ where
     ) -> Result<(), ActorProcessingErr> {
         tracing::warn!(
             "Client session closed for {}",
-            state.data.read().await.server_info.client_ip
+            state.info.read().await.server_info.client_ip
         );
         Ok(())
     }
@@ -331,8 +353,8 @@ where
         msg: SupervisionEvent,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        let requester = state.requester.get_id();
-        let responder = state.responder.get_id();
+        let requester = state.receiver.get_id();
+        let responder = state.sender.get_id();
         match msg {
             SupervisionEvent::ActorPanicked(actor, msg) if actor.get_id() == requester => {
                 tracing::error!("Requester panicked: {msg}");
@@ -381,14 +403,14 @@ where
                     }
                     reply.send(())?;
                 }
-                _ => state.requester.cast(op)?,
+                _ => state.receiver.cast(op)?,
             },
             CoreMessage::Outgoing(op) => match &op {
                 // update server info, (re)start timer
                 ServerOp::Info(server_info) => {
                     state.update_server_info(Some(server_info.clone())).await;
                 }
-                _ => state.responder.cast(op)?,
+                _ => state.sender.cast(op)?,
             },
         }
 
@@ -396,27 +418,27 @@ where
     }
 }
 
-mod requester {
+mod receiver {
     use super::*;
 
     #[derive(Debug)]
-    pub struct Requester<S>(PhantomData<S>);
+    pub struct Receiver<R>(PhantomData<R>);
 
-    impl<S> Requester<S> {
-        pub fn new() -> Self {
+    impl<R> Default for Receiver<R> {
+        fn default() -> Self {
             Self(PhantomData)
         }
     }
 
-    type RequesterArgs<S> = (
-        FramedRead<S, Codec<ClientOp>>,
+    pub type ReceiverArgs<R> = (
+        FramedRead<R, Codec<ClientOp>>,
         Arc<RwLock<SessionInfo>>,
         Relay,
         ActorRef<CoreMessage>,
         ActorRef<ServerOp>,
     );
 
-    pub struct RequesterState {
+    pub struct ReceiverState {
         framed_read: Option<JoinHandle<Result<(), Error>>>,
         data: Arc<RwLock<SessionInfo>>,
         relay: Relay,
@@ -424,13 +446,13 @@ mod requester {
         responder: ActorRef<ServerOp>,
     }
 
-    impl<S> Actor for Requester<S>
+    impl<R> Actor for Receiver<R>
     where
-        S: AsyncRead + Send + Sync + Unpin + 'static,
+        R: AsyncRead + Send + Sync + Unpin + 'static,
     {
         type Msg = ClientOp;
-        type State = RequesterState;
-        type Arguments = RequesterArgs<S>;
+        type State = ReceiverState;
+        type Arguments = ReceiverArgs<R>;
 
         /// Spawn a task to read from the stream and cast messages to the session.
         async fn pre_start(
@@ -466,7 +488,7 @@ mod requester {
             Ok(())
         }
 
-        /// Trace each incoming message, and route it.
+        /// Trace each incoming message, and route it to the relay or responder.
         async fn handle(
             &self,
             _myself: ActorRef<Self::Msg>,
@@ -520,8 +542,8 @@ mod requester {
                             length: payload.len(),
                             payload,
                         },
-                        state.responder.clone(),
                         echo,
+                        Some(state.responder.clone()),
                     )?;
 
                     match (status, reply_to) {
@@ -585,39 +607,37 @@ mod requester {
     }
 }
 
-mod responder {
+mod sender {
     use super::*;
 
     #[derive(Debug)]
-    pub struct Responder<S> {
-        _sink: PhantomData<S>,
+    pub struct Sender<W> {
+        _sink: PhantomData<W>,
     }
 
-    impl<S> Responder<S> {
+    impl<W> Sender<W> {
         pub fn new() -> Self {
             Self { _sink: PhantomData }
         }
     }
 
-    type ResponderArgs<S> = (
-        Arc<RwLock<SessionInfo>>,
-        Relay,
-        FramedWrite<S, Codec<ServerOp>>,
-    );
-
-    pub struct ResponderState<S> {
-        framed_write: Option<FramedWrite<S, Codec<ServerOp>>>,
+    pub struct ResponderState<W> {
+        framed_write: Option<FramedWrite<W, Codec<ServerOp>>>,
         data: Arc<RwLock<SessionInfo>>,
         relay: Relay,
     }
 
-    impl<S> Actor for Responder<S>
+    impl<W> Actor for Sender<W>
     where
-        S: AsyncWrite + Send + Sync + Unpin + 'static,
+        W: AsyncWrite + Send + Sync + Unpin + 'static,
     {
         type Msg = ServerOp;
-        type State = ResponderState<S>;
-        type Arguments = ResponderArgs<S>;
+        type State = ResponderState<W>;
+        type Arguments = (
+            Arc<RwLock<SessionInfo>>,
+            Relay,
+            FramedWrite<W, Codec<ServerOp>>,
+        );
 
         async fn pre_start(
             &self,
