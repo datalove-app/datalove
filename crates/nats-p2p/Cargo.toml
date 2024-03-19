@@ -37,12 +37,16 @@ ssh-key = { version = "0.6", features = [
 ] }
 
 # async
-# flume = { version = "0.11", default-features = false, features = [
-#   "async",
-#   "eventual-fairness",
-#   "select",
-# ] }
+flume = { workspace = true, features = [
+  "async",
+  "eventual-fairness",
+  "select",
+] }
 futures = { workspace = true }
+hydroflow = { workspace = true, default-features = false, features = [
+  "hydroflow_macro",
+] }
+# hydroflow_lang = { workspace = true }
 ractor = { version = "0.9.6", default-features = false, features = [
   # "cluster",
   "tokio_runtime",

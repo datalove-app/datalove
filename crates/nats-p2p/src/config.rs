@@ -1,13 +1,11 @@
 use crate::{
-    cluster::ClusterInfo,
-    core::{Protocol, ServerInfo},
     Error,
 };
-use core::fmt;
+
 use dirs::home_dir;
 use iroh_net::{
     // config::Endpoint,
-    key::{PublicKey, SecretKey},
+    key::{SecretKey},
 };
 use serde::{Deserialize, Serialize};
 use std::{

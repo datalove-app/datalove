@@ -6,12 +6,13 @@ pub use self::{
 
 use super::{
     codec::Codec, ClientOp, ConnectInfo, CoreMessage, Message, Protocol, Relay, ServerInfo,
-    ServerOp, StatusCode, SubscriberId,
+    ServerOp, StatusCode,
 };
 use crate::Error;
 use bytes::Bytes;
-use futures::{Future, SinkExt, Stream, StreamExt, TryStream, TryStreamExt};
-use ractor::{port::RpcReplyPort, Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
+use futures::{SinkExt, Stream, StreamExt, TryStream, TryStreamExt};
+
+use ractor::{Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use std::{
     fmt,
     marker::PhantomData,
@@ -164,15 +165,15 @@ impl SessionInfo {
                 signature: None,
                 name: None,
                 echo: false,
-                lang: "".to_string(),
-                version: "".to_string(),
+                lang: "rust".to_string(),
+                version: "1.32.0".to_string(),
                 protocol: Protocol::Dynamic,
                 tls_required: false,
                 user: None,
                 pass: None,
                 auth_token: None,
                 headers: true,
-                no_responders: false,
+                no_responders: true,
             },
         }
     }
@@ -394,18 +395,18 @@ where
     ) -> Result<(), ActorProcessingErr> {
         match msg {
             // todo: reset shutdown timer
-            CoreMessage::Incoming(op, reply) => match &op {
+            CoreMessage::Inbound(op, reply) => match &op {
                 // update client connect info, if provided
                 // TODO: validate connect info
                 ClientOp::Connect(info) => {
-                    if let Some(connect_info) = info {
+                    if let Some((connect_info, reply)) = info.as_ref().zip(reply) {
                         state.update_connect_info(connect_info.clone()).await;
+                        reply.send(())?;
                     }
-                    reply.send(())?;
                 }
                 _ => state.receiver.cast(op)?,
             },
-            CoreMessage::Outgoing(op) => match &op {
+            CoreMessage::Outbound(op) => match &op {
                 // update server info, (re)start timer
                 ServerOp::Info(server_info) => {
                     state.update_server_info(Some(server_info.clone())).await;
@@ -497,7 +498,7 @@ mod receiver {
         ) -> Result<(), ActorProcessingErr> {
             let (client_id, verbose, no_responders, echo) = {
                 let data = &state.data.read().await;
-                msg.trace(&data.server_info.client_ip, data.server_info.client_id);
+                // msg.trace(&data.server_info.client_ip, data.server_info.client_id);
                 (
                     data.client_id(),
                     data.verbose(),
@@ -510,10 +511,13 @@ mod receiver {
                 // route quick messages directly to sender
                 ClientOp::Connect(_) => {
                     // send connect to session to cache connect info
-                    let _ = ractor::call!(state.session, CoreMessage::Incoming, msg)?;
+                    let _ = state
+                        .session
+                        .call(|reply| CoreMessage::Inbound(msg, Some(reply)), None)
+                        .await?;
 
                     if state.data.read().await.verbose() {
-                        let _ = state.responder.cast(ServerOp::Ok)?;
+                        state.responder.cast(ServerOp::Ok)?;
                     }
                 }
                 ClientOp::Info(_) => {
@@ -526,7 +530,7 @@ mod receiver {
                 // route rest to relay
                 ClientOp::Publish {
                     subject,
-                    reply_to,
+                    reply: reply_to,
                     headers,
                     payload,
                 } => {
@@ -548,10 +552,10 @@ mod receiver {
 
                     match (status, reply_to) {
                         (StatusCode::OK, _) if verbose => {
-                            let _ = state.responder.cast(ServerOp::Ok)?;
+                            state.responder.cast(ServerOp::Ok)?;
                         }
                         (StatusCode::NO_RESPONDERS, Some(reply)) if no_responders => {
-                            let _ = state.responder.cast(ServerOp::Message {
+                            state.responder.cast(ServerOp::Message {
                                 status: Some(status),
                                 subject: reply,
                                 reply_to: None,
@@ -584,7 +588,7 @@ mod receiver {
 
                     match status {
                         StatusCode::OK if verbose => {
-                            let _ = state.responder.cast(ServerOp::Ok)?;
+                            state.responder.cast(ServerOp::Ok)?;
                         }
                         _ => {}
                     }
@@ -595,7 +599,7 @@ mod receiver {
 
                     match status {
                         StatusCode::OK if verbose => {
-                            let _ = state.responder.cast(ServerOp::Ok)?;
+                            state.responder.cast(ServerOp::Ok)?;
                         }
                         _ => {}
                     }
@@ -613,6 +617,12 @@ mod sender {
     #[derive(Debug)]
     pub struct Sender<W> {
         _sink: PhantomData<W>,
+    }
+
+    impl<W> Default for Sender<W> {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl<W> Sender<W> {
@@ -670,17 +680,15 @@ mod sender {
         ) -> Result<(), ActorProcessingErr> {
             {
                 let server_info = &state.data.read().await.server_info;
-                msg.trace(&server_info.client_ip, server_info.client_id);
+                // msg.trace(&server_info.client_ip, server_info.client_id);
             }
 
-            let res = state
+            Ok(state
                 .framed_write
                 .as_mut()
                 .expect("should not handle messages after dropping framed write")
                 .send(msg)
-                .await?;
-
-            Ok(res)
+                .await?)
         }
     }
 }

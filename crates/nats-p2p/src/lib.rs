@@ -4,15 +4,26 @@
 //! to iroh actor
 //! route iroh doc/blob/msg events to clients
 
-pub(crate) mod cluster;
-pub(crate) mod config;
-pub(crate) mod core;
 mod error;
 mod iroh;
-// pub(crate) mod jetstream;
-mod server;
 
-pub use crate::{config::Config, core::Subject, error::Error, server::Server};
+pub mod cluster;
+pub mod config;
+pub mod core;
+pub mod flow;
+pub mod jetstream;
+pub mod server;
+
+pub use crate::{
+    config::Config,
+    core::{
+        codec::Codec,
+        session::{NetworkSplit, Split},
+        ClientOp, ServerOp, Subject,
+    },
+    error::Error,
+    server::Server,
+};
 
 #[doc(hidden)]
 pub use server::server::{run_basic_server, run_server, run_server_with_port};

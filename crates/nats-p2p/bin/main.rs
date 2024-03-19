@@ -1,11 +1,13 @@
-use nats_p2p::{Config, Server};
+use nats_p2p::*;
 
-use std::io;
+
+use tokio::io::{self};
+
 use tracing_subscriber::{prelude::*, EnvFilter};
 
 struct Args {}
 
-#[tokio::main]
+#[hydroflow::main]
 async fn main() -> io::Result<()> {
     let fmt = tracing_subscriber::fmt::layer()
         // .event_format(tracing_subscriber::fmt::format())
@@ -24,10 +26,17 @@ async fn main() -> io::Result<()> {
         .with(EnvFilter::from_default_env())
         .init();
 
-    // TODO: load from file or args to know which SSH key to load
+    // // TODO: load from file or args to know which SSH key to load
+    // let config = Config::default();
+    // let server = Server::run_config(config).await?;
+    // server.await?;
+
     let config = Config::default();
-    let server = Server::run_config(config).await?;
-    server.await?;
+    let _ = flow::server(config)
+        .await?
+        .run_async()
+        .await
+        .ok_or_else(|| io::Error::other("server error"))?;
 
     Ok(())
 }

@@ -1,16 +1,14 @@
 //! Core NATS wire codec, types and services.
 
-mod codec;
-mod message;
-mod pubsub;
-pub(crate) mod session;
+pub mod codec;
+pub mod message;
+pub mod pubsub;
+pub mod session;
 
-pub(crate) use message::{
-    debug, ClientOp, ConnectInfo, HeaderMap, Protocol, ServerInfo, ServerOp, StatusCode,
-};
-pub(crate) use pubsub::{Relay, SubscriberId};
-pub(crate) use session::Session;
+pub use message::{debug, ConnectInfo, HeaderMap, Protocol, ServerInfo, StatusCode};
+pub use pubsub::{Relay, SubscriberId};
+pub use session::Session;
 
-pub use message::{CoreMessage, Message};
+pub use message::{ClientOp, CoreMessage, Message, ServerOp};
 pub use pubsub::{QueueGroup, Subject, WeightedQueueGroup};
 pub use session::SessionManager;

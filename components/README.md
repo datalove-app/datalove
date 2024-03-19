@@ -1,5 +1,8 @@
-# datalove webassembly components
+# webassembly components
 
+system libraries and interfaces distributed as WASM within datalove
+
+<!--
 ## system components:
 
 designed for long-term stability, built against WASI(X)
@@ -15,4 +18,4 @@ designed for modularity and upgradability, built against system components
 
 ## application components:
 
-third-party apps, built against core components
+third-party apps, built against core components -->

@@ -7,7 +7,9 @@ members = [
   "app/src-tauri",
 
   # libs
-  "crates/nats-p2p",
+  "crates/nats-p2p", "crates/transport-p2p",
+  # "crates/wasmflow/wasmflow",
+  # "crates/wasmflow/macro",
   # "crates/runtime",
   # "crates/persona",
   # "crates/persona/core",
@@ -39,30 +41,40 @@ anstyle = { version = "1.0", default-features = false }
 dirs = { version = "5.0", default-features = false }
 clap = { version = "4.5.0", default-features = false }
 rpassword = { version = "7.3.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false }
+tracing-subscriber-wasm = { version = "0.1", default-features = false }
 
 # general
 anyhow = { version = "1.0", default-features = false }
 # async-wormhole = { version = "0.3.7", default-features = false }
 # bytemuck = { version = "1.14", default-features = false }
 bytes = { version = "1.5", default-features = false }
-color-eyre = { version = "0.6", default-features = false }
 console-subscriber = { version = "0.2", default-features = false }
 # coerce = { version = "0.8", default-features = false }
 dashmap = { version = "5.5", default-features = false }
-futures = { version = "0.3", default-features = false }
+lattices = { git = "https://github.com/hydro-project/hydroflow.git" }
 # futures-channel = { version = "0.3", default-features = false }
 # futures-util = { version = "0.3", default-features = false }
 # hex = { version = "0.4", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 thiserror = { version = "1.0", default-features = false }
+tracing = { version = "0.1", default-features = false }
+
+# async
+flume = { version = "0.11", default-features = false }
+futures = { version = "0.3", default-features = false }
+hydro_deploy = { git = "https://github.com/hydro-project/hydroflow.git" }
+hydroflow = { git = "https://github.com/hydro-project/hydroflow.git" }
+hydroflow_lang = { git = "https://github.com/hydro-project/hydroflow.git" }
+hydroflow_plus = { git = "https://github.com/hydro-project/hydroflow.git" }
+hydroflow_plus_cli_integration = { git = "https://github.com/hydro-project/hydroflow.git" }
+stageleft = { git = "https://github.com/hydro-project/hydroflow.git" }
+stageleft_tool = { git = "https://github.com/hydro-project/hydroflow.git" }
 tokio = { version = "1.36", default-features = false }
 tokio-util = { version = "0.7", default-features = false }
 tokio-stream = { version = "0.1", default-features = false }
-tracing = { version = "0.1", default-features = false }
 tracing-futures = { version = "0.2", default-features = false }
-tracing-subscriber = { version = "0.3", default-features = false }
-tracing-subscriber-wasm = { version = "0.1", default-features = false }
 
 # wasm
 wasm_component_layer = { version = "0.1.15", default-features = false }

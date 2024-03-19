@@ -12,8 +12,8 @@ use std::{
 };
 use tokio_util::codec::{AnyDelimiterCodecError, Decoder, Encoder};
 
-pub const DELIMITER: &'static str = "\r\n";
-pub const VERSION: &'static str = "NATS/1.0";
+pub const DELIMITER: &str = "\r\n";
+pub const VERSION: &str = "NATS/1.0";
 
 /// The core codec for encoding and decoding messages.
 ///
@@ -147,9 +147,12 @@ impl Decoder for Codec<ClientOp> {
             let PartialOp {
                 headers_len,
                 payload_len,
-                op: ClientOp::Publish {
-                    subject, reply_to, ..
-                },
+                op:
+                    ClientOp::Publish {
+                        subject,
+                        reply: reply_to,
+                        ..
+                    },
             } = self.finish_decode()
             else {
                 unreachable!();
@@ -172,7 +175,7 @@ impl Decoder for Codec<ClientOp> {
             debug_assert!(payload_len == payload.len());
             return Ok(Some(ClientOp::Publish {
                 subject,
-                reply_to,
+                reply: reply_to,
                 headers,
                 payload,
             }));
@@ -297,6 +300,87 @@ impl Decoder for Codec<ServerOp> {
     }
 }
 
+impl<T> Encoder<ClientOp> for Codec<T> {
+    type Error = Error;
+
+    fn encode(&mut self, item: ClientOp, buf: &mut BytesMut) -> Result<(), Self::Error> {
+        let reserve = item.encode_size_hint();
+        match item {
+            ClientOp::Ping => self.inner.encode("PING", buf)?,
+            ClientOp::Pong => self.inner.encode("PONG", buf)?,
+            ClientOp::Connect(ref info) => util::encode_info("CONNECT", info, buf)?,
+            ClientOp::Info(ref info) => util::encode_info("INFO", info, buf)?,
+
+            ClientOp::Subscribe {
+                subject,
+                queue_group,
+                sid,
+            } => match queue_group {
+                None => self
+                    .inner
+                    .encode(format_args!("SUB {subject} {sid}"), buf)?,
+                Some(queue_group) => self
+                    .inner
+                    .encode(format_args!("SUB {subject} {queue_group} {sid}"), buf)?,
+            },
+            ClientOp::Unsubscribe { sid, max_msgs } => match max_msgs {
+                None => self.inner.encode(format_args!("UNSUB {sid}"), buf)?,
+                Some(max_msgs) => self
+                    .inner
+                    .encode(format_args!("UNSUB {sid} {max_msgs}"), buf)?,
+            },
+            // pub
+            ClientOp::Publish {
+                subject,
+                reply: reply_to,
+                headers: None,
+                payload,
+            } => {
+                buf.reserve(reserve);
+                let reply_to = reply_to
+                    .as_ref()
+                    .map_or("".to_string(), |r| format!("{r} "));
+
+                // write first chunk
+                self.inner.encode(
+                    format_args!("PUB {subject} {reply_to}{}", payload.len()),
+                    buf,
+                )?;
+                self.inner.encode(payload.as_ref(), buf)?;
+            }
+            // hpub
+            ClientOp::Publish {
+                subject,
+                reply: reply_to,
+                headers: Some(header_map),
+                payload,
+            } => {
+                buf.reserve(reserve);
+                let reply_to = reply_to
+                    .as_ref()
+                    .map_or("".to_string(), |r| format!("{r} "));
+
+                // write first chunk
+                let headers_len = util::header_map_len(None, None, &header_map);
+
+                self.inner.encode(
+                    format_args!(
+                        "HPUB {subject} {reply_to}{headers_len} {}",
+                        headers_len + payload.len()
+                    ),
+                    buf,
+                )?;
+
+                // write remaining chunk(s)
+                util::encode_header_map(None, None, &header_map, buf)?;
+                self.inner.encode(payload.as_ref(), buf)?;
+            }
+        };
+
+        Ok(())
+    }
+}
+
 impl<T> Encoder<ServerOp> for Codec<T> {
     type Error = Error;
 
@@ -345,7 +429,7 @@ impl<T> Encoder<ServerOp> for Codec<T> {
                 let reply_to = reply_to
                     .as_ref()
                     .map_or("".to_string(), |r| format!("{r} "));
-                let description = description.as_ref().map(|s| s.as_str());
+                let description = description.as_deref();
 
                 // write first chunk
                 match (&account, &headers) {
@@ -358,7 +442,7 @@ impl<T> Encoder<ServerOp> for Codec<T> {
                     }
                     // hmsg
                     (None, Some(header_map)) => {
-                        let headers_len = util::header_map_len(status, description, &header_map);
+                        let headers_len = util::header_map_len(status, description, header_map);
 
                         self.inner.encode(
                             format_args!(
@@ -403,93 +487,9 @@ impl<T> Encoder<Option<ServerOp>> for Codec<T> {
     }
 }
 
-#[cfg(test)]
-impl<T> Encoder<ClientOp> for Codec<T> {
-    type Error = Error;
-
-    fn encode(&mut self, item: ClientOp, buf: &mut BytesMut) -> Result<(), Self::Error> {
-        let reserve = item.encode_size_hint();
-        match item {
-            ClientOp::Ping => self.inner.encode("PING", buf)?,
-            ClientOp::Pong => self.inner.encode("PONG", buf)?,
-            ClientOp::Connect(ref info) => util::encode_info("CONNECT", info, buf)?,
-            ClientOp::Info(ref info) => util::encode_info("INFO", info, buf)?,
-
-            ClientOp::Subscribe {
-                subject,
-                queue_group,
-                sid,
-            } => match queue_group {
-                None => self
-                    .inner
-                    .encode(format_args!("SUB {subject} {sid}"), buf)?,
-                Some(queue_group) => self
-                    .inner
-                    .encode(format_args!("SUB {subject} {queue_group} {sid}"), buf)?,
-            },
-            ClientOp::Unsubscribe { sid, max_msgs } => match max_msgs {
-                None => self.inner.encode(format_args!("UNSUB {sid}"), buf)?,
-                Some(max_msgs) => self
-                    .inner
-                    .encode(format_args!("UNSUB {sid} {max_msgs}"), buf)?,
-            },
-            // pub
-            ClientOp::Publish {
-                subject,
-                reply_to,
-                headers: None,
-                payload,
-            } => {
-                buf.reserve(reserve);
-                let reply_to = reply_to
-                    .as_ref()
-                    .map_or("".to_string(), |r| format!("{r} "));
-
-                // write first chunk
-                self.inner.encode(
-                    format_args!("PUB {subject} {reply_to}{}", payload.len()),
-                    buf,
-                )?;
-                self.inner.encode(payload.as_ref(), buf)?;
-            }
-            // hpub
-            ClientOp::Publish {
-                subject,
-                reply_to,
-                headers: Some(header_map),
-                payload,
-            } => {
-                buf.reserve(reserve);
-                let reply_to = reply_to
-                    .as_ref()
-                    .map_or("".to_string(), |r| format!("{r} "));
-
-                // write first chunk
-                let headers_len = util::header_map_len(None, None, &header_map);
-
-                self.inner.encode(
-                    format_args!(
-                        "HPUB {subject} {reply_to}{headers_len} {}",
-                        headers_len + payload.len()
-                    ),
-                    buf,
-                )?;
-
-                // write remaining chunk(s)
-                util::encode_header_map(None, None, &header_map, buf)?;
-                self.inner.encode(payload.as_ref(), buf)?;
-            }
-        };
-
-        Ok(())
-    }
-}
-
 impl ClientOp {
     fn encode_size_hint(&self) -> usize {
-        match self {
-            _ => 256,
-        }
+        256
     }
 }
 
@@ -654,7 +654,7 @@ mod util {
     pub fn read_partial_pub(verb: &str, buf: &mut Bytes) -> Result<PartialOp<ClientOp>, Error> {
         buf.advance(verb.len());
 
-        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+        let chunk_str = core::str::from_utf8(buf).map_err(Error::codec)?;
         let num_parts = chunk_str
             .split_whitespace()
             .filter(|s| !s.is_empty())
@@ -679,7 +679,7 @@ mod util {
 
                 let op = ClientOp::Publish {
                     subject,
-                    reply_to,
+                    reply: reply_to,
                     headers: None,
                     payload: Bytes::new(),
                 };
@@ -702,7 +702,7 @@ mod util {
 
                 let op = ClientOp::Publish {
                     subject,
-                    reply_to,
+                    reply: reply_to,
                     headers: None,
                     payload: Bytes::new(),
                 };
@@ -725,7 +725,7 @@ mod util {
     ) -> Result<(Subject, Option<String>, u64), Error> {
         buf.advance(verb.len());
 
-        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+        let chunk_str = core::str::from_utf8(buf).map_err(Error::codec)?;
 
         let num_parts = chunk_str
             .split_whitespace()
@@ -770,28 +770,26 @@ mod util {
     {
         buf.advance(verb.len());
 
-        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+        let chunk_str = core::str::from_utf8(buf).map_err(Error::codec)?;
 
         let mut parts = chunk_str.split_whitespace().filter(|s| !s.is_empty());
 
         let t = parts
             .next()
-            .map(|t| T::from_str(t).ok())
-            .flatten()
+            .and_then(|t| T::from_str(t).ok())
             .ok_or_else(|| {
                 Error::codec(anyhow::anyhow!("{} missing/invalid account/subject", verb))
             })?;
         let u = parts
             .next()
-            .map(|u| U::from_str(u).ok())
-            .flatten()
+            .and_then(|u| U::from_str(u).ok())
             .ok_or_else(|| Error::codec(anyhow::anyhow!("{} missing/invalid subject/sid", verb)))?;
 
         let res = match try_queue_group.then(|| parts.next()).flatten() {
             None => (t, u, None),
             Some(queue_group) => {
                 let queue_group = queue_group.to_string();
-                let weight = parts.next().map(|s| s.parse().ok()).flatten();
+                let weight = parts.next().and_then(|s| s.parse().ok());
                 (t, u, Some((queue_group, weight)))
             }
         };
@@ -803,17 +801,16 @@ mod util {
     pub fn read_unsub_header(verb: &str, buf: &mut Bytes) -> Result<(u64, Option<u64>), Error> {
         buf.advance(verb.len());
 
-        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+        let chunk_str = core::str::from_utf8(buf).map_err(Error::codec)?;
 
         let mut parts = chunk_str.split_whitespace().filter(|s| !s.is_empty());
         let sid = parts
             .next()
-            .map(|t| u64::from_str(t).ok())
-            .flatten()
+            .and_then(|t| u64::from_str(t).ok())
             .ok_or_else(|| {
                 Error::codec(anyhow::anyhow!("{} missing/invalid account/subject", verb))
             })?;
-        let max_msgs = parts.next().map(|u| u64::from_str(u).ok()).flatten();
+        let max_msgs = parts.next().and_then(|u| u64::from_str(u).ok());
 
         Ok((sid, max_msgs))
     }
@@ -824,7 +821,7 @@ mod util {
     ) -> Result<super::PartialOp<ServerOp>, Error> {
         buf.advance(verb.len());
 
-        let chunk_str = core::str::from_utf8(&buf).map_err(Error::codec)?;
+        let chunk_str = core::str::from_utf8(buf).map_err(Error::codec)?;
         let num_parts = chunk_str
             .split_whitespace()
             .filter(|s| !s.is_empty())
@@ -1179,7 +1176,7 @@ mod tests {
             .encode(
                 ClientOp::Publish {
                     subject: Subject::from_static("FOO.BAR"),
-                    reply_to: None,
+                    reply: None,
                     headers: None,
                     payload: Bytes::from_static(b"Hello World"),
                 },
@@ -1194,7 +1191,7 @@ mod tests {
             .encode(
                 ClientOp::Publish {
                     subject: Subject::from_static("FOO.BAR"),
-                    reply_to: Some(Subject::from_static("INBOX.67")),
+                    reply: Some(Subject::from_static("INBOX.67")),
                     headers: Some({
                         let mut headers = HeaderMap::new();
                         headers.insert("Header", "Y");
@@ -1303,7 +1300,7 @@ mod tests {
             msg,
             ClientOp::Publish {
                 subject: Subject::from_static("FOO.BAR"),
-                reply_to: Some(Subject::from_static("INBOX.67")),
+                reply: Some(Subject::from_static("INBOX.67")),
                 headers: None,
                 payload: Bytes::from_static(b"Hello World"),
             }
@@ -1318,7 +1315,7 @@ mod tests {
             msg,
             ClientOp::Publish {
                 subject: Subject::from_static("FOO.BAR"),
-                reply_to: Some(Subject::from_static("INBOX.67")),
+                reply: Some(Subject::from_static("INBOX.67")),
                 headers: Some({
                     let mut headers = HeaderMap::new();
                     headers.insert("Header", "Y");

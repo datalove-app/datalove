@@ -1,0 +1,3 @@
+- [ ] what to do when a connection times out
+- [ ] max_payload checks (to and from clients/peers)
+- [ ] refactor server messages to be instrumented from the root, to a cli subscriber

@@ -1,17 +1,15 @@
 use crate::{
     cluster::ClusterInfo,
     core::{Protocol, Relay, ServerInfo, Session, SessionManager},
-    iroh::start_iroh,
     Config, Error,
 };
-use futures::{Future, TryStreamExt};
-use iroh_net::{key::PublicKey, NodeAddr, NodeId};
+use futures::{Future};
+use iroh_net::{key::PublicKey, NodeAddr};
 use std::{
     net::SocketAddr,
     pin::Pin,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc},
     task::{Context, Poll},
-    time::Duration,
 };
 use tokio::{net::TcpListener, task::JoinHandle};
 use tokio_stream::wrappers::TcpListenerStream;
@@ -27,14 +25,14 @@ pub struct ServerData {
 }
 
 impl ServerData {
-    fn new(pk: PublicKey, config: Config) -> Self {
+    pub fn new(pk: PublicKey, config: Config) -> Self {
         let iroh = NodeAddr::from_parts(pk, None, vec![config.cluster_addr()]);
 
         let server = ServerInfo {
             server_name: config.name.clone(),
             host: config.host.to_string(),
             port: config.port,
-            max_payload: config.max_payload as usize,
+            max_payload: config.max_payload,
             server_id: iroh.node_id.to_string().to_uppercase(),
 
             connect_urls: vec![],
@@ -57,6 +55,7 @@ impl ServerData {
             leader: None,
             replicas: vec![],
         };
+
         Self {
             pk,
             config,
@@ -66,12 +65,22 @@ impl ServerData {
         }
     }
 
-    fn with_host_addr(mut self, addr: SocketAddr) -> Self {
+    pub fn with_host_addr(mut self, addr: SocketAddr) -> Self {
         self.config.host = addr.ip();
         self.config.port = addr.port();
         self.server.connect_urls = vec![format!("nats://{}", self.config.listen_addr())];
         // self.iroh.endpoints = vec![addr];
         self
+    }
+
+    pub fn server_info(&self) -> &ServerInfo {
+        &self.server
+    }
+    pub fn server_info_for_client(&self, cid: u64, addr: SocketAddr) -> ServerInfo {
+        let mut server = self.server.clone();
+        server.client_id = cid;
+        server.client_ip = addr.to_string();
+        server
     }
 
     fn client_url(&self) -> String {
@@ -81,7 +90,7 @@ impl ServerData {
         self.iroh.node_id.to_string().to_uppercase()
     }
 
-    fn log_start_message(&self) {
+    pub fn log_start_message(&self) {
         let listen_addr = self.config.listen_addr();
         tracing::info!("Starting nats-p2p-server");
         tracing::info!("  Version:  0.0.1");

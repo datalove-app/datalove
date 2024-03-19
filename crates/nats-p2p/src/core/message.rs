@@ -1,21 +1,80 @@
 pub use async_nats::{ConnectInfo, HeaderMap, Message, Protocol, ServerInfo, StatusCode};
+use hydroflow::DemuxEnum;
 
 use super::{QueueGroup, Subject, SubscriberId, WeightedQueueGroup};
+use crate::Error;
 use bytes::Bytes;
 use ractor::RpcReplyPort;
-use std::fmt;
+use std::{fmt, net::SocketAddr};
+use tokio_util::codec::{Decoder, Encoder};
 
 /// Core API Message.
 #[derive(Debug)]
 pub enum CoreMessage {
-    Incoming(ClientOp, RpcReplyPort<()>),
-    Outgoing(ServerOp),
+    Inbound(ClientOp, Option<RpcReplyPort<()>>),
+    Outbound(ServerOp),
+}
+
+impl CoreMessage {
+    pub(crate) fn unwrap_inbound(self) -> ClientOp {
+        match self {
+            CoreMessage::Inbound(op, _) => op,
+            _ => panic!("Expected ClientOp, got ServerOp"),
+        }
+    }
+    pub(crate) fn unwrap_server(self) -> ServerOp {
+        match self {
+            CoreMessage::Outbound(op) => op,
+            _ => panic!("Expected ServerOp, got ClientOp"),
+        }
+    }
+
+    pub(crate) fn trace(&self, client_ip: SocketAddr, cid: u64) {
+        match self {
+            CoreMessage::Inbound(op, _) => op.trace(client_ip, cid),
+            CoreMessage::Outbound(op) => op.trace(client_ip, cid),
+        }
+    }
+}
+
+impl From<ClientOp> for CoreMessage {
+    fn from(op: ClientOp) -> Self {
+        CoreMessage::Inbound(op, None)
+    }
+}
+impl From<ServerOp> for CoreMessage {
+    fn from(op: ServerOp) -> Self {
+        CoreMessage::Outbound(op)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Codec(super::codec::Codec<ClientOp>);
+
+impl Decoder for Codec {
+    type Item = CoreMessage;
+    type Error = Error;
+
+    fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.0.decode(src).map(|opt| opt.map(|op| op.into()))
+    }
+}
+
+impl Encoder<CoreMessage> for Codec {
+    type Error = Error;
+
+    fn encode(&mut self, item: CoreMessage, dst: &mut bytes::BytesMut) -> Result<(), Self::Error> {
+        match item {
+            CoreMessage::Inbound(op, _) => self.0.encode(op, dst),
+            CoreMessage::Outbound(op) => self.0.encode(op, dst),
+        }
+    }
 }
 
 /// `ClientOp` represents all actions of `Client`.
 ///
 /// [Original documentation](https://docs.nats.io/reference/reference-protocols/nats-protocol)
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, DemuxEnum, Eq, PartialEq)]
 pub enum ClientOp {
     /// `CONNECT {["option_name":option_value],...}`
     Connect(Option<ConnectInfo>),
@@ -33,7 +92,7 @@ pub enum ClientOp {
     /// `HPUB <subject> [reply-to] <#header bytes> <#total bytes>\r\n[headers]\r\n\r\n[payload]`
     Publish {
         subject: Subject,
-        reply_to: Option<Subject>,
+        reply: Option<Subject>,
         headers: Option<HeaderMap>,
         payload: Bytes,
     },
@@ -64,12 +123,32 @@ impl ClientOp {
         }
     }
 
-    pub(crate) fn trace(&self, client_ip: &str, cid: u64) {
+    pub(crate) fn trace(&self, client_ip: SocketAddr, cid: u64) {
         tracing::trace!(
             "{prefix} - {arrow} [{self}]",
             prefix = debug::trace_prefix(client_ip, cid),
             arrow = debug::arrow("<<-"),
         );
+    }
+
+    pub(crate) fn unwrap_into_message(self) -> Message {
+        match self {
+            ClientOp::Publish {
+                subject,
+                reply,
+                headers,
+                payload,
+            } => Message {
+                subject,
+                reply,
+                headers,
+                status: None,
+                description: None,
+                length: payload.len(),
+                payload,
+            },
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -90,7 +169,7 @@ impl fmt::Display for ClientOp {
             ),
             ClientOp::Publish {
                 subject,
-                reply_to,
+                reply: reply_to,
                 payload,
                 ..
             } => {
@@ -128,7 +207,7 @@ impl fmt::Display for ClientOp {
 
 /// [Original core documentation](https://docs.nats.io/reference/reference-protocols/nats-protocol)
 /// [Original cluster documentation](https://docs.nats.io/reference/reference-protocols/nats-server-protocol)
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, DemuxEnum, Eq, PartialEq)]
 pub enum ServerOp {
     /// `CONNECT {["option_name":option_value],...}`
     Connect(ConnectInfo),
@@ -191,7 +270,7 @@ impl ServerOp {
         }
     }
 
-    pub(crate) fn trace(&self, client_ip: &str, id: impl Into<u64>) {
+    pub(crate) fn trace(&self, client_ip: SocketAddr, id: impl Into<u64>) {
         tracing::trace!(
             "{prefix} - {arrow} [{self}]",
             prefix = debug::trace_prefix(client_ip, id.into()),

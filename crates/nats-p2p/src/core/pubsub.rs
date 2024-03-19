@@ -62,15 +62,15 @@ impl Relay {
         cid: u64,
         message: Message,
         echo: bool,
-        reply_receiver: Option<ActorRef<T>>,
+        replier: Option<ActorRef<T>>,
     ) -> Result<StatusCode, Error> {
         // if reply_to, spawn subscriber
-        if let Some((reply, reply_receiver)) = message.reply.as_ref().zip(reply_receiver) {
+        if let Some((reply, replier)) = message.reply.as_ref().zip(replier) {
             let sub_id = self.next_temp_id(cid);
             let reply = reply.clone();
             let this = self.clone();
             tokio::task::spawn(async move {
-                let _ = this.subscribe(sub_id, reply, None, reply_receiver);
+                let _ = this.subscribe(sub_id, reply, None, replier);
                 Ok::<(), Error>(())
             });
         }
@@ -238,7 +238,7 @@ impl Relay {
 }
 
 mod publisher {
-    use super::*;
+    
 
     #[derive(Debug, Clone)]
     pub struct Publisher {
@@ -278,6 +278,7 @@ mod subscriber {
         Client(u64, u64),
         Temp(u64, u64),
     }
+
     impl SubscriberId {
         pub const fn cid(&self) -> u64 {
             match self {
@@ -381,7 +382,7 @@ mod subscriber {
             _myself: ActorRef<Self::Msg>,
             _state: &mut Self::State,
         ) -> Result<(), ActorProcessingErr> {
-            self.relay.remove_subscriber(&self.id);
+            self.relay.remove_subscriber(self.id);
             Ok(())
         }
 

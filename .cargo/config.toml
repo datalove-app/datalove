@@ -20,6 +20,16 @@ async-nats = { path = "vendor/nats.rs/async-nats" }
 ractor = { path = "vendor/ractor/ractor" }
 ractor_cluster = { path = "vendor/ractor/ractor_cluster" }
 
+[patch."https://github.com/hydro-project/hydroflow.git"]
+hydro_deploy = { path = "vendor/hydroflow/hydro_deploy/core" }
+hydroflow = { path = "vendor/hydroflow/hydroflow" }
+hydroflow_lang = { path = "vendor/hydroflow/hydroflow_lang" }
+hydroflow_plus = { path = "vendor/hydroflow/hydroflow_plus" }
+hydroflow_plus_cli_integration = { path = "vendor/hydroflow/hydro_deploy/hydroflow_plus_cli_integration" }
+lattices = { path = "vendor/hydroflow/lattices" }
+stageleft = { path = "vendor/hydroflow/stageleft" }
+stageleft_tool = { path = "vendor/hydroflow/stageleft_tool" }
+
 # missing asm import
 # switcheroo = { git = "https://github.com/lunatic-solutions/async-wormhole" }
 
